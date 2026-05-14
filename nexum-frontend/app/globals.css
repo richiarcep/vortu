@@ -1,0 +1,174 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;450;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap");
+@import "tailwindcss";
+
+
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body { color-scheme: light !important; }
+
+:root {
+  --bg:         #FFFFFF;
+  --surface:    #F7F8FA;
+  --surface-2:  #F0F2F5;
+  --border:     #E5E7EB;
+  --border-2:   #D1D5DB;
+  --navy:       #0B1426;
+  --navy-2:     #1E3A5F;
+  --blue:       #1A56DB;
+  --blue-hover: #1447C0;
+  --green:      #059669;
+  --green-bg:   #ECFDF5;
+  --red:        #DC2626;
+  --red-bg:     #FEF2F2;
+  --amber:      #D97706;
+  --amber-bg:   #FFFBEB;
+  --text-1:     #0B1426;
+  --text-2:     #374151;
+  --text-3:     #6B7280;
+  --text-4:     #9CA3AF;
+  --shadow:     0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+  --radius:     8px;
+  --radius-lg:  12px;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: #FFFFFF !important;
+  color: #0B1426 !important;
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+.card {
+  background: #FFFFFF !important;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  transition: all 0.15s ease;
+  font-family: 'Inter', sans-serif;
+}
+
+.btn-primary { background: #0B1426 !important; color: white !important; }
+.btn-primary:hover { background: #1E3A5F !important; }
+.btn-secondary { background: var(--surface); color: var(--text-1); border: 1px solid var(--border); }
+.btn-secondary:hover { background: var(--surface-2); }
+
+.input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 14px;
+  color: #0B1426 !important;
+  background: #FFFFFF !important;
+  outline: none;
+  transition: border-color 0.15s ease;
+  font-family: 'Inter', sans-serif;
+}
+
+.input:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(26,86,219,0.1);
+}
+
+.divider { height: 1px; background: var(--border); border: none; }
+.positive { color: var(--green) !important; }
+.negative { color: var(--red) !important; }
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.badge-green { background: var(--green-bg); color: var(--green); }
+.badge-red   { background: var(--red-bg);   color: var(--red); }
+.badge-amber { background: var(--amber-bg); color: var(--amber); }
+.badge-navy  { background: #EEF2FF;         color: var(--navy); }
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 3px; }
+/* ============================================================
+   Vortu — Dashboard styles
+   Paste these blocks into:  app/globals.css
+   (Append at the END of the file. Do NOT delete what you have.)
+   ============================================================ */
+
+/* 1) Google Fonts (or use next/font — see README) */
+
+/* 2) Design tokens */
+:root {
+  --bg: #F7F8FA;
+  --surface: #FFFFFF;
+  --surface-2: #F4F5F8;
+  --surface-3: #ECEEF3;
+  --line: #ECEEF3;
+  --line-2: #E4E7EE;
+  --ink: #0F172A;
+  --ink-2: #334155;
+  --muted: #64748B;
+  --muted-2: #94A3B8;
+  --muted-3: #CBD2DC;
+  --accent: #2563EB;
+  --accent-soft: #EEF3FE;
+  --green: #16A34A;
+  --green-soft: #ECFDF3;
+  --amber: #B45309;
+  --amber-soft: #FEF6E7;
+  --red: #DC2626;
+  --red-soft: #FEF2F2;
+  --r-card: 14px;
+  --r-pill: 999px;
+}
+
+/* 3) Base */
+html, body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-feature-settings: 'cv11','ss01','ss03';
+  -webkit-font-smoothing: antialiased;
+}
+
+.mono {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-feature-settings: 'ss01','zero';
+}
+
+/* 4) Scrollbars */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb {
+  background: #DDE1E8;
+  border-radius: 999px;
+  border: 2px solid var(--bg);
+}
+::-webkit-scrollbar-thumb:hover { background: #C7CCD6; }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* 5) Animations */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.45; }
+}
