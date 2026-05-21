@@ -124,3 +124,28 @@ def get_me(db: Session = Depends(get_db),
         "is_admin": user.is_admin,
         "country": user.company.country if user.company else None,
     }
+
+@router.post("/set-country")
+def set_country(
+    data: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(__import__('core.security', fromlist=['get_current_user']).get_current_user)
+):
+    """Fija el país de la empresa. Solo se puede hacer una vez (Opción A)."""
+    country = data.get("country")
+    if not country:
+        raise HTTPException(status_code=400, detail="País requerido")
+    if len(country) != 2:
+        raise HTTPException(status_code=400, detail="Código de país inválido (ISO alfa-2)")
+    company = db.query(Company).filter(Company.id == current_user.company_id).first()
+    if not company:
+        raise HTTPException(status_code=404, detail="Empresa no encontrada")
+    if company.country:
+        raise HTTPException(status_code=400, detail="El país ya está configurado y no puede cambiarse")
+    company.country = country.upper()
+    db.commit()
+    return {
+        "mensaje": f"País configurado: {company.country}",
+        "country": company.country,
+        "company_id": company.id,
+    }
