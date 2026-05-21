@@ -1,0 +1,1962 @@
+{
+  "version": "1.0",
+  "generado": "2026-05-11",
+  "total_tablas": 21,
+  "total_columnas": 225,
+  "arquitectura": {
+    "postgresql": "Base de datos relacional principal — fuente de verdad",
+    "chromadb": "Vector DB — memoria semántica IA en /data/chroma/",
+    "neo4j": "Graph DB — relaciones entre entidades (bolt://localhost:7687)",
+    "file_storage": "Archivos físicos en /uploads/"
+  },
+  "nota_neo4j": "Las columnas marcadas graph_node_id=true son las que se sincronizan a Neo4j. Para integrar Neo4j completo usar services/graph/sync.py",
+  "tablas": {
+    "accounts": {
+      "descripcion": "Plan General Contable español — cuentas contables por empresa",
+      "modulo": "Contabilidad",
+      "graph_node": null,
+      "columnas": [
+        {
+          "nombre": "id",
+          "tipo": "INTEGER",
+          "pk": true,
+          "fk": null,
+          "descripcion": "Identificador único",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "code",
+          "tipo": "VARCHAR",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Código PGC (ej: 400, 700)",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "name",
+          "tipo": "VARCHAR",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Nombre de la cuenta contable",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "account_type",
+          "tipo": "VARCHAR",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Tipo: activo|pasivo|patrimonio|ingreso|gasto",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "normal_balance",
+          "tipo": "VARCHAR",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Saldo normal: debit|credit",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "description",
+          "tipo": "TEXT",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Descripción larga de la cuenta",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "is_active",
+          "tipo": "BOOLEAN",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Si la cuenta está activa",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "company_id",
+          "tipo": "INTEGER",
+          "pk": false,
+          "fk": "companies.id",
+          "descripcion": "Empresa propietaria",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "created_at",
+          "tipo": "DATETIME",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Fecha de creación",
+          "graph_node_id": false
+        }
+      ]
+    },
+    "auto_responses": {
+      "descripcion": "Respuestas automáticas configuradas por empresa para mensajes de clientes",
+      "modulo": "Clientes",
+      "graph_node": null,
+      "columnas": [
+        {
+          "nombre": "id",
+          "tipo": "INTEGER",
+          "pk": true,
+          "fk": null,
+          "descripcion": "Identificador único",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "company_id",
+          "tipo": "INTEGER",
+          "pk": false,
+          "fk": "companies.id",
+          "descripcion": "Empresa propietaria",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "trigger_keywords",
+          "tipo": "JSON",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Palabras clave que activan la respuesta",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "response_template",
+          "tipo": "TEXT",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Plantilla de respuesta automática",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "platform",
+          "tipo": "VARCHAR(50)",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Plataforma: email|instagram|whatsapp|manual",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "is_active",
+          "tipo": "BOOLEAN",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Si está activa",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "created_at",
+          "tipo": "DATETIME",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Fecha de creación",
+          "graph_node_id": false
+        }
+      ]
+    },
+    "billing_events": {
+      "descripcion": "Eventos de Stripe recibidos via webhook para auditoría",
+      "modulo": "Billing",
+      "graph_node": null,
+      "columnas": [
+        {
+          "nombre": "id",
+          "tipo": "INTEGER",
+          "pk": true,
+          "fk": null,
+          "descripcion": "Identificador único",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "stripe_event_id",
+          "tipo": "VARCHAR(200)",
+          "pk": false,
+          "fk": null,
+          "descripcion": "ID del evento en Stripe",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "event_type",
+          "tipo": "VARCHAR(100)",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Tipo: payment_intent.succeeded, subscription.updated, etc.",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "user_id",
+          "tipo": "INTEGER",
+          "pk": false,
+          "fk": "users.id",
+          "descripcion": "Usuario afectado",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "data",
+          "tipo": "TEXT",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Payload completo del evento en JSON",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "processed",
+          "tipo": "BOOLEAN",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Si el evento fue procesado",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "created_at",
+          "tipo": "DATETIME",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Fecha de recepción",
+          "graph_node_id": false
+        }
+      ]
+    },
+    "billing_licenses": {
+      "descripcion": "Licencias únicas de activación pagadas por empresa",
+      "modulo": "Billing",
+      "graph_node": null,
+      "columnas": [
+        {
+          "nombre": "id",
+          "tipo": "INTEGER",
+          "pk": true,
+          "fk": null,
+          "descripcion": "Identificador único",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "user_id",
+          "tipo": "INTEGER",
+          "pk": false,
+          "fk": "users.id",
+          "descripcion": "Usuario propietario",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "plan_id",
+          "tipo": "VARCHAR(50)",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Plan: starter|pro|business|enterprise",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "stripe_payment_intent_id",
+          "tipo": "VARCHAR(200)",
+          "pk": false,
+          "fk": null,
+          "descripcion": "ID del pago en Stripe",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "stripe_customer_id",
+          "tipo": "VARCHAR(200)",
+          "pk": false,
+          "fk": null,
+          "descripcion": "ID del cliente en Stripe",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "amount_paid",
+          "tipo": "FLOAT",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Importe pagado por la licencia en EUR",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "currency",
+          "tipo": "VARCHAR(10)",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Moneda: eur",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "paid_at",
+          "tipo": "DATETIME",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Fecha de pago",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "status",
+          "tipo": "VARCHAR(50)",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Estado: pending|paid|refunded",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "created_at",
+          "tipo": "DATETIME",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Fecha de creación",
+          "graph_node_id": false
+        }
+      ]
+    },
+    "billing_subscriptions": {
+      "descripcion": "Suscripciones mensuales de cada empresa — plan, estado, fase y periodo gratis",
+      "modulo": "Billing",
+      "graph_node": "Subscription",
+      "columnas": [
+        {
+          "nombre": "id",
+          "tipo": "INTEGER",
+          "pk": true,
+          "fk": null,
+          "descripcion": "Identificador único",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "user_id",
+          "tipo": "INTEGER",
+          "pk": false,
+          "fk": "users.id",
+          "descripcion": "Usuario propietario",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "plan_id",
+          "tipo": "VARCHAR(50)",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Plan: starter|pro|business|enterprise",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "stripe_subscription_id",
+          "tipo": "VARCHAR(200)",
+          "pk": false,
+          "fk": null,
+          "descripcion": "ID de suscripción en Stripe",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "stripe_customer_id",
+          "tipo": "VARCHAR(200)",
+          "pk": false,
+          "fk": null,
+          "descripcion": "ID del cliente en Stripe",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "stripe_price_id",
+          "tipo": "VARCHAR(200)",
+          "pk": false,
+          "fk": null,
+          "descripcion": "ID del precio en Stripe",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "status",
+          "tipo": "VARCHAR(50)",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Estado: trialing|active|canceled|past_due",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "fase",
+          "tipo": "VARCHAR(20)",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Fase comercial: beta|early_adopter|paid",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "fase_expiry",
+          "tipo": "DATETIME",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Fecha en que vence el periodo gratis",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "trial_start",
+          "tipo": "DATETIME",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Inicio del trial",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "trial_end",
+          "tipo": "DATETIME",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Fin del trial",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "current_period_start",
+          "tipo": "DATETIME",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Inicio del periodo actual de facturación",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "current_period_end",
+          "tipo": "DATETIME",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Fin del periodo actual de facturación",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "cancel_at_period_end",
+          "tipo": "BOOLEAN",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Si cancelará al final del periodo",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "extra_users",
+          "tipo": "INTEGER",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Usuarios adicionales contratados (+8 EUR/mes c/u)",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "license_paid",
+          "tipo": "BOOLEAN",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Si la licencia única fue pagada",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "created_at",
+          "tipo": "DATETIME",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Fecha de creación",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "updated_at",
+          "tipo": "DATETIME",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Última actualización",
+          "graph_node_id": false
+        }
+      ]
+    },
+    "billing_usage": {
+      "descripcion": "Tracking de uso de IA y documentos por empresa y periodo — para control de límites por plan",
+      "modulo": "Billing",
+      "graph_node": null,
+      "columnas": [
+        {
+          "nombre": "id",
+          "tipo": "INTEGER",
+          "pk": true,
+          "fk": null,
+          "descripcion": "Identificador único",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "subscription_id",
+          "tipo": "INTEGER",
+          "pk": false,
+          "fk": "billing_subscriptions.id",
+          "descripcion": "Suscripción asociada",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "user_id",
+          "tipo": "INTEGER",
+          "pk": false,
+          "fk": "users.id",
+          "descripcion": "Usuario que generó el uso",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "period_start",
+          "tipo": "DATETIME",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Inicio del periodo de tracking (generalmente día 1 del mes)",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "period_end",
+          "tipo": "DATETIME",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Fin del periodo de tracking",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "ai_queries_used",
+          "tipo": "INTEGER",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Consultas a Claude usadas este periodo",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "documents_used",
+          "tipo": "INTEGER",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Documentos procesados este periodo",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "created_at",
+          "tipo": "DATETIME",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Fecha de creación del registro",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "updated_at",
+          "tipo": "DATETIME",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Última actualización",
+          "graph_node_id": false
+        }
+      ]
+    },
+    "business_ai_memory": {
+      "descripcion": "Memoria IA por empresa — hechos aprendidos automáticamente y entrenamiento manual del usuario",
+      "modulo": "Analytics / IA",
+      "graph_node": "Memory",
+      "columnas": [
+        {
+          "nombre": "id",
+          "tipo": "INTEGER",
+          "pk": true,
+          "fk": null,
+          "descripcion": "Identificador único",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "company_id",
+          "tipo": "INTEGER",
+          "pk": false,
+          "fk": "companies.id",
+          "descripcion": "Empresa propietaria (único por empresa)",
+          "graph_node_id": true
+        },
+        {
+          "nombre": "learned_facts",
+          "tipo": "TEXT",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Hechos aprendidos automáticamente por Claude (resumen de memory_entries)",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "patterns_detected",
+          "tipo": "JSON",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Patrones detectados: [{pattern, confidence, first_detected, times_confirmed}]",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "anomalies_detected",
+          "tipo": "JSON",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Anomalías detectadas: [{date, description, severity}]",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "last_auto_update",
+          "tipo": "DATETIME",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Última actualización automática",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "auto_update_count",
+          "tipo": "INTEGER",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Número de actualizaciones automáticas",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "manual_training",
+          "tipo": "TEXT",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Contexto escrito manualmente por el usuario/admin",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "business_personality",
+          "tipo": "TEXT",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Tono, valores y diferenciadores del negocio",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "business_goals",
+          "tipo": "TEXT",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Objetivos del negocio a corto y largo plazo",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "full_context",
+          "tipo": "TEXT",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Contexto completo combinado — lo que recibe Claude en cada consulta",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "context_version",
+          "tipo": "INTEGER",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Versión del contexto — incrementa con cada rebuild",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "created_at",
+          "tipo": "DATETIME",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Fecha de creación",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "updated_at",
+          "tipo": "DATETIME",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Última actualización",
+          "graph_node_id": false
+        }
+      ]
+    },
+    "business_snapshots": {
+      "descripcion": "Snapshot mensual de KPIs por empresa — diseñado para ML. Cada fila es un ejemplo de entrenamiento con 60+ features y labels.",
+      "modulo": "Analytics / ML",
+      "graph_node": "Snapshot",
+      "columnas": [
+        {
+          "nombre": "id",
+          "tipo": "INTEGER",
+          "pk": true,
+          "fk": null,
+          "descripcion": "Identificador único",
+          "graph_node_id": true
+        },
+        {
+          "nombre": "company_id",
+          "tipo": "INTEGER",
+          "pk": false,
+          "fk": "companies.id",
+          "descripcion": "Empresa propietaria",
+          "graph_node_id": true
+        },
+        {
+          "nombre": "snapshot_date",
+          "tipo": "DATE",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Fecha del snapshot (normalmente día 1 del mes)",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "periodo",
+          "tipo": "VARCHAR(20)",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Periodicidad: daily|weekly|monthly",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "sector",
+          "tipo": "VARCHAR(100)",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Sector del negocio (restauracion, retail, servicios...)",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "ingresos_mes",
+          "tipo": "FLOAT",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Ingresos totales del mes en EUR",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "gastos_mes",
+          "tipo": "FLOAT",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Gastos totales del mes en EUR",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "resultado_neto",
+          "tipo": "FLOAT",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Resultado neto (ingresos - gastos)",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "margen_neto_pct",
+          "tipo": "FLOAT",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Margen neto en % (resultado/ingresos*100)",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "crecimiento_ingresos_pct",
+          "tipo": "FLOAT",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Crecimiento vs mes anterior en %",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "num_ventas_mes",
+          "tipo": "INTEGER",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Número de ventas del mes",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "ticket_medio",
+          "tipo": "FLOAT",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Ticket medio por venta en EUR",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "total_contactos",
+          "tipo": "INTEGER",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Total de clientes/contactos",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "sentiment_score_avg",
+          "tipo": "FLOAT",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Score de sentimiento medio de clientes (1-10)",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "clientes_riesgo",
+          "tipo": "INTEGER",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Número de clientes en riesgo de abandono",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "proyectos_activos",
+          "tipo": "INTEGER",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Proyectos activos en el momento del snapshot",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "health_score_avg",
+          "tipo": "FLOAT",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Health score medio de proyectos (1-10)",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "label_tendencia",
+          "tipo": "VARCHAR(20)",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Label ML: creciendo|estable|bajando",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "label_salud_financiera",
+          "tipo": "VARCHAR(20)",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Label ML: saludable|ajustado|problemas|crisis",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "label_riesgo_negocio",
+          "tipo": "VARCHAR(20)",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Label ML: bajo|medio|alto|critico",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "ai_health_score",
+          "tipo": "FLOAT",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Score global del negocio calculado por Claude (1-10)",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "generated_at",
+          "tipo": "DATETIME",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Fecha de generación del snapshot",
+          "graph_node_id": false
+        }
+      ]
+    },
+    "companies": {
+      "descripcion": "Empresas registradas en Vortu — nodo central de toda la arquitectura",
+      "modulo": "Core",
+      "graph_node": "Company",
+      "columnas": [
+        {
+          "nombre": "id",
+          "tipo": "INTEGER",
+          "pk": true,
+          "fk": null,
+          "descripcion": "Identificador único — usado como pg_id en Neo4j",
+          "graph_node_id": true
+        },
+        {
+          "nombre": "name",
+          "tipo": "VARCHAR",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Nombre de la empresa",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "email",
+          "tipo": "VARCHAR",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Email principal (único)",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "created_at",
+          "tipo": "DATETIME",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Fecha de registro",
+          "graph_node_id": false
+        }
+      ]
+    },
+    "contacts": {
+      "descripcion": "Clientes/contactos de cada empresa — CRM con sentiment tracking",
+      "modulo": "Clientes",
+      "graph_node": "Contact",
+      "columnas": [
+        {
+          "nombre": "id",
+          "tipo": "INTEGER",
+          "pk": true,
+          "fk": null,
+          "descripcion": "Identificador único",
+          "graph_node_id": true
+        },
+        {
+          "nombre": "company_id",
+          "tipo": "INTEGER",
+          "pk": false,
+          "fk": "companies.id",
+          "descripcion": "Empresa propietaria",
+          "graph_node_id": true
+        },
+        {
+          "nombre": "name",
+          "tipo": "VARCHAR(200)",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Nombre del contacto",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "email",
+          "tipo": "VARCHAR(200)",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Email del contacto",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "phone",
+          "tipo": "VARCHAR(50)",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Teléfono del contacto",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "platform",
+          "tipo": "VARCHAR(50)",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Canal de contacto: email|whatsapp|instagram|facebook|manual",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "is_vip",
+          "tipo": "BOOLEAN",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Si es cliente VIP",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "sentiment_score",
+          "tipo": "FLOAT",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Score de sentimiento running average (1-10)",
+          "graph_node_id": true
+        },
+        {
+          "nombre": "risk_level",
+          "tipo": "VARCHAR(20)",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Nivel de riesgo: bajo|medio|alto|critico",
+          "graph_node_id": true
+        },
+        {
+          "nombre": "created_at",
+          "tipo": "DATETIME",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Fecha de alta",
+          "graph_node_id": false
+        }
+      ]
+    },
+    "employees": {
+      "descripcion": "Empleados de cada empresa — nóminas y RRHH",
+      "modulo": "RRHH",
+      "graph_node": "Employee",
+      "columnas": [
+        {
+          "nombre": "id",
+          "tipo": "INTEGER",
+          "pk": true,
+          "fk": null,
+          "descripcion": "Identificador único",
+          "graph_node_id": true
+        },
+        {
+          "nombre": "full_name",
+          "tipo": "VARCHAR",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Nombre completo",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "email",
+          "tipo": "VARCHAR",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Email del empleado",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "department",
+          "tipo": "VARCHAR",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Departamento",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "position",
+          "tipo": "VARCHAR",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Cargo/puesto",
+          "graph_node_id": true
+        },
+        {
+          "nombre": "gross_salary",
+          "tipo": "FLOAT",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Salario bruto anual en EUR",
+          "graph_node_id": true
+        },
+        {
+          "nombre": "is_active",
+          "tipo": "BOOLEAN",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Si está activo",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "company_id",
+          "tipo": "INTEGER",
+          "pk": false,
+          "fk": "companies.id",
+          "descripcion": "Empresa donde trabaja",
+          "graph_node_id": true
+        },
+        {
+          "nombre": "created_at",
+          "tipo": "DATETIME",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Fecha de alta",
+          "graph_node_id": false
+        }
+      ]
+    },
+    "memory_entries": {
+      "descripcion": "Cada entrada individual de memoria IA — auto o manual con trazabilidad completa. Sincronizado con ChromaDB.",
+      "modulo": "Analytics / IA",
+      "graph_node": null,
+      "columnas": [
+        {
+          "nombre": "id",
+          "tipo": "INTEGER",
+          "pk": true,
+          "fk": null,
+          "descripcion": "Identificador único",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "company_id",
+          "tipo": "INTEGER",
+          "pk": false,
+          "fk": "companies.id",
+          "descripcion": "Empresa a la que pertenece el aprendizaje",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "tipo",
+          "tipo": "VARCHAR(20)",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Tipo: auto (IA) | manual (usuario/admin)",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "fuente",
+          "tipo": "VARCHAR(100)",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Origen: snapshot|admin|user|pattern_detection",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "autor",
+          "tipo": "VARCHAR(200)",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Email del autor o 'claude-auto'",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "contenido",
+          "tipo": "TEXT",
+          "pk": false,
+          "fk": null,
+          "descripcion": "El hecho aprendido o nota manual — también en ChromaDB",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "categoria",
+          "tipo": "VARCHAR(50)",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Categoría: ventas|clientes|finanzas|proyectos|rrhh|general",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "confianza",
+          "tipo": "FLOAT",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Confianza de Claude en el hecho (0.0-1.0)",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "snapshot_id",
+          "tipo": "INTEGER",
+          "pk": false,
+          "fk": "business_snapshots.id",
+          "descripcion": "Snapshot que generó este aprendizaje (si es auto)",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "created_at",
+          "tipo": "DATETIME",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Fecha y hora exacta del aprendizaje",
+          "graph_node_id": false
+        }
+      ]
+    },
+    "messages": {
+      "descripcion": "Mensajes de clientes — inbox unificado con análisis IA de sentimiento e intención",
+      "modulo": "Clientes",
+      "graph_node": "Message",
+      "columnas": [
+        {
+          "nombre": "id",
+          "tipo": "INTEGER",
+          "pk": true,
+          "fk": null,
+          "descripcion": "Identificador único",
+          "graph_node_id": true
+        },
+        {
+          "nombre": "company_id",
+          "tipo": "INTEGER",
+          "pk": false,
+          "fk": "companies.id",
+          "descripcion": "Empresa propietaria",
+          "graph_node_id": true
+        },
+        {
+          "nombre": "contact_id",
+          "tipo": "INTEGER",
+          "pk": false,
+          "fk": "contacts.id",
+          "descripcion": "Contacto que envió el mensaje",
+          "graph_node_id": true
+        },
+        {
+          "nombre": "platform",
+          "tipo": "VARCHAR(50)",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Canal: email|whatsapp|instagram|facebook|manual",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "direction",
+          "tipo": "VARCHAR(10)",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Dirección: inbound|outbound",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "content",
+          "tipo": "TEXT",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Contenido del mensaje",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "status",
+          "tipo": "VARCHAR(20)",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Estado: pending|draft_ready|approved|sent|auto_sent|rejected",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "ai_sentiment",
+          "tipo": "VARCHAR(20)",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Sentimiento IA: positive|neutral|negative|urgent",
+          "graph_node_id": true
+        },
+        {
+          "nombre": "ai_intent",
+          "tipo": "VARCHAR(30)",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Intención IA: question|complaint|purchase|compliment|other",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "requires_human",
+          "tipo": "BOOLEAN",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Si requiere atención humana",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "created_at",
+          "tipo": "DATETIME",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Fecha de recepción",
+          "graph_node_id": false
+        }
+      ]
+    },
+    "products": {
+      "descripcion": "Catálogo de productos con stock y precios — módulo Ventas/TPV",
+      "modulo": "Ventas",
+      "graph_node": "Product",
+      "columnas": [
+        {
+          "nombre": "id",
+          "tipo": "INTEGER",
+          "pk": true,
+          "fk": null,
+          "descripcion": "Identificador único",
+          "graph_node_id": true
+        },
+        {
+          "nombre": "company_id",
+          "tipo": "INTEGER",
+          "pk": false,
+          "fk": "companies.id",
+          "descripcion": "Empresa propietaria",
+          "graph_node_id": true
+        },
+        {
+          "nombre": "name",
+          "tipo": "VARCHAR(300)",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Nombre del producto",
+          "graph_node_id": true
+        },
+        {
+          "nombre": "barcode",
+          "tipo": "VARCHAR(100)",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Código de barras para escaneo TPV",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "sale_price",
+          "tipo": "FLOAT",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Precio de venta en EUR",
+          "graph_node_id": true
+        },
+        {
+          "nombre": "cost_price",
+          "tipo": "FLOAT",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Precio de coste en EUR",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "iva_rate",
+          "tipo": "FLOAT",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Tipo de IVA: 0|4|10|21",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "stock_quantity",
+          "tipo": "INTEGER",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Stock actual disponible",
+          "graph_node_id": true
+        },
+        {
+          "nombre": "low_stock_threshold",
+          "tipo": "INTEGER",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Umbral de stock bajo para alertas",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "is_active",
+          "tipo": "BOOLEAN",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Si el producto está activo en el catálogo",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "created_at",
+          "tipo": "DATETIME",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Fecha de alta",
+          "graph_node_id": false
+        }
+      ]
+    },
+    "projects": {
+      "descripcion": "Proyectos de clientes o internos con health score IA y gestión de tareas",
+      "modulo": "Proyectos",
+      "graph_node": "Project",
+      "columnas": [
+        {
+          "nombre": "id",
+          "tipo": "INTEGER",
+          "pk": true,
+          "fk": null,
+          "descripcion": "Identificador único",
+          "graph_node_id": true
+        },
+        {
+          "nombre": "company_id",
+          "tipo": "INTEGER",
+          "pk": false,
+          "fk": "companies.id",
+          "descripcion": "Empresa propietaria",
+          "graph_node_id": true
+        },
+        {
+          "nombre": "name",
+          "tipo": "VARCHAR(200)",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Nombre del proyecto",
+          "graph_node_id": true
+        },
+        {
+          "nombre": "client_name",
+          "tipo": "VARCHAR(200)",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Nombre del cliente asociado",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "status",
+          "tipo": "VARCHAR(20)",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Estado: activo|completado|pausado|cancelado",
+          "graph_node_id": true
+        },
+        {
+          "nombre": "deadline",
+          "tipo": "DATE",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Fecha límite del proyecto",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "budget",
+          "tipo": "FLOAT",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Presupuesto total en EUR",
+          "graph_node_id": true
+        },
+        {
+          "nombre": "health_score",
+          "tipo": "FLOAT",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Score de salud calculado por Claude (1-10)",
+          "graph_node_id": true
+        },
+        {
+          "nombre": "completion_percentage",
+          "tipo": "FLOAT",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Porcentaje de completado (0-100)",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "created_at",
+          "tipo": "DATETIME",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Fecha de creación",
+          "graph_node_id": false
+        }
+      ]
+    },
+    "prospector_leads": {
+      "descripcion": "Leads encontrados por el Nexum Prospector — scraping + análisis IA + mensajes personalizados",
+      "modulo": "Backoffice / Prospector",
+      "graph_node": null,
+      "columnas": [
+        {
+          "nombre": "id",
+          "tipo": "INTEGER",
+          "pk": true,
+          "fk": null,
+          "descripcion": "Identificador único",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "search_id",
+          "tipo": "INTEGER",
+          "pk": false,
+          "fk": "prospector_searches.id",
+          "descripcion": "Búsqueda que generó este lead",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "source",
+          "tipo": "VARCHAR(50)",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Fuente: google_maps|instagram|facebook|linkedin",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "nombre",
+          "tipo": "VARCHAR(300)",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Nombre del negocio",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "categoria",
+          "tipo": "VARCHAR(200)",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Categoría de negocio",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "ciudad",
+          "tipo": "VARCHAR(200)",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Ciudad del negocio",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "telefono",
+          "tipo": "VARCHAR(100)",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Teléfono de contacto",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "website",
+          "tipo": "VARCHAR(500)",
+          "pk": false,
+          "fk": null,
+          "descripcion": "URL del sitio web",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "instagram",
+          "tipo": "VARCHAR(300)",
+          "pk": false,
+          "fk": null,
+          "descripcion": "URL del perfil de Instagram",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "rating",
+          "tipo": "FLOAT",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Rating en Google Maps (1-5)",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "reviews",
+          "tipo": "INTEGER",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Número de reseñas en Google Maps",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "score",
+          "tipo": "FLOAT",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Score de relevancia calculado por Claude (1-10)",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "razon_score",
+          "tipo": "TEXT",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Explicación del score por Claude",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "canal_recomendado",
+          "tipo": "VARCHAR(50)",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Canal de contacto recomendado por Claude",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "pain_point",
+          "tipo": "TEXT",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Pain point principal detectado por Claude",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "mensaje_generado",
+          "tipo": "TEXT",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Mensaje personalizado generado por Claude",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "estado",
+          "tipo": "VARCHAR(30)",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Estado: pendiente|aprobado|enviado|descartado",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "lat",
+          "tipo": "REAL",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Latitud GPS para el mapa",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "lng",
+          "tipo": "REAL",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Longitud GPS para el mapa",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "maps_url",
+          "tipo": "VARCHAR(500)",
+          "pk": false,
+          "fk": null,
+          "descripcion": "URL de Google Maps del negocio",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "created_at",
+          "tipo": "DATETIME",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Fecha de creación",
+          "graph_node_id": false
+        }
+      ]
+    },
+    "prospector_searches": {
+      "descripcion": "Búsquedas realizadas por el Nexum Prospector con su estado y resultados",
+      "modulo": "Backoffice / Prospector",
+      "graph_node": null,
+      "columnas": [
+        {
+          "nombre": "id",
+          "tipo": "INTEGER",
+          "pk": true,
+          "fk": null,
+          "descripcion": "Identificador único",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "prompt",
+          "tipo": "TEXT",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Prompt de búsqueda del admin (ej: restaurantes)",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "location",
+          "tipo": "VARCHAR(200)",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Ciudad o ubicación de búsqueda",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "status",
+          "tipo": "VARCHAR(20)",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Estado: pending|running|done|error",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "total_leads",
+          "tipo": "INTEGER",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Total de leads encontrados",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "leads_contactar",
+          "tipo": "INTEGER",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Leads con score >= 6 para contactar",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "created_at",
+          "tipo": "DATETIME",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Fecha de inicio",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "completed_at",
+          "tipo": "DATETIME",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Fecha de finalización",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "created_by",
+          "tipo": "VARCHAR(200)",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Email del admin que lanzó la búsqueda",
+          "graph_node_id": false
+        }
+      ]
+    },
+    "sales": {
+      "descripcion": "Ventas registradas en el TPV — transacciones con método de pago",
+      "modulo": "Ventas",
+      "graph_node": "Sale",
+      "columnas": [
+        {
+          "nombre": "id",
+          "tipo": "INTEGER",
+          "pk": true,
+          "fk": null,
+          "descripcion": "Identificador único",
+          "graph_node_id": true
+        },
+        {
+          "nombre": "company_id",
+          "tipo": "INTEGER",
+          "pk": false,
+          "fk": "companies.id",
+          "descripcion": "Empresa propietaria",
+          "graph_node_id": true
+        },
+        {
+          "nombre": "sale_date",
+          "tipo": "DATE",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Fecha de la venta",
+          "graph_node_id": true
+        },
+        {
+          "nombre": "payment_method",
+          "tipo": "VARCHAR(50)",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Método de pago: efectivo|tarjeta|bizum|otro",
+          "graph_node_id": true
+        },
+        {
+          "nombre": "subtotal",
+          "tipo": "FLOAT",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Subtotal sin IVA en EUR",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "iva_amount",
+          "tipo": "FLOAT",
+          "pk": false,
+          "fk": null,
+          "descripcion": "IVA en EUR",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "total",
+          "tipo": "FLOAT",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Total con IVA en EUR",
+          "graph_node_id": true
+        },
+        {
+          "nombre": "created_at",
+          "tipo": "DATETIME",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Fecha y hora de registro",
+          "graph_node_id": false
+        }
+      ]
+    },
+    "system_prompts": {
+      "descripcion": "Prompts del sistema guardados en PostgreSQL — editables desde el backoffice sin tocar código",
+      "modulo": "Backoffice / IA",
+      "graph_node": null,
+      "columnas": [
+        {
+          "nombre": "id",
+          "tipo": "INTEGER",
+          "pk": true,
+          "fk": null,
+          "descripcion": "Identificador único",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "key",
+          "tipo": "VARCHAR(100)",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Clave única: agent_chat|finance_ratios|campaign_generator|etc",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "name",
+          "tipo": "VARCHAR(200)",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Nombre legible del prompt",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "module",
+          "tipo": "VARCHAR(100)",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Módulo al que pertenece: Finanzas|Marketing|Agente|etc",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "content",
+          "tipo": "TEXT",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Contenido del prompt — lo que recibe Claude como system prompt",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "variables",
+          "tipo": "VARCHAR(500)",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Variables que usa el prompt en JSON: [sector, ventas, ...]",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "is_active",
+          "tipo": "BOOLEAN",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Si el prompt está activo",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "updated_at",
+          "tipo": "DATETIME",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Última modificación",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "updated_by",
+          "tipo": "VARCHAR(200)",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Email del admin que lo editó",
+          "graph_node_id": false
+        }
+      ]
+    },
+    "tasks": {
+      "descripcion": "Tareas de proyectos con estado, prioridad y asignación de empleados",
+      "modulo": "Proyectos",
+      "graph_node": "Task",
+      "columnas": [
+        {
+          "nombre": "id",
+          "tipo": "INTEGER",
+          "pk": true,
+          "fk": null,
+          "descripcion": "Identificador único",
+          "graph_node_id": true
+        },
+        {
+          "nombre": "project_id",
+          "tipo": "INTEGER",
+          "pk": false,
+          "fk": "projects.id",
+          "descripcion": "Proyecto al que pertenece",
+          "graph_node_id": true
+        },
+        {
+          "nombre": "company_id",
+          "tipo": "INTEGER",
+          "pk": false,
+          "fk": "companies.id",
+          "descripcion": "Empresa propietaria",
+          "graph_node_id": true
+        },
+        {
+          "nombre": "title",
+          "tipo": "VARCHAR(300)",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Título de la tarea",
+          "graph_node_id": true
+        },
+        {
+          "nombre": "status",
+          "tipo": "VARCHAR(20)",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Estado: pendiente|en_progreso|completada|bloqueada",
+          "graph_node_id": true
+        },
+        {
+          "nombre": "priority",
+          "tipo": "VARCHAR(10)",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Prioridad: baja|media|alta|critica",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "assigned_to",
+          "tipo": "INTEGER",
+          "pk": false,
+          "fk": "employees.id",
+          "descripcion": "Empleado asignado a la tarea",
+          "graph_node_id": true
+        },
+        {
+          "nombre": "due_date",
+          "tipo": "DATE",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Fecha límite de la tarea",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "created_at",
+          "tipo": "DATETIME",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Fecha de creación",
+          "graph_node_id": false
+        }
+      ]
+    },
+    "users": {
+      "descripcion": "Usuarios de la plataforma Vortu — autenticación y roles",
+      "modulo": "Core",
+      "graph_node": "User",
+      "columnas": [
+        {
+          "nombre": "id",
+          "tipo": "INTEGER",
+          "pk": true,
+          "fk": null,
+          "descripcion": "Identificador único — incluido en JWT como 'sub'",
+          "graph_node_id": true
+        },
+        {
+          "nombre": "email",
+          "tipo": "VARCHAR",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Email único — usado como username para login",
+          "graph_node_id": true
+        },
+        {
+          "nombre": "hashed_password",
+          "tipo": "VARCHAR",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Password hasheado con bcrypt — nunca en texto plano",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "full_name",
+          "tipo": "VARCHAR",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Nombre completo del usuario",
+          "graph_node_id": true
+        },
+        {
+          "nombre": "is_active",
+          "tipo": "BOOLEAN",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Si la cuenta está activa",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "is_admin",
+          "tipo": "BOOLEAN",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Si es admin de Nexum — acceso al backoffice",
+          "graph_node_id": false
+        },
+        {
+          "nombre": "company_id",
+          "tipo": "INTEGER",
+          "pk": false,
+          "fk": "companies.id",
+          "descripcion": "Empresa a la que pertenece",
+          "graph_node_id": true
+        },
+        {
+          "nombre": "created_at",
+          "tipo": "DATETIME",
+          "pk": false,
+          "fk": null,
+          "descripcion": "Fecha de registro",
+          "graph_node_id": false
+        }
+      ]
+    }
+  }
+}
