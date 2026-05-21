@@ -5,3 +5,12 @@ __pycache__/
 venv/
 node_modules/
 .next/
+
+# Bases de datos locales (se regeneran con setup_db.py)
+*.db
+*.sqlite3
+bizos/data/chroma/
+
+# Backups temporales
+*.bak
+*.backup_*

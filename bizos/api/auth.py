@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, EmailStr
+from typing import Optional
 from core.database import get_db
 from core.security import hash_password, verify_password, create_access_token
 from models.user import User, Company
@@ -16,6 +17,7 @@ class RegisterRequest(BaseModel):
     email: EmailStr
     password: str
     company_name: str
+    country: Optional[str] = None
 
 
 class TokenResponse(BaseModel):
@@ -28,6 +30,7 @@ class UserResponse(BaseModel):
     email: str
     full_name: str
     is_admin: bool
+    country: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -47,7 +50,7 @@ def register(data: RegisterRequest, db: Session = Depends(get_db)):
         )
 
     # Create the company
-    company = Company(name=data.company_name, email=data.email)
+    company = Company(name=data.company_name, email=data.email, country=data.country)
     db.add(company)
     db.flush()  # get company.id without committing
 
@@ -69,7 +72,13 @@ def register(data: RegisterRequest, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(user)
 
-    return user
+    return {
+        "id": user.id,
+        "email": user.email,
+        "full_name": user.full_name,
+        "is_admin": user.is_admin,
+        "country": company.country,
+    }
 
 
 @router.post("/login", response_model=TokenResponse)
@@ -107,4 +116,11 @@ def get_me(db: Session = Depends(get_db),
            token: str = Depends(__import__('fastapi').security.OAuth2PasswordBearer(tokenUrl="/api/auth/login"))):
     """Returns the currently logged in user."""
     from core.security import get_current_user
-    return get_current_user(token=token, db=db)
+    user = get_current_user(token=token, db=db)
+    return {
+        "id": user.id,
+        "email": user.email,
+        "full_name": user.full_name,
+        "is_admin": user.is_admin,
+        "country": user.company.country if user.company else None,
+    }

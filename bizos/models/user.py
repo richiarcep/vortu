@@ -12,6 +12,7 @@ class Company(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
+    country = Column(String, nullable=True)
     users = relationship("User", back_populates="company")
 
 
