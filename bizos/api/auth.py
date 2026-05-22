@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
-from pydantic import BaseModel, EmailStr
 from typing import Optional
+from pydantic import BaseModel, EmailStr
 from core.database import get_db
 from core.security import hash_password, verify_password, create_access_token
 from models.user import User, Company
@@ -13,11 +13,11 @@ router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 # ── Request / Response schemas ────────────────────────────────────────────────
 
 class RegisterRequest(BaseModel):
+    country: Optional[str] = None
     full_name: str
     email: EmailStr
     password: str
     company_name: str
-    country: Optional[str] = None
 
 
 class TokenResponse(BaseModel):
@@ -30,6 +30,7 @@ class UserResponse(BaseModel):
     email: str
     full_name: str
     is_admin: bool
+
     country: Optional[str] = None
 
     class Config:
@@ -50,7 +51,7 @@ def register(data: RegisterRequest, db: Session = Depends(get_db)):
         )
 
     # Create the company
-    company = Company(name=data.company_name, email=data.email, country=data.country)
+    company = Company(name=data.company_name, email=data.email)
     db.add(company)
     db.flush()  # get company.id without committing
 
@@ -72,13 +73,7 @@ def register(data: RegisterRequest, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(user)
 
-    return {
-        "id": user.id,
-        "email": user.email,
-        "full_name": user.full_name,
-        "is_admin": user.is_admin,
-        "country": company.country,
-    }
+    return user
 
 
 @router.post("/login", response_model=TokenResponse)
@@ -116,36 +111,26 @@ def get_me(db: Session = Depends(get_db),
            token: str = Depends(__import__('fastapi').security.OAuth2PasswordBearer(tokenUrl="/api/auth/login"))):
     """Returns the currently logged in user."""
     from core.security import get_current_user
-    user = get_current_user(token=token, db=db)
-    return {
-        "id": user.id,
-        "email": user.email,
-        "full_name": user.full_name,
-        "is_admin": user.is_admin,
-        "country": user.company.country if user.company else None,
-    }
+    return get_current_user(token=token, db=db)
 
 @router.post("/set-country")
 def set_country(
     data: dict,
     db: Session = Depends(get_db),
-    current_user: User = Depends(__import__('core.security', fromlist=['get_current_user']).get_current_user)
+    current_user = Depends(__import__('core.security', fromlist=['get_current_user']).get_current_user)
 ):
-    """Fija el país de la empresa. Solo se puede hacer una vez (Opción A)."""
+    """Fija el pais de la empresa. Solo se puede hacer una vez (Opcion A)."""
     country = data.get("country")
     if not country:
-        raise HTTPException(status_code=400, detail="País requerido")
+        raise HTTPException(status_code=400, detail="Pais requerido")
     if len(country) != 2:
-        raise HTTPException(status_code=400, detail="Código de país inválido (ISO alfa-2)")
+        raise HTTPException(status_code=400, detail="Codigo de pais invalido (ISO alfa-2)")
+    from models.user import Company
     company = db.query(Company).filter(Company.id == current_user.company_id).first()
     if not company:
         raise HTTPException(status_code=404, detail="Empresa no encontrada")
     if company.country:
-        raise HTTPException(status_code=400, detail="El país ya está configurado y no puede cambiarse")
+        raise HTTPException(status_code=400, detail="El pais ya esta configurado y no puede cambiarse")
     company.country = country.upper()
     db.commit()
-    return {
-        "mensaje": f"País configurado: {company.country}",
-        "country": company.country,
-        "company_id": company.id,
-    }
+    return {"mensaje": f"Pais configurado: {company.country}", "country": company.country}
