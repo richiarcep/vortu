@@ -5,6 +5,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from core.config import get_settings
 from core.database import create_tables
 from api.auth import router as auth_router
+from api.two_factor import router as two_factor_router
 from api.upload import router as upload_router
 from api.finance import router as finance_router
 from api.hr import router as hr_router
@@ -69,6 +70,7 @@ app.add_middleware(
 
 # ── Routers ───────────────────────────────────────────────────────────────────
 app.include_router(auth_router)
+app.include_router(two_factor_router)
 app.include_router(upload_router)
 app.include_router(finance_router)
 app.include_router(hr_router)

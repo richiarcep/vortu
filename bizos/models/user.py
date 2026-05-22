@@ -29,3 +29,9 @@ class User(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     company = relationship("Company", back_populates="users")
+    last_login = Column(String, nullable=True)
+    last_2fa_device = Column(String, nullable=True)
+    last_2fa_verified = Column(String, nullable=True)
+    totp_secret = Column(String, nullable=True)
+    totp_enabled = Column(Boolean, default=False)
+    totp_verified_at = Column(String, nullable=True)
