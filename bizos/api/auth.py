@@ -111,7 +111,14 @@ def get_me(db: Session = Depends(get_db),
            token: str = Depends(__import__('fastapi').security.OAuth2PasswordBearer(tokenUrl="/api/auth/login"))):
     """Returns the currently logged in user."""
     from core.security import get_current_user
-    return get_current_user(token=token, db=db)
+    user = get_current_user(token=token, db=db)
+    return {
+        "id": user.id,
+        "email": user.email,
+        "full_name": user.full_name,
+        "is_admin": user.is_admin,
+        "country": user.company.country if user.company else None,
+    }
 
 @router.post("/set-country")
 def set_country(

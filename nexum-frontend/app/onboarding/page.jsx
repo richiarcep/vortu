@@ -75,7 +75,7 @@ export default function OnboardingPage() {
     })
       .then(r => r.json())
       .then(d => {
-        if (d.country) { router.push('/dashboard'); return }
+        if (d.country) { router.replace('/dashboard'); return }
         setUser(d)
       })
       .catch(() => router.push('/login'))
