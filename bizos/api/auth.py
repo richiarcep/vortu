@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
-from typing import Optional
 from pydantic import BaseModel, EmailStr
+from typing import Optional
 from core.database import get_db
 from core.security import hash_password, verify_password, create_access_token
 from models.user import User, Company
@@ -13,16 +13,17 @@ router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 # ── Request / Response schemas ────────────────────────────────────────────────
 
 class RegisterRequest(BaseModel):
-    country: Optional[str] = None
     full_name: str
     email: EmailStr
     password: str
     company_name: str
+    country: Optional[str] = None
 
 
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
+    requires_2fa: bool = False
 
 
 class UserResponse(BaseModel):
@@ -30,7 +31,6 @@ class UserResponse(BaseModel):
     email: str
     full_name: str
     is_admin: bool
-
     country: Optional[str] = None
 
     class Config:
@@ -51,7 +51,7 @@ def register(data: RegisterRequest, db: Session = Depends(get_db)):
         )
 
     # Create the company
-    company = Company(name=data.company_name, email=data.email)
+    company = Company(name=data.company_name, email=data.email, country=data.country)
     db.add(company)
     db.flush()  # get company.id without committing
 
@@ -73,7 +73,13 @@ def register(data: RegisterRequest, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(user)
 
-    return user
+    return {
+        "id": user.id,
+        "email": user.email,
+        "full_name": user.full_name,
+        "is_admin": user.is_admin,
+        "country": company.country,
+    }
 
 
 @router.post("/login", response_model=TokenResponse)
@@ -97,13 +103,32 @@ def login(
             detail="Account is disabled"
         )
 
+    # Update last login
+    from datetime import datetime, timedelta
+    user.last_login = datetime.utcnow().isoformat()
+    db.commit()
+
+    # Check 2FA
+    if getattr(user, 'totp_enabled', False) and user.totp_enabled:
+        now = datetime.utcnow()
+        skip_2fa = False
+        if getattr(user, 'last_2fa_verified', None):
+            try:
+                last_v = datetime.fromisoformat(user.last_2fa_verified)
+                if (now - last_v).days < 15:
+                    skip_2fa = True
+            except:
+                pass
+        if not skip_2fa:
+            temp_token = create_access_token(data={"sub": str(user.id), "is_admin": user.is_admin, "requires_2fa": True}, expires_delta=timedelta(minutes=5))
+            return {"access_token": temp_token, "token_type": "bearer", "requires_2fa": True}
+
     # Get user plan
     from models.billing import Subscription
     sub = db.query(Subscription).filter(Subscription.user_id == user.id).first()
     plan_id = sub.plan_id if sub else "starter"
-
     token = create_access_token(data={"sub": str(user.id), "is_admin": user.is_admin, "plan_id": plan_id})
-    return {"access_token": token, "token_type": "bearer"}
+    return {"access_token": token, "token_type": "bearer", "requires_2fa": False}
 
 
 @router.get("/me", response_model=UserResponse)
@@ -124,20 +149,23 @@ def get_me(db: Session = Depends(get_db),
 def set_country(
     data: dict,
     db: Session = Depends(get_db),
-    current_user = Depends(__import__('core.security', fromlist=['get_current_user']).get_current_user)
+    current_user: User = Depends(__import__('core.security', fromlist=['get_current_user']).get_current_user)
 ):
-    """Fija el pais de la empresa. Solo se puede hacer una vez (Opcion A)."""
+    """Fija el país de la empresa. Solo se puede hacer una vez (Opción A)."""
     country = data.get("country")
     if not country:
-        raise HTTPException(status_code=400, detail="Pais requerido")
+        raise HTTPException(status_code=400, detail="País requerido")
     if len(country) != 2:
-        raise HTTPException(status_code=400, detail="Codigo de pais invalido (ISO alfa-2)")
-    from models.user import Company
+        raise HTTPException(status_code=400, detail="Código de país inválido (ISO alfa-2)")
     company = db.query(Company).filter(Company.id == current_user.company_id).first()
     if not company:
         raise HTTPException(status_code=404, detail="Empresa no encontrada")
     if company.country:
-        raise HTTPException(status_code=400, detail="El pais ya esta configurado y no puede cambiarse")
+        raise HTTPException(status_code=400, detail="El país ya está configurado y no puede cambiarse")
     company.country = country.upper()
     db.commit()
-    return {"mensaje": f"Pais configurado: {company.country}", "country": company.country}
+    return {
+        "mensaje": f"País configurado: {company.country}",
+        "country": company.country,
+        "company_id": company.id,
+    }

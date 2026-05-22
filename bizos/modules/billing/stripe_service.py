@@ -37,63 +37,36 @@ def get_or_create_customer(email, name, user_id):
 
 def create_subscription_checkout(db, user_id, email, name, plan_id):
     """
-    Flujo: primero cobra la licencia unica (mode=payment).
-    Al completar, el webhook activa la suscripcion con primer mes gratis.
-    Si ya tiene licencia del mismo plan, va directo a suscripcion.
+    Suscripcion directa sin licencia.
     """
     customer_id = get_or_create_customer(email, name, user_id)
-    lic = db.query(License).filter(License.user_id == user_id).first()
-    already_has_license = lic and lic.status == "paid" and lic.plan_id == plan_id
-
-    if already_has_license:
-        # Ya tiene licencia — solo cobra la suscripcion, primer mes gratis
-        # El trial empieza SOLO cuando completa el checkout, no antes
-        session = stripe.checkout.Session.create(
-            customer=customer_id,
-            mode="subscription",
-            line_items=[{"price": STRIPE_PRICES[plan_id], "quantity": 1}],
-            subscription_data={
-                "trial_period_days": 30,
-                "metadata": {"vortu_user_id": str(user_id), "plan_id": plan_id}
-            },
-            metadata={"vortu_user_id": str(user_id), "plan_id": plan_id, "type": "subscription_only"},
-            success_url=f"{settings.FRONTEND_URL}/settings?tab=subscription&success=license",
-            cancel_url=f"{settings.FRONTEND_URL}/settings?tab=billing",
-            locale="es",
-            allow_promotion_codes=True,
-            payment_method_collection="always",
-        )
-    else:
-        # Primero cobra la licencia unica
-        # Al completar el webhook activa la sub con 30 dias gratis
-        session = stripe.checkout.Session.create(
-            customer=customer_id,
-            mode="payment",
-            line_items=[{"price": STRIPE_LICENSE_PRICES[plan_id], "quantity": 1}],
-            metadata={"vortu_user_id": str(user_id), "plan_id": plan_id, "type": "license_then_subscribe"},
-            success_url=f"{settings.FRONTEND_URL}/settings?tab=subscription&success=license",
-            cancel_url=f"{settings.FRONTEND_URL}/settings?tab=billing",
-            locale="es",
-            invoice_creation={"enabled": True},
-        )
+    session = stripe.checkout.Session.create(
+        customer=customer_id,
+        mode="subscription",
+        line_items=[{"price": STRIPE_PRICES[plan_id], "quantity": 1}],
+        subscription_data={
+            "metadata": {"vortu_user_id": str(user_id), "plan_id": plan_id}
+        },
+        metadata={"vortu_user_id": str(user_id), "plan_id": plan_id, "type": "subscription"},
+        success_url=f"{settings.FRONTEND_URL}/settings?tab=subscription&success=1",
+        cancel_url=f"{settings.FRONTEND_URL}/settings?tab=subscription",
+        locale="es",
+        allow_promotion_codes=True,
+    )
     return {"checkout_url": session.url, "session_id": session.id}
 
 def create_upgrade_checkout(db, user_id, email, name, new_plan_id):
     """
-    Upgrade inteligente:
-    - Licencia: cobra solo la diferencia (nuevo - viejo)
-    - Sub: si ya pago este mes → prorratea. Si no → cobra precio completo nuevo plan
-    Downgrade: no cobra licencia, solo cambia sub al siguiente ciclo
+    Upgrade/downgrade sin licencia.
+    Upgrade: prorratea inmediatamente.
+    Downgrade: cambia al siguiente ciclo sin cargo.
     """
     customer_id = get_or_create_customer(email, name, user_id)
     sub = db.query(Subscription).filter(Subscription.user_id == user_id).first()
-    lic = db.query(License).filter(License.user_id == user_id).first()
 
+    plan_order = {"starter": 0, "pro": 1, "business": 2}
     current_plan_id = sub.plan_id if sub else "starter"
-    current_license_price = LICENSE_PRICES_EUR.get(current_plan_id, 0)
-    new_license_price = LICENSE_PRICES_EUR.get(new_plan_id, 0)
-    license_diff = max(0, new_license_price - current_license_price)
-    is_downgrade = new_license_price < current_license_price
+    is_downgrade = plan_order.get(new_plan_id, 0) < plan_order.get(current_plan_id, 0)
 
     now = datetime.utcnow()
 
@@ -132,7 +105,7 @@ def create_upgrade_checkout(db, user_id, email, name, new_plan_id):
             stripe_sub = stripe.Subscription.retrieve(sub.stripe_subscription_id)
             current_item = stripe_sub["items"]["data"][0]
 
-            # Cambiar sub con prorrateo si ya pago este mes
+            # Cambiar sub con prorrateo inmediato
             stripe.Subscription.modify(
                 sub.stripe_subscription_id,
                 items=[{"id": current_item["id"], "price": STRIPE_PRICES[new_plan_id]}],
@@ -141,42 +114,14 @@ def create_upgrade_checkout(db, user_id, email, name, new_plan_id):
             sub.plan_id = new_plan_id
             db.commit()
 
-            # Si hay diferencia de licencia, cobrarla en checkout separado
-            if license_diff > 0 and lic and lic.status == "paid":
-                diff_price = stripe.Price.create(
-                    unit_amount=int(license_diff * 100),
-                    currency="eur",
-                    product_data={"name": f"Actualizacion licencia {current_plan_id.capitalize()} a {new_plan_id.capitalize()}"},
-                )
-                session = stripe.checkout.Session.create(
-                    customer=customer_id,
-                    mode="payment",
-                    line_items=[{"price": diff_price.id, "quantity": 1}],
-                    metadata={"vortu_user_id": str(user_id), "plan_id": new_plan_id, "type": "license_upgrade"},
-                    success_url=f"{settings.FRONTEND_URL}/settings?tab=subscription&success=license",
-                    cancel_url=f"{settings.FRONTEND_URL}/settings?tab=billing",
-                    locale="es",
-                )
-                if lic:
-                    lic.plan_id = new_plan_id
-                    lic.amount_paid = new_license_price
-                    db.commit()
-                return {"checkout_url": session.url, "upgraded": True,
-                        "license_diff": license_diff,
-                        "message": f"Suscripcion actualizada. Solo pagas la diferencia de licencia: {license_diff}EUR"}
-
-            # Sin diferencia de licencia — upgrade gratis de licencia
-            if lic:
-                lic.plan_id = new_plan_id
-                lic.amount_paid = new_license_price
-                db.commit()
             return {"checkout_url": None, "upgraded": True,
-                    "message": "Plan actualizado. La diferencia se aplicara en tu proxima factura."}
+                    "message": f"Plan actualizado a {new_plan_id}. La diferencia se aplica en tu proxima factura."}
 
         except Exception as e:
             print(f"Error upgrade Stripe: {e}")
+            return {"checkout_url": None, "upgraded": False, "error": str(e)}
 
-    # Sin sub activa — checkout normal con licencia nueva
+    # Sin sub activa — checkout nuevo
     return create_subscription_checkout(db, user_id, email, name, new_plan_id)
 
 def create_billing_portal(customer_id):

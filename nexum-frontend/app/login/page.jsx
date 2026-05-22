@@ -9,6 +9,10 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [needs2FA, setNeeds2FA] = useState(false)
+  const [tempToken, setTempToken] = useState(null)
+  const [totpCode, setTotpCode] = useState('')
+  const [verifying2FA, setVerifying2FA] = useState(false)
 
   async function handleLogin(e) {
     e.preventDefault()
@@ -25,6 +29,12 @@ export default function LoginPage() {
       })
       const data = await res.json()
       if (!res.ok) { setError(data.detail || 'Credenciales incorrectas'); return }
+      if (data.requires_2fa) {
+        setTempToken(data.access_token)
+        setNeeds2FA(true)
+        setLoading(false)
+        return
+      }
       localStorage.setItem('nexum_token', data.access_token)
       router.push('/dashboard')
     } catch {
@@ -34,6 +44,28 @@ export default function LoginPage() {
     }
   }
 
+
+  async function handle2FAVerify(e) {
+    e.preventDefault()
+    if (totpCode.length !== 6) return
+    setVerifying2FA(true)
+    setError('')
+    try {
+      const res = await fetch('http://127.0.0.1:8000/api/auth/2fa/verify-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${tempToken}` },
+        body: JSON.stringify({ code: totpCode })
+      })
+      const data = await res.json()
+      if (!res.ok) { setError(data.detail || 'Codigo incorrecto'); return }
+      localStorage.setItem('nexum_token', data.access_token)
+      router.push('/dashboard')
+    } catch {
+      setError('Error de conexion')
+    } finally {
+      setVerifying2FA(false)
+    }
+  }
   return (
     <>
       <style>{`
@@ -576,6 +608,24 @@ export default function LoginPage() {
         </div>
 
       </div>
+
+        {needs2FA && (
+          <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.5)',backdropFilter:'blur(8px)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:9999}}>
+            <form onSubmit={handle2FAVerify} style={{background:'white',borderRadius:20,padding:'40px 36px',maxWidth:380,width:'90%',textAlign:'center',boxShadow:'0 20px 60px rgba(0,0,0,.2)'}}>
+              <div style={{width:56,height:56,borderRadius:16,background:'#eff6ff',margin:'0 auto 16px',display:'grid',placeItems:'center'}}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              </div>
+              <div style={{fontSize:20,fontWeight:700,color:'#1D1D1F',marginBottom:6}}>Verificacion 2FA</div>
+              <div style={{fontSize:13,color:'#6E6E73',marginBottom:24}}>Introduce el codigo de tu app de autenticacion</div>
+              <input value={totpCode} onChange={e=>setTotpCode(e.target.value.replace(/\D/g,'').slice(0,6))} placeholder="000000" maxLength={6} autoFocus style={{width:'100%',padding:'14px',borderRadius:12,border:'1.5px solid #e5e9f0',fontSize:24,fontFamily:'monospace',textAlign:'center',letterSpacing:8,outline:'none',marginBottom:16}} />
+              {error && <div style={{fontSize:13,color:'#FF3B30',marginBottom:12}}>{error}</div>}
+              <button type="submit" disabled={totpCode.length!==6||verifying2FA} style={{width:'100%',padding:14,borderRadius:12,border:'none',background:totpCode.length===6?'#0071E3':'#e5e9f0',color:totpCode.length===6?'white':'#9ca3af',fontSize:15,fontWeight:600,cursor:totpCode.length===6?'pointer':'default',fontFamily:'inherit'}}>
+                {verifying2FA?'Verificando...':'Continuar'}
+              </button>
+              <button type="button" onClick={()=>{setNeeds2FA(false);setTempToken(null);setTotpCode('');setError('')}} style={{marginTop:12,background:'none',border:'none',color:'#6E6E73',fontSize:13,cursor:'pointer',fontFamily:'inherit'}}>Volver al login</button>
+            </form>
+          </div>
+        )}
     </>
   )
 }
