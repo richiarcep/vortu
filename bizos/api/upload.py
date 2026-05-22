@@ -22,7 +22,7 @@ ALLOWED_TYPES = {
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
     "application/vnd.ms-excel": "xls",
 }
-ALLOWED_MODULES = ["finance", "hr", "marketing"]
+ALLOWED_MODULES = ["finance", "hr", "marketing", "accounting", "general", "projects", "sales"]
 
 
 class DocumentResponse(BaseModel):
@@ -144,4 +144,50 @@ def get_document(
     if not document:
         raise HTTPException(status_code=404, detail="Document not found")
 
+    return document
+
+@router.post("/{document_id}/retry")
+def retry_document(
+    document_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Re-intenta el analisis IA de un documento que fallo o quedo pendiente."""
+    document = db.query(Document).filter(
+        Document.id == document_id,
+        Document.company_id == current_user.company_id
+    ).first()
+    if not document:
+        raise HTTPException(status_code=404, detail="Documento no encontrado")
+    if document.status == "complete":
+        raise HTTPException(status_code=400, detail="El documento ya fue analizado correctamente")
+    if not os.path.exists(document.file_path):
+        raise HTTPException(status_code=404, detail="Archivo no encontrado en disco")
+
+    document.status = "processing"
+    document.error_message = None
+    db.commit()
+
+    try:
+        parsed_data = parse_file(document.file_path, document.file_type)
+    except Exception as e:
+        document.status = "failed"
+        document.error_message = f"Parse error: {str(e)}"
+        db.commit()
+        raise HTTPException(status_code=422, detail=f"No se pudo procesar el archivo: {str(e)}")
+
+    try:
+        if settings.ANTHROPIC_API_KEY:
+            ai_result = analyze_document(parsed_data, document.module)
+        else:
+            ai_result = {"message": "No API key set"}
+        document.ai_result = json.dumps(ai_result)
+        document.status = "complete"
+    except Exception as e:
+        document.status = "failed"
+        document.error_message = f"AI error: {str(e)}"
+        document.ai_result = json.dumps({"error": str(e)})
+
+    db.commit()
+    db.refresh(document)
     return document
