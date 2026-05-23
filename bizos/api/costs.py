@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from sqlalchemy import func, extract
+from sqlalchemy import func, extract, text
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime, timedelta
@@ -76,25 +76,61 @@ def get_entries(month: Optional[int] = None, year: Optional[int] = None, db: Ses
 
 @router.post("/entries")
 def create_entry(body: CostCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    entry_date = datetime.fromisoformat(body.date) if body.date else datetime.utcnow()
     entry = CostEntry(
         company_id=current_user.company_id,
         description=body.description,
         amount=body.amount,
         category_id=body.category_id,
         department_id=body.department_id,
-        date=datetime.fromisoformat(body.date) if body.date else datetime.utcnow(),
+        date=entry_date,
         notes=body.notes,
     )
     db.add(entry)
+    db.flush()
+
+    # ── Crear asiento contable en journal_entries ──
+    # Mapeo categoría → cuenta PGC
+    CATEGORY_TO_PGC = {
+        "Salarios": "640", "Alquiler": "621", "Marketing": "627",
+        "Logistica": "629", "Suministros": "628", "Tecnologia": "629",
+        "Compras": "600", "Sin categoría": "629",
+    }
+    cat_name = "Sin categoría"
+    if body.category_id:
+        cat = db.query(CostCategory).filter(CostCategory.id == body.category_id).first()
+        if cat:
+            cat_name = cat.name
+    pgc_code = CATEGORY_TO_PGC.get(cat_name, "629")
+
+    # Buscar account_id real
+    acc = db.execute(text("SELECT id FROM accounts WHERE code=:c"), {"c": pgc_code}).fetchone()
+    acc_bank = db.execute(text("SELECT id FROM accounts WHERE code='572'"), {}).fetchone()
+
+    if acc and acc_bank:
+        fecha = entry_date.strftime("%Y-%m-%d")
+        tid = f"COST-{entry.id}"
+        # Debe: cuenta de gasto
+        db.execute(text("""INSERT INTO journal_entries (transaction_id, date, description, debit, credit, account_id, reference, module_source, company_id, created_at)
+            VALUES (:tid, :date, :desc, :amount, 0, :aid, :ref, 'centro_costes', :cid, :now)"""),
+            {"tid": tid, "date": fecha, "desc": body.description, "amount": body.amount, "aid": acc[0], "ref": f"COST-{entry.id}", "cid": current_user.company_id, "now": datetime.utcnow().isoformat()})
+        # Haber: banco
+        db.execute(text("""INSERT INTO journal_entries (transaction_id, date, description, debit, credit, account_id, reference, module_source, company_id, created_at)
+            VALUES (:tid, :date, :desc, 0, :amount, :aid, :ref, 'centro_costes', :cid, :now)"""),
+            {"tid": tid, "date": fecha, "desc": f"Pago {body.description}", "amount": body.amount, "aid": acc_bank[0], "ref": f"COST-{entry.id}", "cid": current_user.company_id, "now": datetime.utcnow().isoformat()})
+
     db.commit()
     db.refresh(entry)
-    return {"id": entry.id, "description": entry.description, "amount": entry.amount}
+    return {"id": entry.id, "description": entry.description, "amount": entry.amount, "contabilizado": bool(acc)}
 
 @router.delete("/entries/{entry_id}")
 def delete_entry(entry_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     entry = db.query(CostEntry).filter(CostEntry.id == entry_id, CostEntry.company_id == current_user.company_id).first()
     if not entry:
         raise HTTPException(status_code=404, detail="Gasto no encontrado")
+    # Eliminar asientos contables asociados
+    db.execute(text("DELETE FROM journal_entries WHERE transaction_id=:tid AND company_id=:cid"),
+        {"tid": f"COST-{entry.id}", "cid": current_user.company_id})
     db.delete(entry)
     db.commit()
     return {"success": True}
@@ -153,3 +189,80 @@ def get_dashboard(db: Session = Depends(get_db), current_user: User = Depends(ge
         "month": now.month,
         "year": now.year,
     }
+
+
+# ── Tendencia 6 meses ─────────────────────────────────────────────────────────
+
+@router.get("/trend")
+def get_trend(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """Returns monthly cost totals for the last 6 months."""
+    now = datetime.utcnow()
+    months = []
+    for i in range(5, -1, -1):
+        m = now.month - i
+        y = now.year
+        while m <= 0:
+            m += 12
+            y -= 1
+        total = db.query(func.coalesce(func.sum(CostEntry.amount), 0)).filter(
+            CostEntry.company_id == current_user.company_id,
+            extract('month', CostEntry.date) == m,
+            extract('year', CostEntry.date) == y,
+        ).scalar()
+        import calendar
+        months.append({
+            "month": calendar.month_abbr[m],
+            "month_num": m,
+            "year": y,
+            "total": float(total or 0),
+        })
+    return months
+
+# ── Análisis IA de costes ─────────────────────────────────────────────────────
+
+@router.get("/ai-analysis")
+def get_ai_analysis(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """Vera analyzes cost patterns."""
+    now = datetime.utcnow()
+    cur = db.query(CostEntry).filter(
+        CostEntry.company_id == current_user.company_id,
+        extract('month', CostEntry.date) == now.month,
+        extract('year', CostEntry.date) == now.year,
+    ).all()
+    
+    prev = now.replace(day=1) - timedelta(days=1)
+    prev_entries = db.query(CostEntry).filter(
+        CostEntry.company_id == current_user.company_id,
+        extract('month', CostEntry.date) == prev.month,
+        extract('year', CostEntry.date) == prev.year,
+    ).all()
+
+    data = {
+        "mes_actual": {
+            "total": sum(e.amount for e in cur),
+            "count": len(cur),
+            "por_categoria": {},
+        },
+        "mes_anterior": {
+            "total": sum(e.amount for e in prev_entries),
+            "count": len(prev_entries),
+        }
+    }
+    for e in cur:
+        cat = e.category.name if e.category else "Sin categoría"
+        data["mes_actual"]["por_categoria"][cat] = data["mes_actual"]["por_categoria"].get(cat, 0) + e.amount
+
+    try:
+        import anthropic
+        from core.config import get_settings
+        settings = get_settings()
+        client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+        msg = client.messages.create(
+            model="claude-sonnet-4-6",
+            max_tokens=300,
+            system="Eres Vera, analista financiera. Usa SIEMPRE €. Español de España. Máximo 4 frases directas y concisas. NO uses markdown, ni tablas, ni ##, ni **, ni viñetas. Solo texto plano con párrafos cortos.",
+            messages=[{"role": "user", "content": f"Analiza estos gastos del negocio y da recomendaciones: {data}"}]
+        )
+        return {"analysis": msg.content[0].text}
+    except:
+        return {"analysis": None}

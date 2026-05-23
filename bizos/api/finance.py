@@ -67,65 +67,76 @@ def get_invoice_analysis(
 
 
 @router.get("/summary")
+@router.get("/summary")
 def get_finance_summary(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     from sqlalchemy import text
     from datetime import date, timedelta
-    from modules.accounting.statements import generate_pl_statement, generate_balance_sheet, generate_cash_flow_statement
+    import calendar
 
     today = date.today()
     month_start = today.replace(day=1)
     year_start = date(today.year, 1, 1)
     cid = current_user.company_id
 
-    # Datos reales de contabilidad — mes actual
-    ingresos_mes = float(db.execute(text(
-        "SELECT COALESCE(SUM(monto),0) FROM registro_diario WHERE company_id=:cid AND tipo='ingreso' AND fecha>=:ini AND fecha<=:fin"
-    ), {"cid":cid,"ini":month_start,"fin":today}).scalar() or 0)
+    def acct_balance(code, ini, fin):
+        """Get balance from journal_entries using PGC account codes."""
+        acc = db.execute(text("SELECT id FROM accounts WHERE code=:c"), {"c": code}).fetchone()
+        if not acc: return 0.0
+        if ini:
+            r = db.execute(text(
+                "SELECT COALESCE(SUM(credit)-SUM(debit),0) FROM journal_entries WHERE account_id=:aid AND company_id=:cid AND date>=:ini AND date<=:fin"
+            ), {"aid": acc[0], "cid": cid, "ini": str(ini), "fin": str(fin)}).scalar()
+        else:
+            r = db.execute(text(
+                "SELECT COALESCE(SUM(credit)-SUM(debit),0) FROM journal_entries WHERE account_id=:aid AND company_id=:cid"
+            ), {"aid": acc[0], "cid": cid}).scalar()
+        return float(r or 0)
 
-    gastos_mes = float(db.execute(text(
-        "SELECT COALESCE(SUM(monto),0) FROM registro_diario WHERE company_id=:cid AND tipo='gasto' AND fecha>=:ini AND fecha<=:fin"
-    ), {"cid":cid,"ini":month_start,"fin":today}).scalar() or 0)
+    def gastos_balance(codes, ini, fin):
+        total = 0
+        for code in codes:
+            acc = db.execute(text("SELECT id FROM accounts WHERE code=:c"), {"c": code}).fetchone()
+            if not acc: continue
+            r = db.execute(text(
+                "SELECT COALESCE(SUM(debit)-SUM(credit),0) FROM journal_entries WHERE account_id=:aid AND company_id=:cid AND date>=:ini AND date<=:fin"
+            ), {"aid": acc[0], "cid": cid, "ini": str(ini), "fin": str(fin)}).scalar()
+            total += float(r or 0)
+        return total
 
-    ingresos_year = float(db.execute(text(
-        "SELECT COALESCE(SUM(monto),0) FROM registro_diario WHERE company_id=:cid AND tipo='ingreso' AND fecha>=:ini AND fecha<=:fin"
-    ), {"cid":cid,"ini":year_start,"fin":today}).scalar() or 0)
+    gasto_codes = ['600','621','627','628','629','640','642']
 
-    gastos_year = float(db.execute(text(
-        "SELECT COALESCE(SUM(monto),0) FROM registro_diario WHERE company_id=:cid AND tipo='gasto' AND fecha>=:ini AND fecha<=:fin"
-    ), {"cid":cid,"ini":year_start,"fin":today}).scalar() or 0)
+    # Mes actual
+    ingresos_mes = acct_balance('700', month_start, today)
+    gastos_mes = gastos_balance(gasto_codes, month_start, today)
 
-    # Datos por mes para grafico (ultimos 6 meses)
+    # Año actual
+    ingresos_year = acct_balance('700', year_start, today)
+    gastos_year = gastos_balance(gasto_codes, year_start, today)
+
+    # Datos por mes para gráfico (últimos 6 meses)
     monthly_data = []
     for i in range(5, -1, -1):
-        d = today.replace(day=1)
-        # retroceder i meses
         m = today.month - i
         y = today.year
         while m <= 0:
             m += 12
             y -= 1
-        from datetime import date as date_cls
-        import calendar
-        ini = date_cls(y, m, 1)
+        ini = date(y, m, 1)
         last_day = calendar.monthrange(y, m)[1]
-        fin = date_cls(y, m, last_day)
-        ing = float(db.execute(text(
-            "SELECT COALESCE(SUM(monto),0) FROM registro_diario WHERE company_id=:cid AND tipo='ingreso' AND fecha>=:ini AND fecha<=:fin"
-        ), {"cid":cid,"ini":ini,"fin":fin}).scalar() or 0)
-        gas = float(db.execute(text(
-            "SELECT COALESCE(SUM(monto),0) FROM registro_diario WHERE company_id=:cid AND tipo='gasto' AND fecha>=:ini AND fecha<=:fin"
-        ), {"cid":cid,"ini":ini,"fin":fin}).scalar() or 0)
+        fin = date(y, m, last_day)
+        ing = acct_balance('700', ini, fin)
+        gas = gastos_balance(gasto_codes, ini, fin)
         monthly_data.append({
             "mes": ini.strftime("%b"),
-            "ingresos": ing,
-            "gastos": gas,
-            "resultado": ing - gas,
+            "ingresos": round(ing, 2),
+            "gastos": round(gas, 2),
+            "resultado": round(ing - gas, 2),
         })
 
-    # Health score simple basado en margen
+    # Health score
     neto_mes = ingresos_mes - gastos_mes
     margen = round((neto_mes / ingresos_mes * 100), 1) if ingresos_mes > 0 else 0
     if margen >= 20: health = 8
@@ -133,17 +144,43 @@ def get_finance_summary(
     elif margen >= 0: health = 4
     else: health = 2
 
-    # Ventas del dia
+    # Ventas del día
     ventas_hoy = float(db.execute(text(
         "SELECT COALESCE(SUM(total),0) FROM sales WHERE company_id=:cid AND sale_date=:today"
-    ), {"cid":cid,"today":today}).scalar() or 0)
+    ), {"cid": cid, "today": today}).scalar() or 0)
 
-    # Top categorias de gasto
-    top_gastos = db.execute(text(
-        "SELECT categoria, COALESCE(SUM(monto),0) as total FROM registro_diario WHERE company_id=:cid AND tipo='gasto' AND fecha>=:ini GROUP BY categoria ORDER BY total DESC LIMIT 5"
-    ), {"cid":cid,"ini":year_start}).fetchall()
+    # Top categorías de gasto (from journal_entries)
+    top_gastos = db.execute(text("""
+        SELECT a.name, COALESCE(SUM(j.debit),0) as total
+        FROM journal_entries j JOIN accounts a ON a.id = j.account_id
+        WHERE j.company_id=:cid AND a.code IN ('600','621','627','628','629','640','642')
+        AND j.date >= :ini
+        GROUP BY a.name ORDER BY total DESC LIMIT 5
+    """), {"cid": cid, "ini": str(year_start)}).fetchall()
 
-    # Documentos financieros subidos
+    # Análisis IA
+    analisis_ia = None
+    try:
+        client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+        prompt = f"""Eres Vera, analista financiera de Vortu. Usa SIEMPRE € como moneda. Formato español.
+Analiza estos datos financieros en 3-4 frases directas:
+- Ingresos mes: €{ingresos_mes:,.2f}
+- Gastos mes: €{gastos_mes:,.2f}
+- Resultado: €{neto_mes:,.2f}
+- Margen: {margen}%
+- Ingresos año: €{ingresos_year:,.2f}
+Sé directo, menciona lo positivo y lo preocupante. Español de España."""
+        msg = client.messages.create(
+            model="claude-sonnet-4-6",
+            max_tokens=300,
+            system="Eres Vera, analista financiera. Usa € siempre. Máximo 4 frases.",
+            messages=[{"role": "user", "content": prompt}]
+        )
+        analisis_ia = msg.content[0].text.strip()
+    except:
+        analisis_ia = None
+
+    # Documentos financieros
     documents = db.query(Document).filter(
         Document.company_id == current_user.company_id,
         Document.module == "finance",
@@ -155,33 +192,30 @@ def get_finance_summary(
             try:
                 ai_data = json.loads(doc.ai_result)
                 summaries.append({
-                    "document_id": doc.id,
-                    "filename": doc.filename,
+                    "document_id": doc.id, "filename": doc.filename,
                     "uploaded_at": str(doc.created_at),
                     "summary": ai_data.get("summary", ""),
                     "health_score": ai_data.get("health_score", None),
-                    "net_profit": ai_data.get("net_profit", None),
-                    "total_revenue": ai_data.get("total_income", None),
-                    "total_expenses": ai_data.get("total_expenses", None),
                 })
-            except json.JSONDecodeError:
+            except:
                 continue
 
     return {
         "total_documents": len(documents),
         "summaries": summaries,
+        "analisis_ia": analisis_ia,
         "contabilidad": {
             "mes_actual": {
-                "ingresos": ingresos_mes,
-                "gastos": gastos_mes,
-                "resultado": neto_mes,
+                "ingresos": round(ingresos_mes, 2),
+                "gastos": round(gastos_mes, 2),
+                "resultado": round(neto_mes, 2),
                 "margen": margen,
                 "health_score": health,
             },
             "año_actual": {
-                "ingresos": ingresos_year,
-                "gastos": gastos_year,
-                "resultado": ingresos_year - gastos_year,
+                "ingresos": round(ingresos_year, 2),
+                "gastos": round(gastos_year, 2),
+                "resultado": round(ingresos_year - gastos_year, 2),
                 "margen": round((ingresos_year - gastos_year) / ingresos_year * 100, 1) if ingresos_year > 0 else 0,
             },
             "ventas_hoy": ventas_hoy,
@@ -193,7 +227,6 @@ def get_finance_summary(
 
 # ── NEW: Ratios financieros ───────────────────────────────────────────────────
 
-@router.get("/ratios")
 def get_ratios_financieros(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
