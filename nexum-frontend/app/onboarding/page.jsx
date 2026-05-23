@@ -26,16 +26,16 @@ const PAISES = [
   {
     code:'SV', name:'El Salvador', flag:'🇸🇻',
     desc:'DTE — Ministerio de Hacienda',
-    detalle:'IVA 13% · Facturación electrónica obligatoria',
+    detalle:'NIIF PYMES · IVA 13% · ISR 30% · CCF',
     disponible:true,
     color:'#34C759',
   },
   {
     code:'MX', name:'México', flag:'🇲🇽',
     desc:'CFDI — SAT',
-    detalle:'Próximamente disponible',
-    disponible:false,
-    color:'#86868B',
+    detalle:'NIF · IVA 16% · ISR 30% · CFDI 4.0',
+    disponible:true,
+    color:'#34C759',
   },
   {
     code:'CO', name:'Colombia', flag:'🇨🇴',
@@ -243,6 +243,8 @@ export default function OnboardingPage() {
                 <div style={{fontSize:12,color:T.text3}}>
                   {pais.code === 'ES'
                     ? 'PGC español (RD 1514/2007), IVA trimestral Modelo 303, IRPF Modelo 130/131'
+                    : pais.code === 'MX'
+                    ? 'NIF México (CINIF), CFDI 4.0, IVA 16%, ISR 30%, PTU 10%'
                     : 'DTE electrónico, IVA 13%, conexión con Ministerio de Hacienda de El Salvador'}
                 </div>
               </div>

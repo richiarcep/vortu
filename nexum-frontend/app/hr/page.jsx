@@ -11,6 +11,7 @@ const BLUE  = '#2563eb'
 const CYAN  = '#00B4D8'
 
 import Sidebar from '@/components/Sidebar'
+import { useCurrency } from '@/components/useCurrency'
 
 // ── Notification Center ────────────────────────────────────────────────────────
 function NotificationCenter({ token }) {
@@ -166,6 +167,7 @@ function SettingsButton() {
 
 // ── Main ───────────────────────────────────────────────────────────────────────
 export default function HR() {
+  const { fmt, sym } = useCurrency()
   const router = useRouter()
   const [section, setSection] = useState('empleados')
   const [feedbackTab, setFeedbackTab] = useState('individual')
@@ -347,9 +349,9 @@ export default function HR() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '24px' }}>
               {[
                 { label: 'Empleados activos',  value: summary.total_employees || 0,                                                                                                                                              color: NAVY,    bg: 'white'   },
-                { label: 'Nómina bruta anual', value: `€${(summary.total_gross_payroll || 0).toLocaleString('es-ES')}`,                                                                                                          color: '#1e3a8a', bg: '#eff6ff' },
+                { label: 'Nómina bruta anual', value: fmt(summary.total_gross_payroll || 0),                                                                                                          color: '#1e3a8a', bg: '#eff6ff' },
                 { label: 'Departamentos',       value: Object.keys(summary.departments || {}).length,                                                                                                                             color: '#1a6b4a', bg: '#f0fdf4' },
-                { label: 'Coste por empleado',  value: summary.total_employees > 0 ? `€${Math.round((summary.total_gross_payroll || 0) / summary.total_employees).toLocaleString('es-ES')}` : '—',                               color: '#92400e', bg: '#fffbeb' },
+                { label: 'Coste por empleado',  value: summary.total_employees > 0 ? fmt(Math.round((summary.total_gross_payroll || 0) / summary.total_employees)) : '—',                               color: '#92400e', bg: '#fffbeb' },
               ].map(k => (
                 <div key={k.label} style={{ ...card, padding: '16px', background: k.bg, textAlign: 'center' }}>
                   <div style={{ fontSize: '22px', fontWeight: '800', color: k.color, letterSpacing: '-0.5px' }}>{k.value}</div>
@@ -381,7 +383,7 @@ export default function HR() {
                         { key: 'email',        label: 'Email',                 placeholder: 'juan@empresa.com',   type: 'email'  },
                         { key: 'department',   label: 'Departamento',          placeholder: 'Marketing, Ventas',  type: 'text'   },
                         { key: 'position',     label: 'Cargo',                 placeholder: 'Director, Analista', type: 'text'   },
-                        { key: 'gross_salary', label: 'Salario bruto anual €', placeholder: '30000',              type: 'number' },
+                        { key: 'gross_salary', label: `Salario bruto anual ${sym}`, placeholder: '30000',              type: 'number' },
                       ].map(f => (
                         <div key={f.key}>
                           <label style={labelStyle}>{f.label}</label>
@@ -421,7 +423,7 @@ export default function HR() {
                         </td>
                         <td style={{ padding: '12px 16px', fontSize: '13px', color: '#374151' }}>{emp.department || '—'}</td>
                         <td style={{ padding: '12px 16px', fontSize: '13px', color: '#374151' }}>{emp.position || '—'}</td>
-                        <td style={{ padding: '12px 16px', fontSize: '13px', fontWeight: '700', color: NAVY }}>€{(emp.gross_salary || 0).toLocaleString('es-ES')}</td>
+                        <td style={{ padding: '12px 16px', fontSize: '13px', fontWeight: '700', color: NAVY }}>{fmt(emp.gross_salary || 0)}</td>
                         <td style={{ padding: '12px 16px' }}>
                           <button onClick={() => deactivateEmployee(emp.id, emp.full_name)} style={{ padding: '5px 12px', background: '#fef2f2', color: RED, border: '1px solid #fecaca', borderRadius: '7px', fontSize: '12px', cursor: 'pointer', fontFamily: "'DM Sans', system-ui, sans-serif" }}>
                             Desactivar
@@ -445,7 +447,7 @@ export default function HR() {
                     <div key={i} style={{ ...card, padding: '16px' }}>
                       <div style={{ fontSize: '13px', fontWeight: '700', color: NAVY, marginBottom: '4px' }}>{dept}</div>
                       <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '8px' }}>{data.headcount} empleado{data.headcount !== 1 ? 's' : ''}</div>
-                      <div style={{ fontSize: '16px', fontWeight: '800', color: NAVY }}>€{(data.total_gross || 0).toLocaleString('es-ES')}</div>
+                      <div style={{ fontSize: '16px', fontWeight: '800', color: NAVY }}>{fmt(data.total_gross || 0)}</div>
                       <div style={{ fontSize: '11px', color: '#9ca3af' }}>nómina bruta anual</div>
                     </div>
                   ))}
@@ -495,9 +497,9 @@ export default function HR() {
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '16px' }}>
                       {[
                         { label: 'Empleados',   value: payrollResult.payroll?.summary?.total_employees || 0,                                    color: NAVY  },
-                        { label: 'Bruto total', value: `€${(payrollResult.payroll?.summary?.total_gross_payroll || 0).toLocaleString('es-ES')}`, color: NAVY  },
-                        { label: 'Neto total',  value: `€${(payrollResult.payroll?.summary?.total_net_payroll || 0).toLocaleString('es-ES')}`,   color: GREEN },
-                        { label: 'Deducciones', value: `€${(payrollResult.payroll?.summary?.total_deductions || 0).toLocaleString('es-ES')}`,    color: RED   },
+                        { label: 'Bruto total', value: fmt(payrollResult.payroll?.summary?.total_gross_payroll || 0), color: NAVY  },
+                        { label: 'Neto total',  value: fmt(payrollResult.payroll?.summary?.total_net_payroll || 0),   color: GREEN },
+                        { label: 'Deducciones', value: fmt(payrollResult.payroll?.summary?.total_deductions || 0),    color: RED   },
                       ].map((s, i) => (
                         <div key={i} style={{ padding: '12px', background: '#f8faff', borderRadius: '8px', border: '1px solid #f0f2f7', textAlign: 'center' }}>
                           <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '4px' }}>{s.label}</div>
@@ -510,11 +512,11 @@ export default function HR() {
                         <div key={i} style={{ padding: '12px 0', borderBottom: '1px solid #f0f2f7', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <div>
                             <div style={{ fontSize: '13px', fontWeight: '600', color: NAVY }}>{emp.name}</div>
-                            <div style={{ fontSize: '11px', color: '#6b7280' }}>{emp.department} · Bruto: €{(emp.gross_salary || 0).toLocaleString('es-ES')}</div>
-                            <div style={{ fontSize: '11px', color: '#9ca3af' }}>SS: -€{emp.social_security} · IRPF: -€{emp.income_tax}</div>
+                            <div style={{ fontSize: '11px', color: '#6b7280' }}>{emp.department} · Bruto: {fmt(emp.gross_salary || 0)}</div>
+                            <div style={{ fontSize: '11px', color: '#9ca3af' }}>SS: -{fmt(emp.social_security)} · IRPF: -{fmt(emp.income_tax)}</div>
                           </div>
                           <div style={{ textAlign: 'right' }}>
-                            <div style={{ fontSize: '15px', fontWeight: '800', color: GREEN, marginBottom: '4px' }}>€{(emp.net_salary || 0).toLocaleString('es-ES')}</div>
+                            <div style={{ fontSize: '15px', fontWeight: '800', color: GREEN, marginBottom: '4px' }}>{fmt(emp.net_salary || 0)}</div>
                             <button onClick={() => downloadPayslip(emp.name?.replace(/ /g, '_'))} style={{ padding: '4px 10px', background: '#f8faff', border: '1px solid #e5e9f0', borderRadius: '6px', fontSize: '11px', cursor: 'pointer', color: NAVY, fontFamily: "'DM Sans', system-ui, sans-serif" }}>
                               ⬇ PDF
                             </button>

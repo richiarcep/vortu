@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
+import { useCurrency } from '@/components/useCurrency'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
@@ -185,6 +186,7 @@ function UploadZone({ onUpload, uploading }) {
 
 // ── Result Modal ──────────────────────────────────────────────────────────────
 function ResultModal({ doc, onClose }) {
+  const { fmt, sym } = useCurrency()
   if (!doc) return null
   let result = {}
   try { result = JSON.parse(doc.ai_result) } catch {}
@@ -241,7 +243,7 @@ function ResultModal({ doc, onClose }) {
                 <div key={m.label} style={{ background:T.sidebar, borderRadius:12, padding:14, border:`.5px solid ${T.hairline}` }}>
                   <div style={{ fontSize:11, color:T.text4, marginBottom:4 }}>{m.label}</div>
                   <div style={{ fontWeight:700, color:m.color, fontSize:18, letterSpacing:'-0.4px' }}>
-                    €{Number(m.value || 0).toLocaleString('es-ES', { minimumFractionDigits:2 })}
+                    {fmt(Number(m.value || 0), 2)}
                   </div>
                 </div>
               ))}
@@ -280,7 +282,8 @@ function ResultModal({ doc, onClose }) {
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
-export default function DocumentosPage() {
+export
+ default function DocumentosPage() {
   const router = useRouter()
   const [documents,   setDocuments]   = useState([])
   const [loading,     setLoading]     = useState(true)

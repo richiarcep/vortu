@@ -839,19 +839,36 @@ def registrar_gasto(db, company_id, fecha, categoria,
 
 
 def get_registro_periodo(db, company_id, start_date, end_date):
-    from modules.accounting.journal import JournalEntry
-    entries = db.query(JournalEntry).filter(
-        JournalEntry.company_id == company_id,
-        JournalEntry.date >= start_date,
-        JournalEntry.date <= end_date,
-        JournalEntry.module_source == "cierre_caja"
-    ).all()
+    from sqlalchemy import text
+    rows = db.execute(text("""
+        SELECT fecha, tipo, categoria, descripcion, monto, cuenta_contable
+        FROM registro_diario
+        WHERE company_id=:cid AND fecha>=:ini AND fecha<=:fin
+        ORDER BY fecha DESC
+    """), {"cid": company_id, "ini": str(start_date), "fin": str(end_date)}).fetchall()
+    ingresos, gastos = [], []
+    for r in rows:
+        item = {
+            "fecha": str(r[0]),
+            "tipo": r[1],
+            "categoria": r[2] or "",
+            "descripcion": r[3] or "",
+            "monto": float(r[4] or 0),
+            "cuenta_contable": r[5] or "",
+        }
+        if r[1] == "ingreso":
+            ingresos.append(item)
+        else:
+            gastos.append(item)
     return {
-        "periodo": {
-            "inicio": str(start_date),
-            "fin": str(end_date)
-        },
-        "total_asientos": len(entries)
+        "periodo": {"inicio": str(start_date), "fin": str(end_date)},
+        "total_asientos": len(rows),
+        "ingresos": ingresos,
+        "gastos": gastos,
+        "resumen": {
+            "total_ingresos": round(sum(r["monto"] for r in ingresos), 2),
+            "total_gastos":   round(sum(r["monto"] for r in gastos),   2),
+        }
     }
 
 

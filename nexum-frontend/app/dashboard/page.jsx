@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
+import { useCurrency } from '@/components/useCurrency'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 const T = {
@@ -81,6 +82,7 @@ function KpiCard({ label, value, delta, up, comp, icon, tint, spark, loading }) 
 }
 
 function BarChart({ data=[] }) {
+  const { fmt, sym } = useCurrency()
   const [hover,setHover]=useState(null)
   if (!data.length) return (
     <div style={{background:'#fff',border:`1px solid ${T.border}`,borderRadius:14,padding:22,display:'flex',alignItems:'center',justifyContent:'center',minHeight:280,color:T.textFaint,fontSize:13}}>
@@ -133,9 +135,9 @@ function BarChart({ data=[] }) {
                   <rect x={gx-58} y={padT+plotH-Math.max(ingH,gasH)-58} width="116" height="48" rx="6" fill={T.navy}/>
                   <text x={gx} y={padT+plotH-Math.max(ingH,gasH)-40} textAnchor="middle" fontSize="10" fill="#9AA6BD">{d.label}</text>
                   <text x={gx-50} y={padT+plotH-Math.max(ingH,gasH)-24} fontSize="11" fill="#fff">Ingresos</text>
-                  <text x={gx+50} y={padT+plotH-Math.max(ingH,gasH)-24} textAnchor="end" fontSize="11" fill="#fff" fontWeight="600">€{(d.ing||0).toFixed(0)}</text>
+                  <text x={gx+50} y={padT+plotH-Math.max(ingH,gasH)-24} textAnchor="end" fontSize="11" fill="#fff" fontWeight="600">{fmt(d.ing||0, 0)}</text>
                   <text x={gx-50} y={padT+plotH-Math.max(ingH,gasH)-8} fontSize="11" fill="#9AA6BD">Ventas</text>
-                  <text x={gx+50} y={padT+plotH-Math.max(ingH,gasH)-8} textAnchor="end" fontSize="11" fill={T.cyan} fontWeight="600">€{(d.gas||0).toFixed(0)}</text>
+                  <text x={gx+50} y={padT+plotH-Math.max(ingH,gasH)-8} textAnchor="end" fontSize="11" fill={T.cyan} fontWeight="600">{fmt(d.gas||0, 0)}</text>
                 </g>
               )}
             </g>
@@ -263,6 +265,7 @@ function NotificationCenter({ token }) {
 }
 
 function ProfileButton({ user }) {
+  const { fmt, sym } = useCurrency()
   const [open,setOpen]=useState(false)
   const ref=useRef()
   const router=useRouter()
@@ -306,6 +309,7 @@ function ProfileButton({ user }) {
 }
 
 export default function Dashboard() {
+  const { fmt, sym } = useCurrency()
   const router=useRouter()
   const [token,setToken]=useState(null)
   const [user,setUser]=useState(null)
@@ -323,7 +327,7 @@ export default function Dashboard() {
     catch{setUser({email:'',name:'Usuario'})}
   },[])
 
-  useEffect(()=>{if(token)loadAll()},[token])
+useEffect(()=>{if(token)loadAll()},[token])
 
   async function loadAll() {
     setLoading(true)
@@ -353,7 +357,7 @@ export default function Dashboard() {
   const dateStr=now.toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long'})
 
   const modules=[
-    {icon:'📒',title:'Contabilidad',desc:'Partida doble · PGC',href:'/contabilidad',stat:resumen?`€${(d.ingresos||0).toLocaleString('es-ES')}`:'—',statLabel:'ingresos 30d',statColor:T.green},
+    {icon:'📒',title:'Contabilidad',desc:'Partida doble · PGC',href:'/contabilidad',stat:resumen?fmt(d.ingresos||0):'—',statLabel:'ingresos 30d',statColor:T.green},
     {icon:'👥',title:'Recursos Humanos',desc:'Nominas · IRPF · SS',href:'/hr',stat:resumen?.empleados||'—',statLabel:'empleados',statColor:T.text},
     {icon:'💬',title:'Clientes',desc:'CRM · Inbox · IA',href:'/clientes',stat:clientes?.overview?.pending_responses||0,statLabel:'pendientes',statColor:(clientes?.overview?.pending_responses||0)>0?T.amber:T.green},
     {icon:'📋',title:'Proyectos',desc:'Health score · IA',href:'/proyectos',stat:proyectos?.total_projects||0,statLabel:'activos',statColor:T.text},
@@ -404,10 +408,10 @@ export default function Dashboard() {
           </div>
 
           <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:16,marginBottom:16}}>
-            <KpiCard label="Ingresos (30 dias)" value={`€${(d.ingresos||0).toLocaleString('es-ES')}`} delta={`Margen ${d.margen||0}%`} up={true} comp="ultimos 30 dias" icon={I.coin} tint={T.navy} spark={ingSpark} loading={loading}/>
-            <KpiCard label="Gastos (30 dias)" value={`€${(d.gastos||0).toLocaleString('es-ES')}`} delta="vs ingresos" up={false} comp="ultimos 30 dias" icon={I.trend} tint={T.cyan} spark={gasSpark} loading={loading}/>
-            <KpiCard label="Resultado neto" value={`€${(d.resultado_neto||0).toLocaleString('es-ES')}`} delta={`${d.margen||0}% margen`} up={esPositivo} comp="30 dias" icon={I.trend} tint={esPositivo?T.green:T.red} spark={netSpark} loading={loading}/>
-            <KpiCard label="Ventas hoy" value={`€${(ventas?.today?.total_revenue||0).toFixed(2)}`} delta={`${ventas?.today?.total_sales||0} transacciones`} up={true} comp="hoy" icon={I.cart} tint={T.violet} spark={[0.2,0.4,0.3,0.5,0.7,0.6,0.8,0.75,0.9,1]} loading={loading}/>
+            <KpiCard label="Ingresos (30 dias)" value={fmt(d.ingresos||0)} delta={`Margen ${d.margen||0}%`} up={true} comp="ultimos 30 dias" icon={I.coin} tint={T.navy} spark={ingSpark} loading={loading}/>
+            <KpiCard label="Gastos (30 dias)" value={fmt(d.gastos||0)} delta="vs ingresos" up={false} comp="ultimos 30 dias" icon={I.trend} tint={T.cyan} spark={gasSpark} loading={loading}/>
+            <KpiCard label="Resultado neto" value={fmt(d.resultado_neto||0)} delta={`${d.margen||0}% margen`} up={esPositivo} comp="30 dias" icon={I.trend} tint={esPositivo?T.green:T.red} spark={netSpark} loading={loading}/>
+            <KpiCard label="Ventas hoy" value={fmt(ventas?.today?.total_revenue||0, 2)} delta={`${ventas?.today?.total_sales||0} transacciones`} up={true} comp="hoy" icon={I.cart} tint={T.violet} spark={[0.2,0.4,0.3,0.5,0.7,0.6,0.8,0.75,0.9,1]} loading={loading}/>
           </div>
 
           <div style={{display:'grid',gridTemplateColumns:'minmax(0,1fr) 340px',gap:16,marginBottom:16}}>
@@ -445,7 +449,7 @@ export default function Dashboard() {
                       <div style={{fontSize:13,fontWeight:500,color:T.text,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{p.name}</div>
                       <div style={{fontSize:11,color:T.textFaint}}>{p.units_sold} uds</div>
                     </div>
-                    <div style={{fontSize:13,fontWeight:700,color:T.green}}>€{p.revenue.toFixed(0)}</div>
+                    <div style={{fontSize:13,fontWeight:700,color:T.green}}>{fmt(p.revenue, 0)}</div>
                   </div>
                 ))
               }

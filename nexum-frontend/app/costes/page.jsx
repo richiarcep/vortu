@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
+import { useCurrency } from '@/components/useCurrency'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'
 
@@ -88,6 +89,7 @@ function Field({ label, children }) {
 }
 
 export default function CentroCostesPag() {
+  const { fmt, sym } = useCurrency()
   const router = useRouter()
   const [token,       setToken]       = useState(null)
   const [loading,     setLoading]     = useState(true)
@@ -165,7 +167,7 @@ export default function CentroCostesPag() {
     await loadAll()
   }
 
-  const fmt = n => (n||0).toLocaleString('es-ES', { minimumFractionDigits:2 })
+  const fmtLocal = n => (n||0).toLocaleString('es-ES', { minimumFractionDigits:2 })
 
   return (
     <div style={{
@@ -218,13 +220,13 @@ export default function CentroCostesPag() {
             {[
               {
                 label:'Total este mes',
-                value:`€${fmt(dashboard.total_current)}`,
+                value:fmt(dashboard.total_current),
                 sub: `${dashboard.diff_pct > 0 ? '↑' : '↓'} ${Math.abs(dashboard.diff_pct)}% vs mes anterior`,
                 subColor: dashboard.diff_pct > 0 ? T.red : T.green,
               },
               {
                 label:'Mes anterior',
-                value:`€${fmt(dashboard.total_prev)}`,
+                value:fmt(dashboard.total_prev),
                 sub:'Referencia comparativa',
                 subColor: T.text4,
               },
@@ -263,7 +265,7 @@ export default function CentroCostesPag() {
                           {cat.icon} {cat.name}
                         </span>
                         <span style={{ fontSize:13, color:T.text3 }}>
-                          €{fmt(cat.total)}
+                          {fmt(cat.total)}
                           <span style={{ fontSize:11, color:T.text4, marginLeft:4 }}>({pct.toFixed(1)}%)</span>
                         </span>
                       </div>
@@ -287,7 +289,7 @@ export default function CentroCostesPag() {
                       <div style={{ display:'flex', justifyContent:'space-between', marginBottom:5 }}>
                         <span style={{ fontSize:13, color:T.text, fontWeight:500 }}>{dep.name}</span>
                         <span style={{ fontSize:13, color:T.text3 }}>
-                          €{fmt(dep.total)}
+                          {fmt(dep.total)}
                           <span style={{ fontSize:11, color:T.text4, marginLeft:4 }}>({pct.toFixed(1)}%)</span>
                         </span>
                       </div>
@@ -359,7 +361,7 @@ export default function CentroCostesPag() {
                         {new Date(e.date).toLocaleDateString('es-ES')}
                       </td>
                       <td style={{ padding:'13px 16px', fontSize:14, fontWeight:700, color:T.red }}>
-                        €{fmt(e.amount)}
+                        {fmt(e.amount)}
                       </td>
                       <td style={{ padding:'13px 16px' }}>
                         <button
@@ -411,7 +413,7 @@ export default function CentroCostesPag() {
                 />
               </Field>
 
-              <Field label="Importe (€) *">
+              <Field label={`Importe (${sym}) *`}>
                 <input
                   type="number" placeholder="0.00"
                   value={form.amount}

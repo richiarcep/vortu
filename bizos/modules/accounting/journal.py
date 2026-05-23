@@ -228,7 +228,8 @@ def get_account_balance(db, account_code: str, company_id: int,
     liabilities/equity/income increase with credits.
     """
     account = db.query(Account).filter(
-        Account.code == account_code
+        Account.code == account_code,
+        Account.company_id == company_id
     ).first()
 
     if not account:

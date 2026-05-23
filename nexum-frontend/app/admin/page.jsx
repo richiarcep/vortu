@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import { useCurrency } from '@/components/useCurrency'
 
 const API   = 'http://127.0.0.1:8000'
 const NAVY  = '#0B1426'
@@ -8,33 +9,33 @@ const GREEN = '#16a34a'
 const AMBER = '#d97706'
 const RED   = '#dc2626'
 const BLUE  = '#2563eb'
-const CYAN  = '#10b981'
+const CYAN  = '#00B4D8'
 const PURPLE = '#7c3aed'
 
 // ── Admin Sidebar ──────────────────────────────────────────────────────────────
 function AdminSidebar({ active }) {
   const router = useRouter()
   const links = [
-    { label: 'Overview',      href: '/admin',                icon: '◇' },
-    { label: 'Empresas',      href: '/admin?tab=companies',  icon: '◻' },
-    { label: 'Usuarios',      href: '/admin?tab=users',      icon: '○' },
-    { label: 'Snapshots',     href: '/admin?tab=snapshots',  icon: '▣' },
-    { label: 'Prompts IA',    href: '/admin?tab=prompts',    icon: '◆' },
-    { label: 'Memoria IA',    href: '/admin?tab=memory',     icon: '◈' },
-    { label: 'Flujo datos',   href: '/admin?tab=flowchart',  icon: '◎' },
-    { label: 'Prospector',    href: '/admin?tab=prospector', icon: '◉' },
-    { label: 'Billing',       href: '/admin?tab=billing',    icon: '▤' },
+    { label: 'Overview',      href: '/admin',                icon: '◈' },
+    { label: 'Empresas',      href: '/admin?tab=companies',  icon: '🏢' },
+    { label: 'Usuarios',      href: '/admin?tab=users',      icon: '👤' },
+    { label: 'Snapshots',     href: '/admin?tab=snapshots',  icon: '📊' },
+    { label: 'Prompts IA',    href: '/admin?tab=prompts',    icon: '🧠' },
+    { label: 'Memoria IA',    href: '/admin?tab=memory',     icon: '💾' },
+    { label: 'Flujo datos',   href: '/admin?tab=flowchart',  icon: '🔀' },
+    { label: 'Prospector',    href: '/admin?tab=prospector', icon: '🎯' },
+    { label: 'Billing',       href: '/admin?tab=billing',    icon: '💳' },
   ]
   return (
-    <div style={{ width: '220px', background: '#0a0f1a', minHeight: '100vh', flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
+    <div style={{ width: '220px', background: '#060d1a', minHeight: '100vh', flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
       <div style={{ padding: '24px 20px 20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
-          <div style={{ width: '32px', height: '32px', background: `linear-gradient(135deg, #10b981, #059669)`, borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <div style={{ width: '32px', height: '32px', background: `linear-gradient(135deg, ${CYAN}, ${BLUE})`, borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <svg width="17" height="17" viewBox="0 0 20 20" fill="none"><path d="M4 16V4L16 16V4" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
           </div>
           <div>
             <div style={{ color: 'white', fontWeight: '800', fontSize: '15px', letterSpacing: '-0.4px', lineHeight: 1 }}>Nexum</div>
-            <div style={{ color: '#10b981', fontSize: '10px', letterSpacing: '0.06em', textTransform: 'uppercase', marginTop: '1px' }}>Backoffice</div>
+            <div style={{ color: CYAN, fontSize: '10px', letterSpacing: '0.06em', textTransform: 'uppercase', marginTop: '1px' }}>Backoffice</div>
           </div>
         </div>
       </div>
@@ -43,7 +44,7 @@ function AdminSidebar({ active }) {
         {links.map(item => {
           const isActive = active === item.href
           return (
-            <a key={item.href} href={item.href} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 20px', color: isActive ? 'white' : 'rgba(255,255,255,0.4)', textDecoration: 'none', fontSize: '13px', fontWeight: isActive ? '600' : '400', background: isActive ? 'rgba(16,185,129,0.12)' : 'transparent', borderLeft: isActive ? '2px solid #10b981' : '2px solid transparent', transition: 'all 0.15s' }}>
+            <a key={item.href} href={item.href} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 20px', color: isActive ? 'white' : 'rgba(255,255,255,0.4)', textDecoration: 'none', fontSize: '13px', fontWeight: isActive ? '600' : '400', background: isActive ? 'rgba(0,180,216,0.12)' : 'transparent', borderLeft: isActive ? `2px solid ${CYAN}` : '2px solid transparent', transition: 'all 0.15s' }}>
               <span style={{ fontSize: '13px', opacity: isActive ? 1 : 0.55 }}>{item.icon}</span>{item.label}
             </a>
           )
@@ -59,7 +60,7 @@ function AdminSidebar({ active }) {
 // ── Stat Card ──────────────────────────────────────────────────────────────────
 function StatCard({ icon, label, value, sub, color = NAVY, bg = 'white' }) {
   return (
-    <div style={{ background: bg, borderRadius: '16px', border: '0.5px solid rgba(0,0,0,0.06)', padding: '20px' }}>
+    <div style={{ background: bg, borderRadius: '14px', border: '1px solid #e5e9f0', padding: '20px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
         <span style={{ fontSize: '20px' }}>{icon}</span>
         {sub && <span style={{ fontSize: '11px', color: '#9ca3af' }}>{sub}</span>}
@@ -127,7 +128,7 @@ function DataFlowchart() {
   }
 
   return (
-    <div style={{ background: 'white', borderRadius: '16px', border: '0.5px solid rgba(0,0,0,0.06)', padding: '24px', overflow: 'auto' }}>
+    <div style={{ background: 'white', borderRadius: '16px', border: '1px solid #e5e9f0', padding: '24px', overflow: 'auto' }}>
       <div style={{ fontSize: '15px', fontWeight: '700', color: NAVY, marginBottom: '20px' }}>🔀 Flujo de datos — Vortu</div>
       <svg width="980" height="540" style={{ display: 'block', minWidth: '980px' }}>
         <defs>
@@ -177,6 +178,7 @@ function DataFlowchart() {
 
 // ── Main ───────────────────────────────────────────────────────────────────────
 function MemoryTab({ companies, selectedCompany, setSelectedCompany, token, API }) {
+  const { fmt, sym } = useCurrency()
   const [entries, setEntries] = useState([])
   const [memEdit, setMemEdit] = useState({ manual_training: '', business_personality: '', business_goals: '' })
   const [loading, setLoading] = useState(false)
@@ -202,6 +204,7 @@ function MemoryTab({ companies, selectedCompany, setSelectedCompany, token, API 
         setMemEdit({ manual_training: d.manual_training || '', business_personality: d.business_personality || '', business_goals: d.business_goals || '' })
       }
     } catch(e) {} finally { setLoading(false) }
+
   }
 
   function selectCompany(id) {
@@ -232,7 +235,8 @@ function MemoryTab({ companies, selectedCompany, setSelectedCompany, token, API 
       const r = await fetch(`${API}/api/admin/memory/${selectedCompany}/auto-update`, { method: 'POST', headers: h() })
       if (r.ok) { setMsg({ type: 'ok', text: '✅ IA actualizó la memoria con nuevos patrones' }); loadEntries(selectedCompany) }
       else setMsg({ type: 'err', text: '❌ Error en auto-actualización' })
-    } catch(e) { setMsg({ type: 'err', text: '❌ Error de conexión' }) }
+    } catch(e) { setMsg({ type: 'err',
+ text: '❌ Error de conexión' }) }
     finally { setAutoLoading(false); setTimeout(() => setMsg(null), 5000) }
   }
 
@@ -303,7 +307,7 @@ function MemoryTab({ companies, selectedCompany, setSelectedCompany, token, API 
               {loading ? (
                 <div style={{ textAlign: 'center', padding: '40px', color: '#9ca3af' }}>Cargando memoria...</div>
               ) : autoEntries.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '48px', color: '#9ca3af', background: 'white', borderRadius: '16px', border: '0.5px solid rgba(0,0,0,0.06)' }}>
+                <div style={{ textAlign: 'center', padding: '48px', color: '#9ca3af', background: 'white', borderRadius: '14px', border: '1px solid #e5e9f0' }}>
                   <div style={{ fontSize: '32px', marginBottom: '10px' }}>🤖</div>
                   <div style={{ fontSize: '14px', marginBottom: '6px' }}>Sin aprendizajes todavía</div>
                   <div style={{ fontSize: '12px' }}>Pulsa "Auto-actualizar IA" para que Claude analice los datos y detecte patrones.</div>
@@ -311,7 +315,7 @@ function MemoryTab({ companies, selectedCompany, setSelectedCompany, token, API 
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {autoEntries.map((e, i) => (
-                    <div key={e.id} style={{ background: 'white', borderRadius: '10px', border: '0.5px solid rgba(0,0,0,0.06)', padding: '14px 16px', display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                    <div key={e.id} style={{ background: 'white', borderRadius: '10px', border: '1px solid #e5e9f0', padding: '14px 16px', display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
                       <div style={{ flexShrink: 0, width: '6px', height: '6px', borderRadius: '50%', background: catColor(e.categoria), marginTop: '6px' }} />
                       <div style={{ flex: 1 }}>
                         <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '6px', flexWrap: 'wrap' }}>
@@ -331,7 +335,7 @@ function MemoryTab({ companies, selectedCompany, setSelectedCompany, token, API 
 
           {/* MANUAL TAB */}
           {activeTab === 'manual' && (
-            <div style={{ background: 'white', borderRadius: '16px', border: '0.5px solid rgba(0,0,0,0.06)', padding: '24px' }}>
+            <div style={{ background: 'white', borderRadius: '14px', border: '1px solid #e5e9f0', padding: '24px' }}>
               <div style={{ fontSize: '13px', color: '#6b7280', marginBottom: '20px', lineHeight: '1.6' }}>
                 Escribe aquí lo que quieres que la IA sepa sobre este negocio. Esto se combina con los aprendizajes automáticos en cada consulta.
               </div>
@@ -342,13 +346,13 @@ function MemoryTab({ companies, selectedCompany, setSelectedCompany, token, API 
                 ].map(f => (
                   <div key={f.key}>
                     <label style={{ fontSize: '11px', fontWeight: '700', color: '#374151', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{f.label}</label>
-                    <textarea value={memEdit[f.key]} onChange={e => setMemEdit(p => ({ ...p, [f.key]: e.target.value }))} rows={8} placeholder={f.placeholder} style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '0.5px solid rgba(0,0,0,0.06)', fontSize: '13px', fontFamily: 'inherit', lineHeight: '1.6', resize: 'vertical', outline: 'none', boxSizing: 'border-box' }} />
+                    <textarea value={memEdit[f.key]} onChange={e => setMemEdit(p => ({ ...p, [f.key]: e.target.value }))} rows={8} placeholder={f.placeholder} style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #e5e9f0', fontSize: '13px', fontFamily: 'inherit', lineHeight: '1.6', resize: 'vertical', outline: 'none', boxSizing: 'border-box' }} />
                   </div>
                 ))}
               </div>
               <div style={{ marginBottom: '16px' }}>
                 <label style={{ fontSize: '11px', fontWeight: '700', color: '#374151', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Objetivos del negocio</label>
-                <textarea value={memEdit.business_goals} onChange={e => setMemEdit(p => ({ ...p, business_goals: e.target.value }))} rows={4} placeholder="Queremos abrir una segunda tienda en 2027. Objetivo: llegar a €20k/mes de facturación. Foco actual: fidelizar clientes existentes..." style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '0.5px solid rgba(0,0,0,0.06)', fontSize: '13px', fontFamily: 'inherit', lineHeight: '1.6', resize: 'vertical', outline: 'none', boxSizing: 'border-box' }} />
+                <textarea value={memEdit.business_goals} onChange={e => setMemEdit(p => ({ ...p, business_goals: e.target.value }))} rows={4} placeholder="Queremos abrir una segunda tienda en 2027. Objetivo: llegar a ${sym}20k/mes de facturación. Foco actual: fidelizar clientes existentes..." style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #e5e9f0', fontSize: '13px', fontFamily: 'inherit', lineHeight: '1.6', resize: 'vertical', outline: 'none', boxSizing: 'border-box' }} />
               </div>
 
               {/* Manual entries history */}
@@ -357,7 +361,7 @@ function MemoryTab({ companies, selectedCompany, setSelectedCompany, token, API 
                   <div style={{ fontSize: '11px', fontWeight: '700', color: '#374151', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '8px' }}>Historial de entradas manuales</div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '200px', overflowY: 'auto' }}>
                     {manualEntries.map(e => (
-                      <div key={e.id} style={{ background: '#f8fafc', borderRadius: '8px', padding: '10px 12px', border: '0.5px solid rgba(0,0,0,0.06)', fontSize: '11px' }}>
+                      <div key={e.id} style={{ background: '#f8fafc', borderRadius: '8px', padding: '10px 12px', border: '1px solid #e5e9f0', fontSize: '11px' }}>
                         <div style={{ color: '#9ca3af', marginBottom: '3px' }}>{e.created_at?.substring(0,16).replace('T',' ')} · {e.autor}</div>
                         <div style={{ color: '#374151', lineHeight: '1.5' }}>{e.contenido?.substring(0, 150)}{e.contenido?.length > 150 ? '...' : ''}</div>
                       </div>
@@ -378,6 +382,7 @@ function MemoryTab({ companies, selectedCompany, setSelectedCompany, token, API 
 }
 
 function BillingTab({ token, API }) {
+  const { fmt, sym } = useCurrency()
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState(null)
@@ -428,13 +433,13 @@ function BillingTab({ token, API }) {
       {/* KPI Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: '12px', marginBottom: '20px' }}>
         {[
-          { label: 'MRR estimado', value: `€${data.total_mrr?.toLocaleString('es-ES')}`, color: GREEN, bg: '#f0fdf4' },
+          { label: 'MRR estimado', value: fmt(data.total_mrr ?? 0), color: GREEN, bg: '#f0fdf4' },
           { label: 'En Beta', value: data.by_fase?.beta || 0, color: PURPLE, bg: '#f5f3ff' },
           { label: 'Early Adopters', value: data.by_fase?.early_adopter || 0, color: AMBER, bg: '#fffbeb' },
           { label: 'Pagando', value: data.by_fase?.paid || 0, color: GREEN, bg: '#f0fdf4' },
           { label: 'Total empresas', value: data.total || 0, color: NAVY, bg: 'white' },
         ].map(k => (
-          <div key={k.label} style={{ background: k.bg, borderRadius: '14px', padding: '14px 16px', border: '0.5px solid rgba(0,0,0,0.06)' }}>
+          <div key={k.label} style={{ background: k.bg, borderRadius: '12px', padding: '14px 16px', border: '1px solid #e5e9f0' }}>
             <div style={{ fontSize: '10px', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>{k.label}</div>
             <div style={{ fontSize: '22px', fontWeight: '800', color: k.color }}>{k.value}</div>
           </div>
@@ -448,9 +453,9 @@ function BillingTab({ token, API }) {
       )}
 
       {/* Companies table */}
-      <div style={{ background: 'white', borderRadius: '16px', border: '0.5px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+      <div style={{ background: 'white', borderRadius: '14px', border: '1px solid #e5e9f0', overflow: 'hidden' }}>
         {/* Header */}
-        <div style={{ background: '#0f1729', padding: '10px 16px', borderRadius: '10px 10px 0 0', display: 'grid', gridTemplateColumns: '2fr 100px 120px 140px 1fr 1fr 180px', gap: '12px', alignItems: 'center' }}>
+        <div style={{ background: NAVY, padding: '10px 16px', display: 'grid', gridTemplateColumns: '2fr 100px 120px 140px 1fr 1fr 180px', gap: '12px', alignItems: 'center' }}>
           {['Empresa', 'Plan', 'Fase', 'Vence', 'Uso IA', 'Docs', 'Cambiar fase'].map(h => (
             <div key={h} style={{ fontSize: '10px', fontWeight: '700', color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{h}</div>
           ))}
@@ -510,7 +515,7 @@ function BillingTab({ token, API }) {
                   → {faseLabel(f)}
                 </button>
               ))}
-              {c.mrr > 0 && <span style={{ fontSize: '11px', fontWeight: '700', color: GREEN, alignSelf: 'center', marginLeft: '4px' }}>€{c.mrr}/mes</span>}
+              {c.mrr > 0 && <span style={{ fontSize: '11px', fontWeight: '700', color: GREEN, alignSelf: 'center', marginLeft: '4px' }}>{fmt(c.mrr)}/mes</span>}
             </div>
           </div>
         ))}
@@ -663,7 +668,7 @@ function ProspectorTab({ token, API }) {
             { label: 'Enviados', value: stats.leads_enviados, color: BLUE },
             { label: 'Score medio', value: `${stats.avg_score}/10`, color: AMBER },
           ].map(k => (
-            <div key={k.label} style={{ background: 'white', borderRadius: '14px', padding: '14px 16px', border: '0.5px solid rgba(0,0,0,0.06)' }}>
+            <div key={k.label} style={{ background: 'white', borderRadius: '12px', padding: '14px 16px', border: '1px solid #e5e9f0' }}>
               <div style={{ fontSize: '10px', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>{k.label}</div>
               <div style={{ fontSize: '22px', fontWeight: '800', color: k.color }}>{k.value}</div>
             </div>
@@ -677,22 +682,22 @@ function ProspectorTab({ token, API }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
 
           {/* Search form */}
-          <div style={{ background: 'white', borderRadius: '16px', border: '0.5px solid rgba(0,0,0,0.06)', padding: '20px' }}>
+          <div style={{ background: 'white', borderRadius: '14px', border: '1px solid #e5e9f0', padding: '20px' }}>
             <div style={{ fontSize: '13px', fontWeight: '800', color: NAVY, marginBottom: '14px' }}>🎯 Nueva búsqueda</div>
 
             <div style={{ marginBottom: '10px' }}>
               <label style={{ fontSize: '11px', fontWeight: '700', color: '#374151', display: 'block', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Qué buscar</label>
-              <input value={prompt} onChange={e => setPrompt(e.target.value)} placeholder='Ej: "restaurantes", "peluquerías", "gimnasios"' style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '0.5px solid rgba(0,0,0,0.06)', fontSize: '13px', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }} onKeyDown={e => e.key === 'Enter' && startSearch()} />
+              <input value={prompt} onChange={e => setPrompt(e.target.value)} placeholder='Ej: "restaurantes", "peluquerías", "gimnasios"' style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #e5e9f0', fontSize: '13px', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }} onKeyDown={e => e.key === 'Enter' && startSearch()} />
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '12px' }}>
               <div>
                 <label style={{ fontSize: '11px', fontWeight: '700', color: '#374151', display: 'block', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Ciudad</label>
-                <input value={location} onChange={e => setLocation(e.target.value)} style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '0.5px solid rgba(0,0,0,0.06)', fontSize: '12px', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }} />
+                <input value={location} onChange={e => setLocation(e.target.value)} style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #e5e9f0', fontSize: '12px', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }} />
               </div>
               <div>
                 <label style={{ fontSize: '11px', fontWeight: '700', color: '#374151', display: 'block', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Max leads</label>
-                <select value={maxResults} onChange={e => setMaxResults(Number(e.target.value))} style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '0.5px solid rgba(0,0,0,0.06)', fontSize: '12px', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}>
+                <select value={maxResults} onChange={e => setMaxResults(Number(e.target.value))} style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #e5e9f0', fontSize: '12px', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}>
                   <option value={20}>20 leads</option>
                   <option value={50}>50 leads</option>
                   <option value={100}>100 leads</option>
@@ -714,7 +719,7 @@ function ProspectorTab({ token, API }) {
           </div>
 
           {/* Search history */}
-          <div style={{ background: 'white', borderRadius: '16px', border: '0.5px solid rgba(0,0,0,0.06)', padding: '16px' }}>
+          <div style={{ background: 'white', borderRadius: '14px', border: '1px solid #e5e9f0', padding: '16px' }}>
             <div style={{ fontSize: '12px', fontWeight: '700', color: NAVY, marginBottom: '10px' }}>Historial de búsquedas</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '400px', overflowY: 'auto' }}>
               {searches.length === 0 && <div style={{ fontSize: '12px', color: '#9ca3af', textAlign: 'center', padding: '20px' }}>Sin búsquedas todavía</div>}
@@ -733,7 +738,7 @@ function ProspectorTab({ token, API }) {
         </div>
 
         {/* Right panel — Leads */}
-        <div style={{ background: 'white', borderRadius: '16px', border: '0.5px solid rgba(0,0,0,0.06)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ background: 'white', borderRadius: '14px', border: '1px solid #e5e9f0', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
           {!selectedSearch ? (
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '12px', padding: '60px', color: '#9ca3af' }}>
               <div style={{ fontSize: '40px', opacity: 0.2 }}>🎯</div>
@@ -744,7 +749,7 @@ function ProspectorTab({ token, API }) {
               {/* Leads toolbar */}
               <div style={{ padding: '14px 16px', borderBottom: '1px solid #e5e9f0', display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
                 <span style={{ fontSize: '13px', fontWeight: '700', color: NAVY }}>Leads #{selectedSearch}</span>
-                <button onClick={() => setShowMap(m => !m)} style={{ padding: '5px 12px', borderRadius: '7px', border: '0.5px solid rgba(0,0,0,0.06)', background: showMap ? NAVY : 'white', color: showMap ? 'white' : '#374151', fontSize: '11px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit' }}>
+                <button onClick={() => setShowMap(m => !m)} style={{ padding: '5px 12px', borderRadius: '7px', border: '1px solid #e5e9f0', background: showMap ? NAVY : 'white', color: showMap ? 'white' : '#374151', fontSize: '11px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit' }}>
                   🗺️ {showMap ? 'Ocultar mapa' : 'Ver mapa'}
                 </button>
                 <div style={{ display: 'flex', gap: '4px' }}>
@@ -756,7 +761,7 @@ function ProspectorTab({ token, API }) {
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginLeft: 'auto' }}>
                   <span style={{ fontSize: '11px', color: '#6b7280' }}>Score min:</span>
-                  <select value={minScore} onChange={e => { setMinScore(Number(e.target.value)); loadLeads(selectedSearch) }} style={{ padding: '4px 8px', borderRadius: '6px', border: '0.5px solid rgba(0,0,0,0.06)', fontSize: '11px', fontFamily: 'inherit' }}>
+                  <select value={minScore} onChange={e => { setMinScore(Number(e.target.value)); loadLeads(selectedSearch) }} style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid #e5e9f0', fontSize: '11px', fontFamily: 'inherit' }}>
                     {[0,5,6,7,8,9].map(s => <option key={s} value={s}>{s}+</option>)}
                   </select>
                 </div>
@@ -842,10 +847,10 @@ function ProspectorTab({ token, API }) {
 
                     {/* Mensaje */}
                     {lead.mensaje_generado && (
-                      <div style={{ background: '#f8faff', borderRadius: '8px', padding: '10px 12px', marginBottom: '8px', border: '0.5px solid rgba(0,0,0,0.06)' }}>
+                      <div style={{ background: '#f8faff', borderRadius: '8px', padding: '10px 12px', marginBottom: '8px', border: '1px solid #e5e9f0' }}>
                         <div style={{ fontSize: '10px', fontWeight: '700', color: BLUE, marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Mensaje — {lead.canal_recomendado}</div>
                         {editingMsg === lead.id ? (
-                          <textarea defaultValue={lead.mensaje_generado} id={`msg-${lead.id}`} rows={4} style={{ width: '100%', fontSize: '11px', fontFamily: 'inherit', lineHeight: '1.6', border: '0.5px solid rgba(0,0,0,0.06)', borderRadius: '6px', padding: '8px', resize: 'vertical', outline: 'none', boxSizing: 'border-box' }} />
+                          <textarea defaultValue={lead.mensaje_generado} id={`msg-${lead.id}`} rows={4} style={{ width: '100%', fontSize: '11px', fontFamily: 'inherit', lineHeight: '1.6', border: '1px solid #e5e9f0', borderRadius: '6px', padding: '8px', resize: 'vertical', outline: 'none', boxSizing: 'border-box' }} />
                         ) : (
                           <div style={{ fontSize: '11px', color: '#374151', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>{lead.mensaje_generado}</div>
                         )}
@@ -866,16 +871,16 @@ function ProspectorTab({ token, API }) {
                       {editingMsg === lead.id ? (
                         <>
                           <button onClick={() => { const el = document.getElementById(`msg-${lead.id}`); updateLead(lead.id, lead.estado, el.value); setEditingMsg(null) }} style={{ padding: '5px 12px', borderRadius: '7px', border: 'none', background: NAVY, color: 'white', fontSize: '11px', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit' }}>💾 Guardar</button>
-                          <button onClick={() => setEditingMsg(null)} style={{ padding: '5px 12px', borderRadius: '7px', border: '0.5px solid rgba(0,0,0,0.06)', background: 'white', color: '#6b7280', fontSize: '11px', cursor: 'pointer', fontFamily: 'inherit' }}>Cancelar</button>
+                          <button onClick={() => setEditingMsg(null)} style={{ padding: '5px 12px', borderRadius: '7px', border: '1px solid #e5e9f0', background: 'white', color: '#6b7280', fontSize: '11px', cursor: 'pointer', fontFamily: 'inherit' }}>Cancelar</button>
                         </>
                       ) : (
                         <>
-                          <button onClick={() => setEditingMsg(lead.id)} style={{ padding: '5px 12px', borderRadius: '7px', border: '0.5px solid rgba(0,0,0,0.06)', background: 'white', color: '#374151', fontSize: '11px', cursor: 'pointer', fontFamily: 'inherit' }}>✏️ Editar mensaje</button>
-                          <button onClick={() => regenerateMessage(lead.id)} style={{ padding: '5px 12px', borderRadius: '7px', border: '0.5px solid rgba(0,0,0,0.06)', background: 'white', color: PURPLE, fontSize: '11px', cursor: 'pointer', fontFamily: 'inherit' }}>🔄 Regenerar</button>
+                          <button onClick={() => setEditingMsg(lead.id)} style={{ padding: '5px 12px', borderRadius: '7px', border: '1px solid #e5e9f0', background: 'white', color: '#374151', fontSize: '11px', cursor: 'pointer', fontFamily: 'inherit' }}>✏️ Editar mensaje</button>
+                          <button onClick={() => regenerateMessage(lead.id)} style={{ padding: '5px 12px', borderRadius: '7px', border: '1px solid #e5e9f0', background: 'white', color: PURPLE, fontSize: '11px', cursor: 'pointer', fontFamily: 'inherit' }}>🔄 Regenerar</button>
                         </>
                       )}
-                      {lead.website && <a href={lead.website} target="_blank" rel="noreferrer" style={{ padding: '5px 12px', borderRadius: '7px', border: '0.5px solid rgba(0,0,0,0.06)', background: 'white', color: '#374151', fontSize: '11px', textDecoration: 'none' }}>🌐 Web</a>}
-                      {lead.instagram && <a href={lead.instagram} target="_blank" rel="noreferrer" style={{ padding: '5px 12px', borderRadius: '7px', border: '0.5px solid rgba(0,0,0,0.06)', background: 'white', color: '#374151', fontSize: '11px', textDecoration: 'none' }}>📸 IG</a>}
+                      {lead.website && <a href={lead.website} target="_blank" rel="noreferrer" style={{ padding: '5px 12px', borderRadius: '7px', border: '1px solid #e5e9f0', background: 'white', color: '#374151', fontSize: '11px', textDecoration: 'none' }}>🌐 Web</a>}
+                      {lead.instagram && <a href={lead.instagram} target="_blank" rel="noreferrer" style={{ padding: '5px 12px', borderRadius: '7px', border: '1px solid #e5e9f0', background: 'white', color: '#374151', fontSize: '11px', textDecoration: 'none' }}>📸 IG</a>}
                     </div>
                   </div>
                 ))}
@@ -889,6 +894,7 @@ function ProspectorTab({ token, API }) {
 }
 
 function AIInsights({ token }) {
+  const { fmt, sym } = useCurrency()
   const [analysis, setAnalysis] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -918,7 +924,7 @@ function AIInsights({ token }) {
   const urgColor = v => v === 'alta' ? RED : v === 'media' ? AMBER : GREEN
 
   return (
-    <div style={{ background: 'white', borderRadius: '16px', border: '0.5px solid rgba(0,0,0,0.06)', padding: '20px', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+    <div style={{ background: 'white', borderRadius: '14px', border: '1px solid #e5e9f0', padding: '20px', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
         <div>
           <div style={{ fontSize: '14px', fontWeight: '800', color: NAVY }}>🧠 Análisis IA de la plataforma</div>
@@ -998,6 +1004,7 @@ function AIInsights({ token }) {
 }
 
 export default function AdminPage() {
+  const { fmt, sym } = useCurrency()
   const router = useRouter()
   const [token, setToken] = useState(null)
   const [tab, setTab] = useState('overview')
@@ -1132,7 +1139,7 @@ export default function AdminPage() {
     try { await fetch(`${API}/api/admin/memory/${companyId}/auto-update`, { method: 'POST', headers: h() }) } catch {}
   }
 
-  const card = { background: 'white', borderRadius: '16px', border: '0.5px solid rgba(0,0,0,0.06)' }
+  const card = { background: 'white', borderRadius: '14px', border: '1px solid #e5e9f0' }
   const input = { width: '100%', padding: '9px 12px', borderRadius: '9px', border: '1.5px solid #e5e9f0', fontSize: '13px', fontFamily: "'DM Sans', system-ui", outline: 'none', color: NAVY }
   const btn = { padding: '9px 18px', borderRadius: '9px', border: 'none', background: NAVY, color: 'white', fontWeight: '700', fontSize: '13px', cursor: 'pointer', fontFamily: "'DM Sans', system-ui" }
 
@@ -1182,7 +1189,7 @@ export default function AdminPage() {
                     <StatCard icon="🏢" label="Empresas registradas"  value={overview.total_companies}    color={NAVY}  />
                     <StatCard icon="👤" label="Usuarios activos"      value={overview.active_users}       color={GREEN} bg="#f0fdf4" />
                     <StatCard icon="💳" label="Suscripciones activas" value={overview.active_subscriptions} color={BLUE} bg="#eff6ff" />
-                    <StatCard icon="💶" label="MRR estimado"          value={`€${overview.mrr_estimated?.toLocaleString('es-ES')}`} color={GREEN} bg="#f0fdf4" />
+                    <StatCard icon="💶" label="MRR estimado"          value={fmt(overview.mrr_estimated || 0)} color={GREEN} bg="#f0fdf4" />
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '14px', marginBottom: '24px' }}>
                     <StatCard icon="🧪" label="En trial"       value={overview.trial_subscriptions} color={AMBER} bg="#fffbeb" />
@@ -1198,7 +1205,7 @@ export default function AdminPage() {
                     ) : (
                       <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
                         {Object.entries(overview.subscriptions_by_plan || {}).map(([plan, count]) => (
-                          <div key={plan} style={{ background: '#f8faff', borderRadius: '10px', padding: '14px 20px', textAlign: 'center', border: '0.5px solid rgba(0,0,0,0.06)', minWidth: '100px' }}>
+                          <div key={plan} style={{ background: '#f8faff', borderRadius: '10px', padding: '14px 20px', textAlign: 'center', border: '1px solid #e5e9f0', minWidth: '100px' }}>
                             <div style={{ fontSize: '24px', fontWeight: '800', color: NAVY, marginBottom: '4px' }}>{count}</div>
                             <PlanBadge plan={plan} />
                           </div>
@@ -1224,7 +1231,7 @@ export default function AdminPage() {
 
               {selectedCompany && companyDetail ? (
                 <div>
-                  <button onClick={() => { setSelectedCompany(null); setCompanyDetail(null) }} style={{ ...btn, background: '#f4f6fb', color: NAVY, border: '0.5px solid rgba(0,0,0,0.06)', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}>← Volver</button>
+                  <button onClick={() => { setSelectedCompany(null); setCompanyDetail(null) }} style={{ ...btn, background: '#f4f6fb', color: NAVY, border: '1px solid #e5e9f0', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}>← Volver</button>
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
                     <div style={{ ...card, padding: '20px' }}>
@@ -1243,7 +1250,7 @@ export default function AdminPage() {
                         {(companyDetail.snapshots || []).map((s, i) => (
                           <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f8f9fc', fontSize: '12px' }}>
                             <span style={{ color: '#6b7280' }}>{s.date}</span>
-                            <span style={{ fontWeight: '600', color: GREEN }}>€{s.ingresos?.toLocaleString('es-ES')}</span>
+                            <span style={{ fontWeight: '600', color: GREEN }}>{fmt(s.ingresos ?? 0)}</span>
                             <StatusBadge status={s.tendencia === 'creciendo' ? 'active' : s.tendencia === 'bajando' ? 'past_due' : 'trialing'} />
                           </div>
                         ))}
@@ -1270,26 +1277,26 @@ export default function AdminPage() {
                 </div>
               ) : (
                 <div style={{ ...card, overflow: 'hidden' }}>
-                  <div style={{ background: '#0f1729', padding: '12px 18px', borderRadius: '10px 10px 0 0', display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr auto', gap: '12px', alignItems: 'center' }}>
+                  <div style={{ background: NAVY, padding: '12px 18px', display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr auto', gap: '12px', alignItems: 'center' }}>
                     {['Empresa', 'Plan', 'Estado', 'Ingresos/mes', 'Snapshots', 'Acciones'].map(h => (
                       <div key={h} style={{ fontSize: '11px', fontWeight: '700', color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{h}</div>
                     ))}
                   </div>
                   {loading ? <div style={{ padding: '40px', textAlign: 'center', color: '#9ca3af' }}>Cargando empresas...</div>
                   : filteredCompanies.map((c, i) => (
-                    <div key={c.id} style={{ padding: '14px 18px', borderBottom: i < filteredCompanies.length - 1 ? '1px solid #f0f2f7' : 'none', display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr auto', gap: '12px', alignItems: 'center', background: i % 2 === 0 ? 'white' : '#fafbfc' }}>
+                    <div key={c.id} style={{ padding: '14px 18px', borderBottom: i < filteredCompanies.length - 1 ? '1px solid #f0f2f7' : 'none', display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr auto', gap: '12px', alignItems: 'center', background: i % 2 === 0 ? 'white' : '#fafafa' }}>
                       <div>
                         <div style={{ fontSize: '13px', fontWeight: '700', color: NAVY }}>{c.name}</div>
                         <div style={{ fontSize: '11px', color: '#9ca3af' }}>{c.email} · {c.users_count} usuario{c.users_count !== 1 ? 's' : ''}</div>
                       </div>
                       <PlanBadge plan={c.plan} />
                       <StatusBadge status={c.plan_status} />
-                      <span style={{ fontSize: '13px', fontWeight: '700', color: GREEN }}>€{c.monthly_revenue?.toLocaleString('es-ES') || 0}</span>
+                      <span style={{ fontSize: '13px', fontWeight: '700', color: GREEN }}>{fmt(c.monthly_revenue || 0)}</span>
                       <span style={{ fontSize: '12px', color: '#6b7280' }}>{c.snapshot ? `${c.snapshot.date?.substring(0,7)} · ${c.snapshot.tendencia}` : '—'}</span>
                       <div style={{ display: 'flex', gap: '6px' }}>
-                        <button onClick={() => { setSelectedCompany(c.id); loadCompanyDetail(c.id) }} style={{ padding: '5px 10px', borderRadius: '6px', border: '0.5px solid rgba(0,0,0,0.06)', background: 'white', color: NAVY, fontSize: '11px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit' }}>Ver</button>
-                        <button onClick={() => { setPlanModal(c.id); setNewPlan(c.plan || 'pro') }} style={{ padding: '5px 10px', borderRadius: '6px', border: '0.5px solid rgba(0,0,0,0.06)', background: '#eff6ff', color: BLUE, fontSize: '11px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit' }}>Plan</button>
-                        <button onClick={() => generateSnapshot(c.id)} style={{ padding: '5px 10px', borderRadius: '6px', border: '0.5px solid rgba(0,0,0,0.06)', background: '#f5f3ff', color: PURPLE, fontSize: '11px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit' }}>📊</button>
+                        <button onClick={() => { setSelectedCompany(c.id); loadCompanyDetail(c.id) }} style={{ padding: '5px 10px', borderRadius: '6px', border: '1px solid #e5e9f0', background: 'white', color: NAVY, fontSize: '11px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit' }}>Ver</button>
+                        <button onClick={() => { setPlanModal(c.id); setNewPlan(c.plan || 'pro') }} style={{ padding: '5px 10px', borderRadius: '6px', border: '1px solid #e5e9f0', background: '#eff6ff', color: BLUE, fontSize: '11px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit' }}>Plan</button>
+                        <button onClick={() => generateSnapshot(c.id)} style={{ padding: '5px 10px', borderRadius: '6px', border: '1px solid #e5e9f0', background: '#f5f3ff', color: PURPLE, fontSize: '11px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit' }}>📊</button>
                       </div>
                     </div>
                   ))}
@@ -1306,7 +1313,7 @@ export default function AdminPage() {
                     </select>
                     <div style={{ display: 'flex', gap: '10px' }}>
                       <button onClick={updatePlan} disabled={saving} style={{ ...btn, flex: 1 }}>{saving ? 'Guardando...' : 'Confirmar cambio'}</button>
-                      <button onClick={() => setPlanModal(null)} style={{ ...btn, background: '#f4f6fb', color: NAVY, border: '0.5px solid rgba(0,0,0,0.06)' }}>Cancelar</button>
+                      <button onClick={() => setPlanModal(null)} style={{ ...btn, background: '#f4f6fb', color: NAVY, border: '1px solid #e5e9f0' }}>Cancelar</button>
                     </div>
                   </div>
                 </div>
@@ -1322,14 +1329,14 @@ export default function AdminPage() {
                 <span style={{ fontSize: '13px', color: '#6b7280' }}>{users.length} usuarios</span>
               </div>
               <div style={{ ...card, overflow: 'hidden' }}>
-                <div style={{ background: '#0f1729', padding: '12px 18px', borderRadius: '10px 10px 0 0', display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr auto', gap: '12px' }}>
+                <div style={{ background: NAVY, padding: '12px 18px', display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr auto', gap: '12px' }}>
                   {['Usuario', 'Empresa', 'Rol', 'Estado', 'Acciones'].map(h => (
                     <div key={h} style={{ fontSize: '11px', fontWeight: '700', color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{h}</div>
                   ))}
                 </div>
                 {loading ? <div style={{ padding: '40px', textAlign: 'center', color: '#9ca3af' }}>Cargando usuarios...</div>
                 : users.filter(u => !searchQ || u.email?.includes(searchQ) || u.full_name?.includes(searchQ)).map((u, i) => (
-                  <div key={u.id} style={{ padding: '12px 18px', borderBottom: '1px solid #f0f2f7', display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr auto', gap: '12px', alignItems: 'center', background: i % 2 === 0 ? 'white' : '#fafbfc' }}>
+                  <div key={u.id} style={{ padding: '12px 18px', borderBottom: '1px solid #f0f2f7', display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr auto', gap: '12px', alignItems: 'center', background: i % 2 === 0 ? 'white' : '#fafafa' }}>
                     <div>
                       <div style={{ fontSize: '13px', fontWeight: '600', color: NAVY }}>{u.full_name || u.email}</div>
                       <div style={{ fontSize: '11px', color: '#9ca3af' }}>{u.email}</div>
@@ -1377,8 +1384,8 @@ export default function AdminPage() {
               <div style={{ ...card, overflow: 'hidden' }}>
                 <div style={{ overflowX: 'auto' }}>
                   {/* Header */}
-                  <div style={{ background: '#0f1729', padding: '10px 16px', borderRadius: '10px 10px 0 0', display: 'grid', gridTemplateColumns: '50px 70px 80px 90px 80px 70px 100px 100px 100px 75px 75px 70px 75px 75px 80px 70px 75px 75px 80px 110px 110px 100px', gap: '8px', alignItems: 'center', minWidth: '1700px' }}>
-                    {['ID','Empresa','Fecha','Sector','Tamaño','Emp.','Ingresos','Gastos','Resultado','Margen%','Crecim%','Ventas','Ticket €','Clientes','Sentiment','Cli.Riesgo','Proyectos','Health','AI Score','Tendencia','Salud Fin.','Riesgo'].map(h=>(
+                  <div style={{ background: NAVY, padding: '10px 16px', display: 'grid', gridTemplateColumns: '50px 70px 80px 90px 80px 70px 100px 100px 100px 75px 75px 70px 75px 75px 80px 70px 75px 75px 80px 110px 110px 100px', gap: '8px', alignItems: 'center', minWidth: '1700px' }}>
+                    {['ID','Empresa','Fecha','Sector','Tamaño','Emp.','Ingresos','Gastos','Resultado','Margen%','Crecim%','Ventas',`Ticket ${sym}`,'Clientes','Sentiment','Cli.Riesgo','Proyectos','Health','AI Score','Tendencia','Salud Fin.','Riesgo'].map(h=>(
                       <div key={h} style={{ fontSize: '9px', fontWeight: '700', color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{h}</div>
                     ))}
                   </div>
@@ -1409,13 +1416,13 @@ export default function AdminPage() {
                             <span style={{ color: '#374151' }}>{s.sector || '—'}</span>
                             <span style={{ color: '#374151' }}>{s.empresa_size || '—'}</span>
                             <span style={{ color: '#374151' }}>{s.num_empleados ?? 0}</span>
-                            <span style={{ fontWeight: '700', color: GREEN }}>€{(s.ingresos_mes||0).toLocaleString('es-ES')}</span>
-                            <span style={{ color: '#374151' }}>€{(s.gastos_mes||0).toLocaleString('es-ES')}</span>
-                            <span style={{ fontWeight: '700', color: (s.resultado_neto||0) >= 0 ? GREEN : RED }}>€{(s.resultado_neto||0).toLocaleString('es-ES')}</span>
+                            <span style={{ fontWeight: '700', color: GREEN }}>{fmt(s.ingresos_mes||0)}</span>
+                            <span style={{ color: '#374151' }}>{fmt(s.gastos_mes||0)}</span>
+                            <span style={{ fontWeight: '700', color: (s.resultado_neto||0) >= 0 ? GREEN : RED }}>{fmt(s.resultado_neto||0)}</span>
                             <span style={{ color: '#374151' }}>{(s.margen_neto_pct||0).toFixed(1)}%</span>
                             <span style={{ color: (s.crecimiento_pct||0) >= 0 ? GREEN : RED, fontWeight: '600' }}>{(s.crecimiento_pct||0).toFixed(1)}%</span>
                             <span style={{ color: '#374151' }}>{s.num_ventas||0}</span>
-                            <span style={{ color: '#374151' }}>€{(s.ticket_medio||0).toFixed(0)}</span>
+                            <span style={{ color: '#374151' }}>{fmt(s.ticket_medio||0, 0)}</span>
                             <span style={{ color: '#374151' }}>{s.total_contactos||0}</span>
                             <span style={{ color: (s.sentiment_avg||5) >= 7 ? GREEN : (s.sentiment_avg||5) >= 5 ? AMBER : RED, fontWeight: '600' }}>{(s.sentiment_avg||0).toFixed(1)}</span>
                             <span style={{ color: '#374151' }}>{s.clientes_riesgo||0}</span>
@@ -1445,7 +1452,7 @@ export default function AdminPage() {
             <div style={{ animation: 'fadeUp 0.3s ease' }}>
               {selectedPrompt ? (
                 <div>
-                  <button onClick={() => setSelectedPrompt(null)} style={{ ...btn, background: '#f4f6fb', color: NAVY, border: '0.5px solid rgba(0,0,0,0.06)', marginBottom: '16px', fontSize: '13px' }}>← Volver</button>
+                  <button onClick={() => setSelectedPrompt(null)} style={{ ...btn, background: '#f4f6fb', color: NAVY, border: '1px solid #e5e9f0', marginBottom: '16px', fontSize: '13px' }}>← Volver</button>
                   <div style={{ ...card, padding: '24px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
                       <div>
@@ -1464,7 +1471,7 @@ export default function AdminPage() {
                     <textarea value={editingPrompt} onChange={e => setEditingPrompt(e.target.value)} rows={14} style={{ ...input, fontFamily: 'monospace', fontSize: '12px', lineHeight: '1.6', resize: 'vertical', background: '#0f172a', color: '#e2e8f0', border: '1px solid #1e293b', borderRadius: '10px', padding: '16px' }} />
                     <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
                       <button onClick={savePrompt} disabled={saving} style={{ ...btn }}>{saving ? 'Guardando...' : '💾 Guardar prompt'}</button>
-                      <button onClick={() => setEditingPrompt(selectedPrompt.content)} style={{ ...btn, background: '#f4f6fb', color: NAVY, border: '0.5px solid rgba(0,0,0,0.06)' }}>↩ Restaurar original</button>
+                      <button onClick={() => setEditingPrompt(selectedPrompt.content)} style={{ ...btn, background: '#f4f6fb', color: NAVY, border: '1px solid #e5e9f0' }}>↩ Restaurar original</button>
                     </div>
                   </div>
                 </div>

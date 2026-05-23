@@ -40,6 +40,7 @@ function healthColor(score) {
 }
 
 import Sidebar from '@/components/Sidebar'
+import { useCurrency } from '@/components/useCurrency'
 
 // ── Notification Center ────────────────────────────────────────────────────────
 function NotificationCenter({ token }) {
@@ -209,6 +210,7 @@ function HealthBadge({ score, size = 'sm' }) {
 
 // ── Upgraded Project Card ──────────────────────────────────────────────────────
 function ProjectCard({ project, onClick }) {
+  const { fmt, sym } = useCurrency()
   const status  = STATUS_CFG[project.status] || STATUS_CFG.activo
   const pct     = project.completion_percentage || 0
   const daysLeft = project.days_left
@@ -257,8 +259,8 @@ function ProjectCard({ project, onClick }) {
         {/* Stats grid */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginBottom: '14px' }}>
           {[
-            { label: 'Presupuesto', value: `€${Number(project.budget || 0).toLocaleString('es-ES')}`,      color: NAVY,                    icon: '💼' },
-            { label: 'Gastado',     value: `€${Number(project.total_spent || 0).toLocaleString('es-ES')}`, color: overBudget ? RED : NAVY, icon: overBudget ? '⚠' : '💶' },
+            { label: 'Presupuesto', value: fmt(Number(project.budget || 0)),      color: NAVY,                    icon: '💼' },
+            { label: 'Gastado',     value: fmt(Number(project.total_spent || 0)), color: overBudget ? RED : NAVY, icon: overBudget ? '⚠' : '💶' },
             { label: 'Horas',       value: `${(project.total_hours || 0).toFixed(0)}h`,                   color: NAVY,                    icon: '⏱' },
           ].map(s => (
             <div key={s.label} style={{ padding: '10px 8px', background: s.color === RED ? '#fef2f2' : '#f8faff', borderRadius: '10px', textAlign: 'center', border: `1px solid ${s.color === RED ? '#fecaca' : '#f0f2f7'}` }}>
@@ -303,6 +305,7 @@ function ProjectCard({ project, onClick }) {
 
 // ── New Project Modal ──────────────────────────────────────────────────────────
 function NewProjectModal({ onClose, onCreated, token }) {
+  const { fmt, sym } = useCurrency()
   const [form, setForm] = useState({ name: '', description: '', client_name: '', start_date: '', deadline: '', budget: '' })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -346,7 +349,7 @@ function NewProjectModal({ onClose, onCreated, token }) {
             {[
               { key: 'start_date', label: 'Fecha inicio',  type: 'date'   },
               { key: 'deadline',   label: 'Fecha límite',  type: 'date'   },
-              { key: 'budget',     label: 'Presupuesto €', type: 'number' },
+              { key: 'budget',     label: `Presupuesto ${sym}`, type: 'number' },
             ].map(f => (
               <div key={f.key}>
                 <label style={{ fontSize: '12px', fontWeight: '600', color: '#374151', display: 'block', marginBottom: '5px' }}>{f.label}</label>
@@ -442,6 +445,7 @@ function AddTaskForm({ projectId, token, onAdded }) {
 
 // ── Project Detail Panel ───────────────────────────────────────────────────────
 function ProjectDetail({ projectId, token, onClose, onUpdate }) {
+  const { fmt, sym } = useCurrency()
   const [project, setProject] = useState(null)
   const [loading, setLoading] = useState(true)
   const [analysis, setAnalysis] = useState(null)
@@ -511,8 +515,8 @@ function ProjectDetail({ projectId, token, onClose, onUpdate }) {
         <div style={{ background: 'white', borderBottom: '1px solid #e5e9f0', display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)' }}>
           {[
             { label: 'Completado',     value: `${(project.completion_percentage || 0).toFixed(0)}%`, color: NAVY },
-            { label: 'Presupuesto',    value: `€${Number(project.budget || 0).toLocaleString('es-ES')}`, color: NAVY },
-            { label: 'Gastado',        value: `€${Number(project.total_spent || 0).toLocaleString('es-ES')}`, color: (project.total_spent || 0) > (project.budget || 0) ? RED : NAVY },
+            { label: 'Presupuesto',    value: fmt(Number(project.budget || 0)), color: NAVY },
+            { label: 'Gastado',        value: fmt(Number(project.total_spent || 0)), color: (project.total_spent || 0) > (project.budget || 0) ? RED : NAVY },
             { label: 'Horas',          value: `${(project.total_hours || 0).toFixed(1)}h`, color: NAVY },
             { label: 'Días restantes', value: project.days_left !== null ? (project.days_left < 0 ? `${Math.abs(project.days_left)}d vencido` : `${project.days_left}d`) : '—', color: project.days_left < 0 ? RED : project.days_left <= 7 ? AMBER : NAVY },
           ].map((k, i) => (
@@ -637,7 +641,7 @@ function ProjectDetail({ projectId, token, onClose, onUpdate }) {
                 { label: 'Tareas restantes',   value: velocity.remaining_tasks || 0,                  icon: '📋', color: NAVY  },
                 { label: 'Fin estimado',        value: velocity.predicted_completion_date || '—',      icon: '📅', color: NAVY  },
                 { label: 'Terminará a tiempo', value: velocity.will_finish_on_time === null ? '—' : velocity.will_finish_on_time ? '✅ Sí' : '❌ No', icon: '🎯', color: velocity.will_finish_on_time ? GREEN : RED },
-                { label: 'Coste acumulado',     value: `€${Number(velocity.total_cost_so_far || 0).toLocaleString('es-ES')}`, icon: '💶', color: NAVY },
+                { label: 'Coste acumulado',     value: fmt(Number(velocity.total_cost_so_far || 0)), icon: '💶', color: NAVY },
               ].map(m => (
                 <div key={m.label} style={{ background: 'white', borderRadius: '14px', border: '1px solid #e5e9f0', padding: '18px', display: 'flex', gap: '14px', alignItems: 'center' }}>
                   <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: '#f4f6fb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', flexShrink: 0 }}>{m.icon}</div>
@@ -669,6 +673,7 @@ function ProjectDetail({ projectId, token, onClose, onUpdate }) {
 
 // ── Main Page ──────────────────────────────────────────────────────────────────
 export default function ProyectosPage() {
+  const { fmt, sym } = useCurrency()
   const router = useRouter()
   const [projects, setProjects]   = useState([])
   const [summary, setSummary]     = useState(null)

@@ -11,6 +11,7 @@ const BLUE  = '#2563eb'
 const CYAN  = '#00B4D8'
 
 import Sidebar from '@/components/Sidebar'
+import { useCurrency } from '@/components/useCurrency'
 
 // ── Notification Center ────────────────────────────────────────────────────────
 function NotificationCenter({ token }) {
@@ -224,6 +225,7 @@ function WelcomePopup({ onClose }) {
 
 // ── Create Campaign Modal ──────────────────────────────────────────────────────
 function CreateCampaignModal({ onClose, onCreated, token, analysisId }) {
+  const { fmt, sym } = useCurrency()
   const [form, setForm] = useState({ name:'', objective:'sales', platforms:['google','meta'], budget_daily:20, budget_total:0, start_date:'', end_date:'', final_url:'', extra_context:'' })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -293,7 +295,7 @@ function CreateCampaignModal({ onClose, onCreated, token, analysisId }) {
 
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px',marginBottom:'16px'}}>
             <div>
-              <label style={{fontSize:'12px',fontWeight:'700',color:'#374151',display:'block',marginBottom:'5px'}}>PRESUPUESTO DIARIO (€)</label>
+              <label style={{fontSize:'12px',fontWeight:'700',color:'#374151',display:'block',marginBottom:'5px'}}>{`PRESUPUESTO DIARIO (${sym})`}</label>
               <input type="number" value={form.budget_daily} onChange={e=>setForm(f=>({...f,budget_daily:parseFloat(e.target.value)||0}))} style={{width:'100%',padding:'10px 12px',borderRadius:'9px',border:'1.5px solid #e5e9f0',fontSize:'13px',fontFamily:'inherit',outline:'none'}} onFocus={e=>e.target.style.borderColor=NAVY} onBlur={e=>e.target.style.borderColor='#e5e9f0'}/>
             </div>
             <div>
@@ -327,6 +329,7 @@ function CreateCampaignModal({ onClose, onCreated, token, analysisId }) {
 
 // ── Campaign Card ──────────────────────────────────────────────────────────────
 function CampaignCard({ campaign, onSelect, onToggleStatus, token }) {
+  const { fmt, sym } = useCurrency()
   const [toggling, setToggling] = useState(false)
   const STATUS = {
     draft:  {label:'Borrador', color:'#374151',bg:'#f1f5f9',dot:'#9ca3af'},
@@ -363,7 +366,7 @@ function CampaignCard({ campaign, onSelect, onToggleStatus, token }) {
         </div>
         <div style={{display:'flex',gap:'8px',marginBottom:'12px'}}>
           <div style={{flex:1,background:'#f8faff',borderRadius:'8px',padding:'8px 10px',textAlign:'center'}}>
-            <div style={{fontSize:'14px',fontWeight:'800',color:NAVY}}>€{campaign.budget_daily}/día</div>
+            <div style={{fontSize:'14px',fontWeight:'800',color:NAVY}}>{fmt(campaign.budget_daily)}/día</div>
             <div style={{fontSize:'10px',color:'#9ca3af'}}>Presupuesto</div>
           </div>
           <div style={{flex:1,background:'#f8faff',borderRadius:'8px',padding:'8px 10px',textAlign:'center'}}>
@@ -386,13 +389,15 @@ function CampaignCard({ campaign, onSelect, onToggleStatus, token }) {
 
 // ── Campaign Detail Modal ──────────────────────────────────────────────────────
 function CampaignDetail({ campaign, token, onClose, onPublish }) {
+  const { fmt, sym } = useCurrency()
   const [activeTab, setActiveTab] = useState('google')
   const [publishing, setPublishing] = useState(false)
   const [finalUrl, setFinalUrl] = useState(campaign.final_url||'')
   const [pubResult, setPubResult] = useState(null)
   const g = campaign.copies_google||{}
   const m = campaign.copies_meta||{}
-  const t = campaign.copies_tiktok||{}
+  const t =
+ campaign.copies_tiktok||{}
   const imgs = campaign.image_prompts||[]
   const vids = campaign.video_scripts||[]
 
@@ -573,6 +578,7 @@ function CampaignDetail({ campaign, token, onClose, onPublish }) {
               ))}
               {vids.length===0&&<div style={{textAlign:'center',padding:'40px',color:'#9ca3af',fontSize:'13px'}}>No hay scripts de vídeo generados</div>}
             </div>
+
           )}
         </div>
       </div>
@@ -582,6 +588,7 @@ function CampaignDetail({ campaign, token, onClose, onPublish }) {
 
 // ── Main Page ──────────────────────────────────────────────────────────────────
 export default function MarketingPage() {
+  const { fmt, sym } = useCurrency()
   const router = useRouter()
   const [token, setToken] = useState(null)
   const [user, setUser]   = useState(null)
@@ -724,7 +731,7 @@ export default function MarketingPage() {
                       <p style={{margin:0,fontSize:'13.5px',color:'rgba(255,255,255,0.65)',lineHeight:'1.7'}}>{analysis.full_analysis?.substring(0,300)}...</p>
                     </div>
                     <div style={{flexShrink:0,textAlign:'center',background:'rgba(255,255,255,0.06)',borderRadius:'14px',padding:'16px 20px'}}>
-                      <div style={{fontSize:'32px',fontWeight:'800',color:CYAN,letterSpacing:'-1px'}}>€{analysis.recommended_budget_monthly?.toLocaleString('es-ES')}</div>
+                      <div style={{fontSize:'32px',fontWeight:'800',color:CYAN,letterSpacing:'-1px'}}>{fmt(analysis.recommended_budget_monthly ?? 0)}</div>
                       <div style={{fontSize:'11px',color:'rgba(255,255,255,0.4)',marginTop:'4px'}}>Presupuesto mensual<br/>recomendado</div>
                     </div>
                   </div>
@@ -945,6 +952,7 @@ export default function MarketingPage() {
 
 // ── Metric Card (inline to avoid file split) ───────────────────────────────────
 function MetricCard({ campaign, token }) {
+  const { fmt, sym } = useCurrency()
   const [metrics, setMetrics] = useState(null)
   const [loading, setLoading] = useState(false)
   useEffect(()=>{fetchMetrics()},[campaign.id])
@@ -963,11 +971,11 @@ function MetricCard({ campaign, token }) {
       <div style={{padding:'18px 20px'}}>
         <div style={{display:'grid',gridTemplateColumns:'repeat(6,1fr)',gap:'10px'}}>
           {[
-            {label:'Gasto total',value:`€${s.total_spend?.toFixed(2)||'0.00'}`,color:NAVY},
+            {label:'Gasto total',value:`${sym}${s.total_spend?.toFixed(2)||'0.00'}`,color:NAVY},
             {label:'Impresiones',value:(s.total_impressions||0).toLocaleString('es-ES'),color:BLUE},
             {label:'Clics',value:(s.total_clicks||0).toLocaleString('es-ES'),color:CYAN},
             {label:'CTR',value:`${s.avg_ctr||0}%`,color:GREEN},
-            {label:'CPC',value:`€${s.avg_cpc?.toFixed(2)||'0.00'}`,color:AMBER},
+            {label:'CPC',value:`${sym}${s.avg_cpc?.toFixed(2)||'0.00'}`,color:AMBER},
             {label:'Conversiones',value:s.total_conversions||0,color:RED},
           ].map(m=>(
             <div key={m.label} style={{textAlign:'center',padding:'12px 6px',background:'#f8faff',borderRadius:'10px'}}>

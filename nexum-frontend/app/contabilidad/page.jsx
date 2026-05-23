@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
+import { useCurrency } from '@/components/useCurrency'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 const T = {
@@ -90,6 +91,7 @@ function ProfileBtn({ user, router }) {
 }
 
 function BarChart({ data, colorA=T.blue, colorB=T.cyan, labelA='Ingresos', labelB='Gastos' }) {
+  const { fmt, sym } = useCurrency()
   const [hover,setHover]=useState(null)
   if (!data?.length) return <div style={{height:120,display:'flex',alignItems:'center',justifyContent:'center',color:T.text4,fontSize:13}}>Sin datos</div>
   const W=600,H=120,padL=32,padR=8,padT=8,padB=24
@@ -119,8 +121,8 @@ function BarChart({ data, colorA=T.blue, colorB=T.cyan, labelA='Ingresos', label
           <text x={gx} y={H-6} textAnchor="middle" fontSize="8.5" fill={isH?T.text:T.text4} fontFamily="system-ui">{d.label}</text>
           {isH&&<g>
             <rect x={gx-44} y={padT+plotH-Math.max(aH,bH)-42} width="88" height="36" rx="6" fill={T.text}/>
-            <text x={gx} y={padT+plotH-Math.max(aH,bH)-28} textAnchor="middle" fontSize="9.5" fill="rgba(255,255,255,.6)" fontFamily="system-ui">{labelA}: €{(d.a||0).toFixed(0)}</text>
-            <text x={gx} y={padT+plotH-Math.max(aH,bH)-14} textAnchor="middle" fontSize="9.5" fill={colorB} fontFamily="system-ui">{labelB}: €{(d.b||0).toFixed(0)}</text>
+            <text x={gx} y={padT+plotH-Math.max(aH,bH)-28} textAnchor="middle" fontSize="9.5" fill="rgba(255,255,255,.6)" fontFamily="system-ui">{labelA}: fmt(d.a||0, 0)</text>
+            <text x={gx} y={padT+plotH-Math.max(aH,bH)-14} textAnchor="middle" fontSize="9.5" fill={colorB} fontFamily="system-ui">{labelB}: fmt(d.b||0, 0)</text>
           </g>}
         </g>
       })}
@@ -145,12 +147,14 @@ function DonutChart({ value, max, color, size=80 }) {
 }
 
 function DownloadModal({ onClose, estadosPeriodo, downloadReport, downloadingReport }) {
+  const { fmt, sym } = useCurrency()
   const reports = [
     {key:'pl',     title:'Estado de Resultados',desc:'P&L completo con analisis Vera',  icon:'📊',color:T.green},
     {key:'balance',title:'Balance General',      desc:'Activos, pasivos y patrimonio',   icon:'⚖️', color:T.blue},
     {key:'flujo',  title:'Flujo de Efectivo',    desc:'Operativo, inversion, financiamiento',icon:'💰',color:T.amber},
   ]
   return (
+    <>
     <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.4)',backdropFilter:'blur(8px)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:1000,padding:24}} onClick={e=>{if(e.target===e.currentTarget)onClose()}}>
       <div style={{background:T.card,borderRadius:20,padding:28,width:'100%',maxWidth:460,boxShadow:'0 24px 64px rgba(0,0,0,.15)'}}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:4}}>
@@ -177,11 +181,13 @@ function DownloadModal({ onClose, estadosPeriodo, downloadReport, downloadingRep
         <BtnSec onClick={onClose} style={{width:'100%',justifyContent:'center'}}>Cerrar</BtnSec>
       </div>
     </div>
+    </>
   )
 }
 
 export default function Contabilidad() {
   const router = useRouter()
+  const { fmt, sym, config } = useCurrency()
   const [section, setSection] = useState('resumen')
   const [tab, setTab] = useState('ingreso')
   const [mode, setMode] = useState('manual')
@@ -203,6 +209,7 @@ export default function Contabilidad() {
   const [ventas, setVentas] = useState(null)
   const [periodo, setPeriodo] = useState('month')
   const [snapshotInfo, setSnapshotInfo] = useState(null)
+  const [refreshing, setRefreshing] = useState(false)
 
   const getToken = () => localStorage.getItem('nexum_token')
 
@@ -233,21 +240,45 @@ export default function Contabilidad() {
 
   async function loadEstadosAuto(p) {
     const period = p || periodo
+    // Mostrar cache local instantaneamente
+    const cacheKey = `vortu_contabilidad_${period}_${getToken()?.slice(-8)}`
+    try {
+      const cached = localStorage.getItem(cacheKey)
+      if (cached) {
+        const parsed = JSON.parse(cached)
+        setEstados(parsed.data)
+        setSnapshotInfo({cached:true, label:parsed.label, generated_at:parsed.generated_at})
+      }
+    } catch {}
+    // Recargar en background
     try {
       const res=await fetch(`${API}/api/contabilidad/snapshot?period=${period}`,{headers:{Authorization:`Bearer ${getToken()}`}})
       if(res.ok){
         const d=await res.json()
         setEstados(d.data)
         setSnapshotInfo({cached:d.cached, label:d.label, generated_at:d.generated_at})
+        // Guardar en cache local
+        try { localStorage.setItem(cacheKey, JSON.stringify(d)) } catch {}
       }
     } catch{}
   }
 
   async function refreshSnapshot() {
-    await fetch(`${API}/api/contabilidad/snapshot/${periodo}`,{method:'DELETE',headers:{Authorization:`Bearer ${getToken()}`}})
-    setEstados(null)
-    setSnapshotInfo(null)
-    await loadEstadosAuto()
+    setRefreshing(true)
+    const periods = ['month', 'trimestre', 'semestre', 'year']
+    // Borrar todos los snapshots del servidor
+    await Promise.all(periods.map(p =>
+      fetch(`${API}/api/contabilidad/snapshot/${p}`,{method:'DELETE',headers:{Authorization:`Bearer ${getToken()}`}}).catch(()=>{})
+    ))
+    // Limpiar cache local
+    try {
+      const tokenSuffix = getToken()?.slice(-8)
+      periods.forEach(p => localStorage.removeItem(`vortu_contabilidad_${p}_${tokenSuffix}`))
+    } catch {}
+    // Recargar periodo actual + resto en paralelo
+    await loadEstadosAuto(periodo)
+    periods.filter(p => p !== periodo).forEach(p => loadEstadosAuto(p))
+    setRefreshing(false)
   }
 
   async function loadEstados() {
@@ -337,7 +368,7 @@ export default function Contabilidad() {
         <header style={{height:56,background:'rgba(251,251,253,.9)',backdropFilter:'saturate(180%) blur(20px)',WebkitBackdropFilter:'saturate(180%) blur(20px)',borderBottom:`.5px solid ${T.hairline}`,display:'flex',alignItems:'center',padding:'0 24px',flexShrink:0,position:'sticky',top:0,zIndex:10}}>
           <div style={{display:'flex',flexDirection:'column',lineHeight:1.1,paddingRight:20,borderRight:`.5px solid ${T.hairline}`,marginRight:4}}>
             <div style={{fontSize:15,fontWeight:600,color:T.text,letterSpacing:-0.3}}>Contabilidad</div>
-            <div style={{fontSize:11,color:T.text4}}>Partida doble · PGC espanol</div>
+            <div style={{fontSize:11,color:T.text4}}>Partida doble · {config.currency==="EUR"?"PGC España":config.currency==="MXN"?"NIF México":config.currency==="USD"&&config.country==="SV"?"NIIF El Salvador":"Plan contable"}</div>
           </div>
           <div style={{display:'flex',height:56}}>
             {sections.map(s=>(
@@ -378,17 +409,18 @@ export default function Contabilidad() {
                       {snapshotInfo.cached?'Guardado':'Generado'} · {new Date(snapshotInfo.generated_at).toLocaleDateString('es-ES')}
                     </span>
                   )}
-                  <button onClick={refreshSnapshot} style={{padding:'6px 14px',borderRadius:999,border:`.5px solid ${T.hairline}`,background:T.card,color:T.text2,fontSize:12,fontWeight:500,cursor:'pointer',fontFamily:'inherit'}}>
-                    Actualizar
+                  <button onClick={refreshSnapshot} disabled={refreshing} style={{padding:'6px 14px',borderRadius:999,border:`.5px solid ${T.hairline}`,background:refreshing?T.sidebar:T.card,color:T.text2,fontSize:12,fontWeight:500,cursor:refreshing?'not-allowed':'pointer',fontFamily:'inherit',display:'flex',alignItems:'center',gap:6,opacity:refreshing?0.7:1}}>
+                    {refreshing&&<div style={{width:10,height:10,border:'1.5px solid rgba(0,0,0,0.2)',borderTopColor:T.text2,borderRadius:'50%',animation:'contSpin .7s linear infinite'}}/>}
+                    {refreshing?'Actualizando...':'Actualizar'}
                   </button>
                 </div>
               </div>
               {/* KPI strip */}
               <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:12,marginBottom:16}}>
                 {[
-                  {label:'Ingresos este mes',value:`€${(pl?.ingresos?.total_ingresos||0).toLocaleString('es-ES')}`,color:T.green,sub:`Margen ${pl?.margen_utilidad_porcentaje||0}%`},
-                  {label:'Gastos este mes',  value:`€${(pl?.gastos?.total_gastos||0).toLocaleString('es-ES')}`,    color:T.red,  sub:'ultimos 30 dias'},
-                  {label:'Resultado neto',   value:`€${(pl?.utilidad_neta||0).toLocaleString('es-ES')}`,           color:(pl?.utilidad_neta||0)>=0?T.green:T.red, sub:pl?.es_rentable?'Rentable':'No rentable'},
+                  {label:'Ingresos este mes',value:fmt(pl?.ingresos?.total_ingresos||0),color:T.green,sub:`Margen ${pl?.margen_utilidad_porcentaje||0}%`},
+                  {label:'Gastos este mes',  value:fmt(pl?.gastos?.total_gastos||0),    color:T.red,  sub:'ultimos 30 dias'},
+                  {label:'Resultado neto',   value:fmt(pl?.utilidad_neta||0),           color:(pl?.utilidad_neta||0)>=0?T.green:T.red, sub:pl?.es_rentable?'Rentable':'No rentable'},
                   {label:'Salud financiera', value:`${salud?.puntaje||0}/10`,color:(salud?.puntaje||0)>=7?T.green:(salud?.puntaje||0)>=5?T.amber:T.red,sub:salud?.calificacion||'—'},
                 ].map((k,i)=>(
                   <Card key={i} style={{padding:'18px 20px'}}>
@@ -417,20 +449,20 @@ export default function Contabilidad() {
                       {Object.entries(pl.ingresos.cuentas).map(([k,v])=>(
                         <div key={k} style={{display:'flex',justifyContent:'space-between',padding:'7px 0',borderBottom:`.5px solid ${T.soft}`}}>
                           <span style={{fontSize:13,color:T.text2}}>{typeof v==='object'?v.nombre:k}</span>
-                          <span style={{fontSize:13,fontWeight:500,color:T.green,fontVariantNumeric:'tabular-nums'}}>€{(typeof v==='number'?v:v?.saldo||v?.balance||0).toLocaleString('es-ES')}</span>
+                          <span style={{fontSize:13,fontWeight:500,color:T.green,fontVariantNumeric:'tabular-nums'}}>{fmt(typeof v==='number'?v:v?.saldo||v?.balance||0)}</span>
                         </div>
                       ))}
                       {Object.entries(pl.gastos?.cuentas||{}).map(([k,v])=>(
                         <div key={k} style={{display:'flex',justifyContent:'space-between',padding:'7px 0',borderBottom:`.5px solid ${T.soft}`}}>
                           <span style={{fontSize:13,color:T.text2}}>{typeof v==='object'?v.nombre:k}</span>
-                          <span style={{fontSize:13,fontWeight:500,color:T.red,fontVariantNumeric:'tabular-nums'}}>-€{(typeof v==='number'?v:v?.saldo||v?.balance||0).toLocaleString('es-ES')}</span>
+                          <span style={{fontSize:13,fontWeight:500,color:T.red,fontVariantNumeric:'tabular-nums'}}>{`-${fmt(typeof v==='number'?v:v?.saldo||v?.balance||0)}`}</span>
                         </div>
                       ))}
                     </div>
                   )}
                   <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 14px',background:T.sidebar,borderRadius:10,marginTop:8}}>
                     <span style={{fontSize:13,fontWeight:500,color:T.text}}>Utilidad neta</span>
-                    <span style={{fontSize:20,fontWeight:600,color:(pl?.utilidad_neta||0)>=0?T.green:T.red,fontVariantNumeric:'tabular-nums'}}>€{(pl?.utilidad_neta||0).toLocaleString('es-ES')}</span>
+                    <span style={{fontSize:20,fontWeight:600,color:(pl?.utilidad_neta||0)>=0?T.green:T.red,fontVariantNumeric:'tabular-nums'}}>{fmt(pl?.utilidad_neta||0)}</span>
                   </div>
                 </Card>
 
@@ -440,17 +472,17 @@ export default function Contabilidad() {
                     <div style={{textAlign:'center'}}>
                       <DonutChart value={bal?.activos?.total_activos||0} max={Math.max(bal?.activos?.total_activos||1,1)} color={T.blue}/>
                       <div style={{fontSize:11,color:T.text4,marginTop:4}}>Activos</div>
-                      <div style={{fontSize:14,fontWeight:600,color:T.text,fontVariantNumeric:'tabular-nums'}}>€{(bal?.activos?.total_activos||0).toLocaleString('es-ES')}</div>
+                      <div style={{fontSize:14,fontWeight:600,color:T.text,fontVariantNumeric:'tabular-nums'}}>{fmt(bal?.activos?.total_activos||0)}</div>
                     </div>
                     <div style={{textAlign:'center'}}>
                       <DonutChart value={bal?.pasivos?.total_pasivos||0} max={Math.max(bal?.activos?.total_activos||1,1)} color={T.red}/>
                       <div style={{fontSize:11,color:T.text4,marginTop:4}}>Pasivos</div>
-                      <div style={{fontSize:14,fontWeight:600,color:T.text,fontVariantNumeric:'tabular-nums'}}>€{(bal?.pasivos?.total_pasivos||0).toLocaleString('es-ES')}</div>
+                      <div style={{fontSize:14,fontWeight:600,color:T.text,fontVariantNumeric:'tabular-nums'}}>{fmt(bal?.pasivos?.total_pasivos||0)}</div>
                     </div>
                     <div style={{textAlign:'center'}}>
                       <DonutChart value={bal?.patrimonio?.total_patrimonio||0} max={Math.max(bal?.activos?.total_activos||1,1)} color={T.green}/>
                       <div style={{fontSize:11,color:T.text4,marginTop:4}}>Patrimonio</div>
-                      <div style={{fontSize:14,fontWeight:600,color:T.text,fontVariantNumeric:'tabular-nums'}}>€{(bal?.patrimonio?.total_patrimonio||0).toLocaleString('es-ES')}</div>
+                      <div style={{fontSize:14,fontWeight:600,color:T.text,fontVariantNumeric:'tabular-nums'}}>{fmt(bal?.patrimonio?.total_patrimonio||0)}</div>
                     </div>
                   </div>
                   <div style={{padding:'10px 14px',background:bal?.ecuacion_balanceada?T.greenSoft:T.redSoft,borderRadius:10,border:`.5px solid ${bal?.ecuacion_balanceada?T.green:T.red}`,textAlign:'center'}}>
@@ -466,7 +498,7 @@ export default function Contabilidad() {
                       ].map((s,i)=>(
                         <div key={i} style={{padding:'10px',background:T.sidebar,borderRadius:10,border:`.5px solid ${T.hairline}`,textAlign:'center'}}>
                           <div style={{fontSize:11,color:T.text4,marginBottom:3}}>{s.label}</div>
-                          <div style={{fontSize:15,fontWeight:600,color:s.value>=0?T.green:T.red,fontVariantNumeric:'tabular-nums'}}>€{s.value.toLocaleString('es-ES')}</div>
+                          <div style={{fontSize:15,fontWeight:600,color:s.value>=0?T.green:T.red,fontVariantNumeric:'tabular-nums'}}>{fmt(s.value)}</div>
                         </div>
                       ))}
                     </div>
@@ -507,7 +539,7 @@ export default function Contabilidad() {
                           <div style={{fontSize:11,color:T.text4}}>{r.fecha} · {r.categoria}</div>
                         </div>
                         <span style={{fontSize:13,fontWeight:600,color:r.tipo==='ingreso'?T.green:T.red,fontVariantNumeric:'tabular-nums'}}>
-                          {r.tipo==='ingreso'?'+':'-'}€{r.monto}
+                          {r.tipo==='ingreso'?'+':'-'}{fmt(r.monto)}
                         </span>
                       </div>
                     ))}
@@ -560,17 +592,17 @@ export default function Contabilidad() {
                         <div style={{fontSize:12,color:T.text4}}>{estadosPeriodo.inicio} al {estadosPeriodo.fin}</div>
                       </div>
                       <div style={{textAlign:'right'}}>
-                        <div style={{fontSize:24,fontWeight:600,color:(pl?.utilidad_neta||0)>=0?T.green:T.red,fontVariantNumeric:'tabular-nums'}}>€{(pl?.utilidad_neta||0).toLocaleString('es-ES')}</div>
+                        <div style={{fontSize:24,fontWeight:600,color:(pl?.utilidad_neta||0)>=0?T.green:T.red,fontVariantNumeric:'tabular-nums'}}>{fmt(pl?.utilidad_neta||0)}</div>
                         <div style={{fontSize:12,color:T.text4}}>Utilidad neta · {pl?.margen_utilidad_porcentaje||0}% margen</div>
                       </div>
                     </div>
                     <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
                       <div>
                         {[
-                          {label:'Total Ingresos',value:`€${(pl?.ingresos?.total_ingresos||0).toLocaleString('es-ES')}`,color:T.green},
-                          {label:'Total Gastos',  value:`€${(pl?.gastos?.total_gastos||0).toLocaleString('es-ES')}`,    color:T.red},
-                          {label:'EBITDA',        value:`€${(pl?.ebitda||0).toLocaleString('es-ES')}`,                  color:T.text},
-                          {label:'Utilidad Neta', value:`€${(pl?.utilidad_neta||0).toLocaleString('es-ES')}`,           color:(pl?.utilidad_neta||0)>=0?T.green:T.red},
+                          {label:'Total Ingresos',value:fmt(pl?.ingresos?.total_ingresos||0),color:T.green},
+                          {label:'Total Gastos',  value:fmt(pl?.gastos?.total_gastos||0),    color:T.red},
+                          {label:'EBITDA',        value:fmt(pl?.ebitda||0),                  color:T.text},
+                          {label:'Utilidad Neta', value:fmt(pl?.utilidad_neta||0),           color:(pl?.utilidad_neta||0)>=0?T.green:T.red},
                           {label:'Margen',        value:`${pl?.margen_utilidad_porcentaje||0}%`,                         color:T.text2},
                         ].map((row,i)=>(
                           <div key={i} style={{display:'flex',justifyContent:'space-between',padding:'9px 0',borderBottom:`.5px solid ${T.soft}`}}>
@@ -597,10 +629,10 @@ export default function Contabilidad() {
                     <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
                       <div>
                         {[
-                          {label:'Total Activos',      value:`€${(bal?.activos?.total_activos||0).toLocaleString('es-ES')}`,      color:T.text},
-                          {label:'Total Pasivos',      value:`€${(bal?.pasivos?.total_pasivos||0).toLocaleString('es-ES')}`,       color:T.red},
-                          {label:'Total Patrimonio',   value:`€${(bal?.patrimonio?.total_patrimonio||0).toLocaleString('es-ES')}`, color:T.green},
-                          {label:'Pasivos+Patrimonio', value:`€${(bal?.total_pasivos_y_patrimonio||0).toLocaleString('es-ES')}`,   color:T.text},
+                          {label:'Total Activos',      value:fmt(bal?.activos?.total_activos||0),      color:T.text},
+                          {label:'Total Pasivos',      value:fmt(bal?.pasivos?.total_pasivos||0),       color:T.red},
+                          {label:'Total Patrimonio',   value:fmt(bal?.patrimonio?.total_patrimonio||0), color:T.green},
+                          {label:'Pasivos+Patrimonio', value:fmt(bal?.total_pasivos_y_patrimonio||0),   color:T.text},
                         ].map((row,i)=>(
                           <div key={i} style={{display:'flex',justifyContent:'space-between',padding:'9px 0',borderBottom:`.5px solid ${T.soft}`}}>
                             <span style={{fontSize:13,color:T.text3}}>{row.label}</span>
@@ -627,7 +659,7 @@ export default function Contabilidad() {
                       ].map((s,i)=>(
                         <div key={i} style={{padding:'12px',background:s.highlight?(s.value>=0?T.greenSoft:T.redSoft):T.sidebar,borderRadius:10,border:`.5px solid ${s.highlight?(s.value>=0?T.green:T.red):T.hairline}`,textAlign:'center'}}>
                           <div style={{fontSize:11,color:T.text4,marginBottom:4}}>{s.label}</div>
-                          <div style={{fontSize:16,fontWeight:600,color:s.value>=0?T.green:T.red,fontVariantNumeric:'tabular-nums'}}>€{s.value.toLocaleString('es-ES')}</div>
+                          <div style={{fontSize:16,fontWeight:600,color:s.value>=0?T.green:T.red,fontVariantNumeric:'tabular-nums'}}>{fmt(s.value)}</div>
                         </div>
                       ))}
                     </div>
@@ -671,7 +703,7 @@ export default function Contabilidad() {
                       <form onSubmit={submitManual}>
                         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
                           <Field label="Fecha"><Input type="date" value={form.fecha} onChange={e=>setForm({...form,fecha:e.target.value})} required/></Field>
-                          <Field label="Monto €"><Input type="number" step="0.01" placeholder="0.00" value={form.monto} onChange={e=>setForm({...form,monto:e.target.value})} required/></Field>
+                          <Field label={`Monto ${sym}`}><Input type="number" step="0.01" placeholder="0.00" value={form.monto} onChange={e=>setForm({...form,monto:e.target.value})} required/></Field>
                         </div>
                         <Field label="Categoria">
                           <Sel value={form.categoria} onChange={e=>setForm({...form,categoria:e.target.value})} required>
@@ -738,9 +770,9 @@ export default function Contabilidad() {
                     <>
                       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8,marginBottom:14}}>
                         {[
-                          {label:'Ingresos',value:`€${registro.resumen?.total_ingresos||0}`,color:T.green},
-                          {label:'Gastos',  value:`€${registro.resumen?.total_gastos||0}`,  color:T.red},
-                          {label:'Neto',    value:`€${registro.resumen?.resultado_neto||0}`,color:registro.resumen?.es_positivo?T.green:T.red},
+                          {label:'Ingresos',value:`${sym}${registro.resumen?.total_ingresos||0}`,color:T.green},
+                          {label:'Gastos',  value:`${sym}${registro.resumen?.total_gastos||0}`,  color:T.red},
+                          {label:'Neto',    value:`${sym}${registro.resumen?.resultado_neto||0}`,color:registro.resumen?.es_positivo?T.green:T.red},
                         ].map((s,i)=>(
                           <div key={i} style={{padding:'10px',background:T.sidebar,borderRadius:10,border:`.5px solid ${T.hairline}`,textAlign:'center'}}>
                             <div style={{fontSize:11,color:T.text4,marginBottom:3}}>{s.label}</div>
@@ -755,7 +787,7 @@ export default function Contabilidad() {
                               <div style={{fontSize:13,fontWeight:500,color:T.text}}>{r.descripcion}</div>
                               <div style={{fontSize:11,color:T.text4}}>{r.fecha} · {r.categoria}</div>
                             </div>
-                            <span style={{fontSize:13,fontWeight:600,color:r.tipo==='ingreso'?T.green:T.red,fontVariantNumeric:'tabular-nums'}}>{r.tipo==='ingreso'?'+':'-'}€{r.monto}</span>
+                            <span style={{fontSize:13,fontWeight:600,color:r.tipo==='ingreso'?T.green:T.red,fontVariantNumeric:'tabular-nums'}}>{r.tipo==='ingreso'?'+':'-'}{fmt(r.monto)}</span>
                           </div>
                         ))}
                         {(registro.ingresos?.length||0)+(registro.gastos?.length||0)===0&&<div style={{padding:32,textAlign:'center',fontSize:13,color:T.text4}}>Sin transacciones este mes</div>}
@@ -786,7 +818,7 @@ export default function Contabilidad() {
                           <span style={{fontSize:13,fontWeight:500,color:T.text}}>{account.account_name}</span>
                           <span style={{fontSize:11,color:T.text4,background:T.sidebar,padding:'2px 8px',borderRadius:999,border:`.5px solid ${T.hairline}`}}>{account.account_type}</span>
                         </div>
-                        <span style={{fontSize:15,fontWeight:600,color:account.closing_balance>=0?T.green:T.red,fontVariantNumeric:'tabular-nums'}}>€{account.closing_balance?.toFixed(2)}</span>
+                        <span style={{fontSize:15,fontWeight:600,color:account.closing_balance>=0?T.green:T.red,fontVariantNumeric:'tabular-nums'}}>{fmt(account.closing_balance ?? 0, 2)}</span>
                       </div>
                       <div style={{maxHeight:160,overflowY:'auto'}}>
                         <table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}>
@@ -802,9 +834,9 @@ export default function Contabilidad() {
                               <tr key={j} style={{borderBottom:`.5px solid ${T.soft}`}} onMouseEnter={e=>e.currentTarget.style.background=T.sidebar} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
                                 <td style={{padding:'5px 8px',color:T.text4}}>{entry.date}</td>
                                 <td style={{padding:'5px 8px',color:T.text2,maxWidth:200,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{entry.description}</td>
-                                <td style={{padding:'5px 8px',color:T.green,textAlign:'right',fontVariantNumeric:'tabular-nums'}}>{entry.debit>0?`€${entry.debit}`:''}</td>
-                                <td style={{padding:'5px 8px',color:T.red,textAlign:'right',fontVariantNumeric:'tabular-nums'}}>{entry.credit>0?`€${entry.credit}`:''}</td>
-                                <td style={{padding:'5px 8px',color:T.text,fontWeight:500,textAlign:'right',fontVariantNumeric:'tabular-nums'}}>€{entry.balance?.toFixed(2)}</td>
+                                <td style={{padding:'5px 8px',color:T.green,textAlign:'right',fontVariantNumeric:'tabular-nums'}}>{entry.debit>0?`${sym}${entry.debit}`:''}</td>
+                                <td style={{padding:'5px 8px',color:T.red,textAlign:'right',fontVariantNumeric:'tabular-nums'}}>{entry.credit>0?`${sym}${entry.credit}`:''}</td>
+                                <td style={{padding:'5px 8px',color:T.text,fontWeight:500,textAlign:'right',fontVariantNumeric:'tabular-nums'}}>{fmt(entry.balance ?? 0, 2)}</td>
                               </tr>
                             ))}
                           </tbody>
@@ -823,8 +855,8 @@ export default function Contabilidad() {
                     <span style={{padding:'5px 14px',background:balanza.is_balanced?T.greenSoft:T.redSoft,color:balanza.is_balanced?T.green:T.red,borderRadius:999,fontSize:13,fontWeight:500}}>
                       {balanza.is_balanced?'Balanza cuadrada':'Balanza no cuadrada'}
                     </span>
-                    <span style={{padding:'5px 14px',background:T.sidebar,borderRadius:999,fontSize:13,color:T.text2,border:`.5px solid ${T.hairline}`}}>Debitos: €{balanza.total_debits?.toFixed(2)}</span>
-                    <span style={{padding:'5px 14px',background:T.sidebar,borderRadius:999,fontSize:13,color:T.text2,border:`.5px solid ${T.hairline}`}}>Creditos: €{balanza.total_credits?.toFixed(2)}</span>
+                    <span style={{padding:'5px 14px',background:T.sidebar,borderRadius:999,fontSize:13,color:T.text2,border:`.5px solid ${T.hairline}`}}>Debitos: {fmt(balanza.total_debits ?? 0, 2)}</span>
+                    <span style={{padding:'5px 14px',background:T.sidebar,borderRadius:999,fontSize:13,color:T.text2,border:`.5px solid ${T.hairline}`}}>Creditos: {fmt(balanza.total_credits ?? 0, 2)}</span>
                   </div>
                   <Card style={{padding:0,overflow:'hidden'}}>
                     <table style={{width:'100%',borderCollapse:'collapse'}}>
@@ -841,16 +873,16 @@ export default function Contabilidad() {
                             <td style={{padding:'9px 14px',fontSize:12,fontWeight:600,color:T.blue}}>{acc.code}</td>
                             <td style={{padding:'9px 14px',fontSize:13,color:T.text,fontWeight:500}}>{acc.name}</td>
                             <td style={{padding:'9px 14px',fontSize:12,color:T.text4}}>{acc.type}</td>
-                            <td style={{padding:'9px 14px',fontSize:13,color:T.green,fontWeight:500,textAlign:'right',fontVariantNumeric:'tabular-nums'}}>{acc.debit>0?`€${acc.debit?.toFixed(2)}`:''}</td>
-                            <td style={{padding:'9px 14px',fontSize:13,color:T.red,fontWeight:500,textAlign:'right',fontVariantNumeric:'tabular-nums'}}>{acc.credit>0?`€${acc.credit?.toFixed(2)}`:''}</td>
+                            <td style={{padding:'9px 14px',fontSize:13,color:T.green,fontWeight:500,textAlign:'right',fontVariantNumeric:'tabular-nums'}}>{acc.debit>0?`${sym}${acc.debit?.toFixed(2)}`:''}</td>
+                            <td style={{padding:'9px 14px',fontSize:13,color:T.red,fontWeight:500,textAlign:'right',fontVariantNumeric:'tabular-nums'}}>{acc.credit>0?`${sym}${acc.credit?.toFixed(2)}`:''}</td>
                           </tr>
                         ))}
                       </tbody>
                       <tfoot>
                         <tr style={{borderTop:`.5px solid ${T.hairline}`,background:T.sidebar}}>
                           <td colSpan="3" style={{padding:'10px 14px',fontSize:13,fontWeight:600,color:T.text}}>Totales</td>
-                          <td style={{padding:'10px 14px',fontSize:13,fontWeight:600,color:T.green,textAlign:'right',fontVariantNumeric:'tabular-nums'}}>€{balanza.total_debits?.toFixed(2)}</td>
-                          <td style={{padding:'10px 14px',fontSize:13,fontWeight:600,color:T.red,textAlign:'right',fontVariantNumeric:'tabular-nums'}}>€{balanza.total_credits?.toFixed(2)}</td>
+                          <td style={{padding:'10px 14px',fontSize:13,fontWeight:600,color:T.green,textAlign:'right',fontVariantNumeric:'tabular-nums'}}>{fmt(balanza.total_debits ?? 0, 2)}</td>
+                          <td style={{padding:'10px 14px',fontSize:13,fontWeight:600,color:T.red,textAlign:'right',fontVariantNumeric:'tabular-nums'}}>{fmt(balanza.total_credits ?? 0, 2)}</td>
                         </tr>
                       </tfoot>
                     </table>

@@ -112,7 +112,19 @@ def generate_balance_sheet(db: Session, company_id: int,
         HAVING COALESCE(SUM(je.credit)-SUM(je.debit), 0) != 0
     """), {"cid": company_id}).fetchall()
     equity_accounts = {r[0]: {"name": r[1], "balance": float(r[2])} for r in equity_rows}
-    total_patrimonio = sum(v["balance"] for v in equity_accounts.values())
+    total_patrimonio_cuentas = sum(v["balance"] for v in equity_accounts.values())
+
+    # ── Utilidad del ejercicio (ingresos - gastos) va al patrimonio ───────────
+    total_ingresos = totals.get("income", 0)
+    total_gastos = totals.get("expenses", 0)
+    utilidad_ejercicio = round(total_ingresos - total_gastos, 2)
+    if utilidad_ejercicio != 0:
+        equity_accounts["UTIL-EJ"] = {
+            "name": "Utilidad del Ejercicio",
+            "balance": utilidad_ejercicio
+        }
+
+    total_patrimonio = round(total_patrimonio_cuentas + utilidad_ejercicio, 2)
     total_pasivos_y_patrimonio = round(total_pasivos + total_patrimonio, 2)
 
     # ── Verificación ecuación contable ────────────────────────────────────────

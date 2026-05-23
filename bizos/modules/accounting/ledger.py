@@ -167,7 +167,8 @@ def get_account_summary(db: Session, company_id: int,
     Used internally by the statements generator.
     """
     accounts = db.query(Account).filter(
-        Account.is_active == True
+        Account.is_active == True,
+        Account.company_id == company_id
     ).all()
 
     summary = {

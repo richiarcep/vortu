@@ -114,6 +114,7 @@ function DonutChart({ value, max, color, label, sublabel }) {
 }
 
 import Sidebar from '@/components/Sidebar'
+import { useCurrency } from '@/components/useCurrency'
 
 // ── Notification Center ────────────────────────────────────────────────────────
 function NotificationCenter({ token }) {
@@ -214,6 +215,7 @@ function SettingsButton() {
 // ── Main ───────────────────────────────────────────────────────────────────────
 export default function AgentePage() {
   const router = useRouter()
+  const { fmt, sym } = useCurrency()
   const [activeTab, setActiveTab] = useState('chat')
   const [token, setToken] = useState(null)
   const [user, setUser] = useState(null)
@@ -434,7 +436,7 @@ export default function AgentePage() {
                   : hrData ? (
                     <div style={{ padding:'16px' }}>
                       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'8px', marginBottom:'14px' }}>
-                        {[{label:'Empleados',value:hrData.total_employees||hrData.empleados_activos||0,icon:'👥'},{label:'Nómina total',value:hrData.total_payroll?`€${Number(hrData.total_payroll).toLocaleString('es-ES')}`:'—',icon:'💶'}].map(m=>(
+                        {[{label:'Empleados',value:hrData.total_employees||hrData.empleados_activos||0,icon:'👥'},{label:'Nómina total',value:hrData.total_payroll?fmt(Number(hrData.total_payroll)):'—',icon:'💶'}].map(m=>(
                           <div key={m.label} style={{ background:'#f8faff', borderRadius:'10px', padding:'12px', border:'1px solid #f0f2f7' }}>
                             <div style={{ fontSize:'16px', marginBottom:'4px' }}>{m.icon}</div>
                             <div style={{ fontSize:'16px', fontWeight:'800', color:NAVY, letterSpacing:'-0.3px' }}>{m.value}</div>
@@ -511,7 +513,7 @@ export default function AgentePage() {
                     {[{label:'Ingresos',value:ingresos,color:GREEN},{label:'Gastos',value:gastos,color:RED},{label:'Resultado neto',value:resultado,color:resultado>=0?GREEN:RED},{label:'Saldo en caja',value:digest.saldo_caja||0,color:NAVY}].map(m=>(
                       <div key={m.label} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', paddingBottom:'10px', marginBottom:'10px', borderBottom:'1px solid #f8f9fc' }}>
                         <span style={{ fontSize:'13px', color:'#6b7280' }}>{m.label}</span>
-                        <span style={{ fontSize:'16px', fontWeight:'800', color:m.color, letterSpacing:'-0.5px' }}>€{Number(m.value).toLocaleString('es-ES')}</span>
+                        <span style={{ fontSize:'16px', fontWeight:'800', color:m.color, letterSpacing:'-0.5px' }}>{fmt(Number(m.value))}</span>
                       </div>
                     ))}
                   </div>
@@ -533,9 +535,9 @@ export default function AgentePage() {
                   <div style={{ background:'white', borderRadius:'14px', border:'1px solid #e5e9f0', padding:'20px' }}>
                     <div style={{ fontSize:'11px', fontWeight:'700', color:'#374151', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:'14px' }}>📈 Tendencia semanal</div>
                     <div style={{ display:'flex', gap:'20px', alignItems:'center', marginBottom:'14px' }}>
-                      <div><div style={{ fontSize:'10px', color:'#6b7280', marginBottom:'3px' }}>Esta semana</div><div style={{ fontSize:'20px', fontWeight:'800', color:NAVY }}>€{Number(ingresos).toLocaleString('es-ES')}</div></div>
+                      <div><div style={{ fontSize:'10px', color:'#6b7280', marginBottom:'3px' }}>Esta semana</div><div style={{ fontSize:'20px', fontWeight:'800', color:NAVY }}>{fmt(Number(ingresos))}</div></div>
                       <div style={{ color:'#d1d5db', fontSize:'20px' }}>→</div>
-                      <div><div style={{ fontSize:'10px', color:'#6b7280', marginBottom:'3px' }}>Semana ant.</div><div style={{ fontSize:'20px', fontWeight:'800', color:'#9ca3af' }}>€{Number(digest.ingresos?.semana_anterior||0).toLocaleString('es-ES')}</div></div>
+                      <div><div style={{ fontSize:'10px', color:'#6b7280', marginBottom:'3px' }}>Semana ant.</div><div style={{ fontSize:'20px', fontWeight:'800', color:'#9ca3af' }}>{fmt(Number(digest.ingresos?.semana_anterior||0))}</div></div>
                     </div>
                     <div style={{ padding:'8px 12px', borderRadius:'8px', background:digest.ingresos?.tendencia==='positiva'?'#f0fdf4':'#fef2f2', color:digest.ingresos?.tendencia==='positiva'?GREEN:RED, fontSize:'12px', fontWeight:'600' }}>
                       {digest.ingresos?.tendencia==='positiva'?'↑ Tendencia positiva esta semana':'↓ Tendencia negativa esta semana'}

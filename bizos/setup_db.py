@@ -326,7 +326,8 @@ def seed_accounting_entries():
     from core.database import SessionLocal
     from sqlalchemy import text
     from modules.accounting.journal import record_transaction
-    from modules.accounting.charts_es import PGC_ES_ACCOUNTS, get_entry_accounts
+    from modules.accounting.es.charts_es import PGC_ES_ACCOUNTS, get_entry_accounts
+    from modules.accounting.mx.charts_mx import NIF_MX_ACCOUNTS, get_entry_accounts_mx
     from datetime import date as ddate
     from models.user import User
 
@@ -344,6 +345,10 @@ def seed_accounting_entries():
             accounts = PGC_ES_ACCOUNTS
             get_accounts = get_entry_accounts
             plan_name = "PGC Espana (RD 1514/2007)"
+        elif country == "MX":
+            accounts = NIF_MX_ACCOUNTS
+            get_accounts = get_entry_accounts_mx
+            plan_name = "NIF Mexico (CINIF / SAT CFDI 4.0)"
         else:
             print(f"• Pais {country} sin plan de cuentas implementado, se omite")
             return
