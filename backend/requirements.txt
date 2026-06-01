@@ -1,0 +1,55 @@
+annotated-doc==0.0.4
+annotated-types==0.7.0
+anyio==4.13.0
+bcrypt==5.0.0
+cffi==2.0.0
+click==8.3.3
+cryptography==47.0.0
+ecdsa==0.19.2
+fastapi==0.136.1
+h11==0.16.0
+idna==3.13
+passlib==1.7.4
+pyasn1==0.6.3
+pycparser==3.0
+pydantic==2.13.3
+pydantic-settings==2.14.0
+pydantic_core==2.46.3
+python-dotenv==1.2.2
+python-jose==3.5.0
+python-multipart==0.0.27
+rsa==4.9.1
+six==1.17.0
+SQLAlchemy==2.0.49
+starlette==1.0.0
+typing-inspection==0.4.2
+typing_extensions==4.15.0
+uvicorn==0.46.0
+
+# ── AI / LLM ────────────────────────────────────────────────────────────────
+anthropic==0.104.1
+httpx==0.28.1
+requests==2.34.2
+certifi==2026.5.20
+
+# ── Auth / 2FA ──────────────────────────────────────────────────────────────
+pyotp==2.9.0
+qrcode==8.2
+
+# ── Scheduler ───────────────────────────────────────────────────────────────
+APScheduler==3.11.2
+
+# ── Memory stores (vector / graph) ──────────────────────────────────────────
+chromadb==1.5.9
+neo4j==6.2.0
+
+# ── Document parsing / rendering ────────────────────────────────────────────
+pdfplumber==0.11.9
+pypdfium2==5.8.0
+Pillow==12.2.0
+openpyxl==3.1.5
+pandas==3.0.3
+reportlab==4.5.1
+
+# ── Billing ─────────────────────────────────────────────────────────────────
+stripe==15.1.0

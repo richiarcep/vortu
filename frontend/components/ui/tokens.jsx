@@ -1,0 +1,52 @@
+'use client'
+
+export const T = {
+  bg: '#FBFBFD',
+  card: '#FFFFFF',
+  sidebar: '#F5F5F7',
+  hairline: 'rgba(0,0,0,0.08)',
+  soft: 'rgba(0,0,0,0.05)',
+  text: '#1D1D1F',
+  text2: '#424245',
+  text3: '#6E6E73',
+  text4: '#86868B',
+  blue: '#0071E3',
+  cyan: '#00B4D8',
+  green: '#34C759',
+  greenSoft: 'rgba(52,199,89,.1)',
+  amber: '#FF9500',
+  amberSoft: 'rgba(255,149,0,.1)',
+  red: '#FF3B30',
+  redSoft: 'rgba(255,59,48,.08)',
+  purple: '#6366F1',
+  purpleSoft: 'rgba(99,102,241,.1)',
+}
+
+export const FONT = "-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',system-ui,sans-serif"
+
+const Icon = ({ d, size = 16, sw = 1.5 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+    stroke="currentColor" strokeWidth={sw} strokeLinecap="round"
+    strokeLinejoin="round" style={{ flexShrink: 0 }}>{d}</svg>
+)
+
+export const I = {
+  coin: <Icon d={<><circle cx="12" cy="12" r="9" /><path d="M15 9.5c-.7-1-1.9-1.5-3-1.5-1.8 0-3 .9-3 2.2 0 3 6 1.6 6 4.6 0 1.3-1.2 2.2-3 2.2-1.4 0-2.6-.7-3.2-1.7M12 6.5v11" /></>} />,
+  trend: <Icon d={<><path d="M3 17l6-6 4 4 8-8" /><path d="M14 7h7v7" /></>} />,
+  cart: <Icon d={<><path d="M3 4h2l2.4 11.2a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.5L21 8H6" /><circle cx="10" cy="20" r="1.4" /><circle cx="17" cy="20" r="1.4" /></>} />,
+  spark: <Icon d={<><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1" /><circle cx="12" cy="12" r="3" /></>} />,
+  bell: <Icon d={<><path d="M6 8a6 6 0 0 1 12 0c0 7 3 7 3 9H3c0-2 3-2 3-9z" /><path d="M10 21a2 2 0 0 0 4 0" /></>} />,
+  gear: <Icon d={<><circle cx="12" cy="12" r="3" /><path d="M19.4 14.5a1.5 1.5 0 0 0 .3 1.7l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.5 1.5 0 0 0-1.7-.3 1.5 1.5 0 0 0-.9 1.4v.4a2 2 0 1 1-4 0v-.2a1.5 1.5 0 0 0-1-1.4 1.5 1.5 0 0 0-1.7.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.5 1.5 0 0 0 .3-1.7 1.5 1.5 0 0 0-1.4-.9H3a2 2 0 1 1 0-4h.1a1.5 1.5 0 0 0 1.4-1 1.5 1.5 0 0 0-.3-1.7l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.5 1.5 0 0 0 1.7.3h.1a1.5 1.5 0 0 0 .9-1.4V3a2 2 0 1 1 4 0v.1a1.5 1.5 0 0 0 .9 1.4 1.5 1.5 0 0 0 1.7-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.5 1.5 0 0 0-.3 1.7v.1a1.5 1.5 0 0 0 1.4.9H21a2 2 0 1 1 0 4h-.2a1.5 1.5 0 0 0-1.4.9z" /></>} />,
+  arrowUp: <Icon d={<path d="M7 14l5-5 5 5" />} sw={2} />,
+  arrowDown: <Icon d={<path d="M7 10l5 5 5-5" />} sw={2} />,
+  chevron: <Icon d={<path d="M6 9l6 6 6-6" />} />,
+  search: <Icon d={<><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></>} />,
+  folder: <Icon d={<><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" /></>} />,
+  brief: <Icon d={<><rect x="3" y="7" width="18" height="13" rx="2" /><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 13h18" /></>} />,
+  pkg: <Icon d={<><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /></>} />,
+  users: <Icon d={<><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></>} />,
+  mail: <Icon d={<><rect x="2" y="4" width="20" height="16" rx="2" /><path d="M22 7l-10 7L2 7" /></>} />,
+  plus: <Icon d={<><path d="M12 5v14M5 12h14" /></>} sw={2} />,
+  check: <Icon d={<path d="M20 6L9 17l-5-5" />} sw={2} />,
+  x: <Icon d={<><path d="M18 6L6 18M6 6l12 12" /></>} sw={2} />,
+}

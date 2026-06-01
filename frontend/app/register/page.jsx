@@ -1,0 +1,432 @@
+'use client'
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+
+import { API_BASE as API } from '@/lib/api'
+
+export default function RegisterPage() {
+  const router = useRouter()
+  const [fullName, setFullName]         = useState('')
+  const [email, setEmail]               = useState('')
+  const [password, setPassword]         = useState('')
+  const [confirmPassword, setConfirm]   = useState('')
+  const [companyName, setCompanyName]   = useState('')
+  const [loading, setLoading]           = useState(false)
+  const [error, setError]               = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+
+  async function handleRegister(e) {
+    e.preventDefault()
+    setError('')
+    if (password !== confirmPassword) {
+      setError('Las contraseñas no coinciden.')
+      return
+    }
+    if (password.length < 8) {
+      setError('La contraseña debe tener al menos 8 caracteres.')
+      return
+    }
+    setLoading(true)
+    try {
+      const res = await fetch(`${API}/api/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          full_name:    fullName,
+          email:        email,
+          password:     password,
+          company_name: companyName,
+          country:      null,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setError(data.detail || 'Error al crear la cuenta.')
+        return
+      }
+      // Login automático tras registro
+      const form = new URLSearchParams()
+      form.append('username', email)
+      form.append('password', password)
+      const loginRes = await fetch(`${API}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: form.toString(),
+      })
+      const loginData = await loginRes.json()
+      if (!loginRes.ok) {
+        setError('Cuenta creada. Inicia sesión manualmente.')
+        router.push('/login')
+        return
+      }
+      localStorage.setItem('nexum_token', loginData.access_token)
+      router.push('/onboarding')
+    } catch {
+      setError('Error de conexión. Verifica que el servidor esté activo.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&family=DM+Serif+Display:ital@0;1&display=swap');
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'DM Sans', system-ui, sans-serif; }
+
+        .register-root {
+          min-height: 100vh;
+          display: flex;
+          background: #f4f6fb;
+          font-family: 'DM Sans', system-ui, sans-serif;
+        }
+
+        /* ── Left panel ── */
+        .left-panel {
+          width: 520px;
+          flex-shrink: 0;
+          background: #0B1426;
+          display: flex;
+          flex-direction: column;
+          padding: 48px;
+          position: relative;
+          overflow: hidden;
+        }
+        .left-panel::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background:
+            radial-gradient(ellipse 60% 50% at 10% 20%, rgba(0,180,216,0.12) 0%, transparent 60%),
+            radial-gradient(ellipse 50% 60% at 90% 80%, rgba(37,99,235,0.15) 0%, transparent 60%);
+          pointer-events: none;
+        }
+        .left-panel::after {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background-image:
+            linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+          background-size: 48px 48px;
+          pointer-events: none;
+        }
+        .left-content { position: relative; z-index: 1; flex: 1; display: flex; flex-direction: column; }
+
+        .vortu-logo { display: flex; align-items: center; gap: 14px; margin-bottom: 64px; }
+        .vortu-icon {
+          width: 48px; height: 48px; border-radius: 12px;
+          background: linear-gradient(135deg, #00B4D8, #2563eb);
+          display: flex; align-items: center; justify-content: center;
+          flex-shrink: 0; box-shadow: 0 8px 24px rgba(0,180,216,0.3);
+        }
+        .vortu-name { font-size: 24px; font-weight: 800; color: white; letter-spacing: -0.6px; line-height: 1; }
+        .vortu-sub  { font-size: 11px; color: rgba(255,255,255,0.35); letter-spacing: 0.08em; text-transform: uppercase; margin-top: 3px; }
+
+        .hero-headline {
+          font-family: 'DM Serif Display', serif;
+          font-size: 38px; color: white; line-height: 1.15;
+          letter-spacing: -0.5px; margin-bottom: 20px;
+        }
+        .hero-headline em {
+          font-style: italic;
+          background: linear-gradient(90deg, #00B4D8, #60a5fa);
+          -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+        }
+        .hero-desc { font-size: 14px; color: rgba(255,255,255,0.5); line-height: 1.7; max-width: 340px; margin-bottom: 40px; }
+
+        .steps { display: flex; flex-direction: column; gap: 16px; margin-bottom: auto; }
+        .step-item { display: flex; align-items: flex-start; gap: 14px; }
+        .step-num {
+          width: 28px; height: 28px; border-radius: 999px;
+          background: rgba(0,180,216,0.2); border: 1px solid rgba(0,180,216,0.4);
+          display: flex; align-items: center; justify-content: center;
+          font-size: 12px; font-weight: 700; color: #00B4D8; flex-shrink: 0; margin-top: 1px;
+        }
+        .step-text { font-size: 13px; color: rgba(255,255,255,0.55); line-height: 1.5; }
+        .step-text strong { color: rgba(255,255,255,0.85); font-weight: 600; }
+
+        .nexum-footer {
+          margin-top: 48px; padding-top: 24px;
+          border-top: 1px solid rgba(255,255,255,0.06);
+          display: flex; align-items: center; gap: 10px;
+        }
+        .nexum-n { width: 28px; height: 28px; }
+        .nexum-label { font-size: 11px; color: rgba(255,255,255,0.25); letter-spacing: 0.06em; }
+        .nexum-label strong { color: rgba(255,255,255,0.45); font-weight: 600; }
+
+        /* ── Right panel ── */
+        .right-panel {
+          flex: 1; display: flex; align-items: center;
+          justify-content: center; padding: 48px;
+          overflow-y: auto;
+        }
+        .form-container {
+          width: 100%; max-width: 440px;
+          animation: fadeUp 0.5s ease both;
+        }
+        @keyframes fadeUp {
+          from { opacity: 0; transform: translateY(16px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        .form-header { margin-bottom: 32px; }
+        .form-eyebrow {
+          font-size: 11px; font-weight: 700; color: #00B4D8;
+          text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 10px;
+        }
+        .form-title {
+          font-size: 28px; font-weight: 800; color: #0B1426;
+          letter-spacing: -0.7px; line-height: 1.1; margin-bottom: 8px;
+        }
+        .form-subtitle { font-size: 14px; color: #6b7280; line-height: 1.6; }
+
+        .field { margin-bottom: 18px; }
+        .field label {
+          display: block; font-size: 12px; font-weight: 700; color: #374151;
+          margin-bottom: 7px; letter-spacing: 0.03em; text-transform: uppercase;
+        }
+        .field-input {
+          width: 100%; padding: 12px 14px; border-radius: 10px;
+          border: 1.5px solid #e5e9f0; background: white;
+          font-size: 14px; color: #0B1426; font-family: 'DM Sans', system-ui;
+          outline: none; transition: border-color 0.15s, box-shadow 0.15s;
+        }
+        .field-input:focus { border-color: #0B1426; box-shadow: 0 0 0 3px rgba(11,20,38,0.06); }
+        .field-input::placeholder { color: #9ca3af; }
+
+        .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+        .input-wrap { position: relative; }
+        .pw-toggle {
+          position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+          background: none; border: none; cursor: pointer; color: #9ca3af;
+          display: flex; align-items: center; padding: 4px; transition: color 0.15s;
+        }
+        .pw-toggle:hover { color: #0B1426; }
+
+        .divider {
+          display: flex; align-items: center; gap: 10px;
+          margin: 6px 0 18px; font-size: 11px; color: #9ca3af;
+        }
+        .divider-line { flex: 1; height: 1px; background: #e5e9f0; }
+
+        .error-box {
+          display: flex; align-items: flex-start; gap: 10px;
+          padding: 12px 14px; background: #fef2f2; border: 1px solid #fecaca;
+          border-radius: 10px; color: #dc2626; font-size: 13px;
+          margin-bottom: 18px; animation: fadeUp 0.2s ease;
+        }
+        .submit-btn {
+          width: 100%; padding: 13px; border-radius: 10px; border: none;
+          background: #0B1426; color: white; font-size: 14px; font-weight: 700;
+          cursor: pointer; font-family: 'DM Sans', system-ui; letter-spacing: -0.2px;
+          display: flex; align-items: center; justify-content: center; gap: 8px;
+          transition: all 0.2s; margin-bottom: 16px;
+        }
+        .submit-btn:hover:not(:disabled) {
+          background: #162038; transform: translateY(-1px);
+          box-shadow: 0 8px 24px rgba(11,20,38,0.25);
+        }
+        .submit-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        .spinner {
+          width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3);
+          border-top-color: white; border-radius: 50%;
+          animation: spin 0.7s linear infinite; flex-shrink: 0;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .login-row { text-align: center; font-size: 13px; color: #6b7280; }
+        .login-row a {
+          color: #0B1426; font-weight: 700; text-decoration: none;
+          border-bottom: 1px solid #0B1426; padding-bottom: 1px; transition: opacity 0.15s;
+        }
+        .login-row a:hover { opacity: 0.6; }
+
+        .form-footer {
+          margin-top: 32px; padding-top: 20px; border-top: 1px solid #f0f2f7;
+          text-align: center; font-size: 11px; color: #9ca3af;
+        }
+        .terms { font-size: 11px; color: #9ca3af; text-align: center; margin-bottom: 16px; line-height: 1.6; }
+
+        @media (max-width: 860px) {
+          .left-panel { display: none; }
+          .right-panel { padding: 32px 24px; }
+        }
+      `}</style>
+
+      <div className="register-root">
+
+        {/* ── LEFT PANEL ── */}
+        <div className="left-panel">
+          <div className="left-content">
+
+            <div className="vortu-logo">
+              <div className="vortu-icon">
+                <svg width="26" height="22" viewBox="0 0 26 22" fill="none">
+                  <rect x="1"  y="12" width="6" height="10" rx="1.5" fill="rgba(255,255,255,0.6)"/>
+                  <rect x="10" y="6"  width="6" height="16" rx="1.5" fill="rgba(255,255,255,0.8)"/>
+                  <rect x="19" y="1"  width="6" height="21" rx="1.5" fill="white"/>
+                </svg>
+              </div>
+              <div>
+                <div className="vortu-name">Vortu</div>
+                <div className="vortu-sub">by Nexum Solutions</div>
+              </div>
+            </div>
+
+            <h1 className="hero-headline">
+              Empieza hoy.<br/>
+              Tu negocio,<br/>
+              <em>todo en uno.</em>
+            </h1>
+            <p className="hero-desc">
+              Crea tu cuenta gratis en segundos. Sin tarjeta de crédito, sin contratos. Configura tu empresa y empieza a gestionar desde el primer día.
+            </p>
+
+            <div className="steps">
+              {[
+                { n:'1', title:'Crea tu cuenta',        desc:'Nombre, email y contraseña. Listo en 30 segundos.' },
+                { n:'2', title:'Elige tu jurisdicción', desc:'Configuramos tu sistema fiscal y contable según tu país.' },
+                { n:'3', title:'Empieza a gestionar',   desc:'Dashboard, ventas, contabilidad y Agente IA listos.' },
+              ].map(step => (
+                <div className="step-item" key={step.n}>
+                  <div className="step-num">{step.n}</div>
+                  <div className="step-text"><strong>{step.title}</strong> — {step.desc}</div>
+                </div>
+              ))}
+            </div>
+
+            <div className="nexum-footer">
+              <svg className="nexum-n" viewBox="0 0 28 28" fill="none">
+                <circle cx="5"  cy="5"  r="3" stroke="url(#ng)" strokeWidth="1.5"/>
+                <circle cx="23" cy="5"  r="3" stroke="url(#ng)" strokeWidth="1.5"/>
+                <circle cx="5"  cy="23" r="3" stroke="url(#ng)" strokeWidth="1.5"/>
+                <circle cx="23" cy="23" r="3" stroke="url(#ng)" strokeWidth="1.5"/>
+                <line x1="5"  y1="5"  x2="5"  y2="23" stroke="url(#ng)" strokeWidth="1.5"/>
+                <line x1="23" y1="5"  x2="23" y2="23" stroke="url(#ng)" strokeWidth="1.5"/>
+                <line x1="5"  y1="5"  x2="23" y2="23" stroke="url(#ng)" strokeWidth="1.5"/>
+                <defs>
+                  <linearGradient id="ng" x1="5" y1="5" x2="23" y2="23" gradientUnits="userSpaceOnUse">
+                    <stop stopColor="#00B4D8"/>
+                    <stop offset="1" stopColor="#0B1426"/>
+                  </linearGradient>
+                </defs>
+              </svg>
+              <div className="nexum-label">Un producto de <strong>Nexum Solutions</strong> · © 2026</div>
+            </div>
+
+          </div>
+        </div>
+
+        {/* ── RIGHT PANEL ── */}
+        <div className="right-panel">
+          <div className="form-container">
+
+            <div className="form-header">
+              <div className="form-eyebrow">Registro gratuito</div>
+              <h2 className="form-title">Crea tu cuenta</h2>
+              <p className="form-subtitle">Completa los datos de tu empresa para empezar. Solo toma un minuto.</p>
+            </div>
+
+            <form onSubmit={handleRegister}>
+
+              <div className="field-row">
+                <div className="field">
+                  <label>Nombre completo</label>
+                  <input className="field-input" type="text" placeholder="Juan García"
+                    value={fullName} onChange={e => setFullName(e.target.value)} required autoComplete="name"/>
+                </div>
+                <div className="field">
+                  <label>Empresa</label>
+                  <input className="field-input" type="text" placeholder="Mi Empresa SL"
+                    value={companyName} onChange={e => setCompanyName(e.target.value)} required autoComplete="organization"/>
+                </div>
+              </div>
+
+              <div className="field">
+                <label>Correo electrónico</label>
+                <input className="field-input" type="email" placeholder="tu@empresa.com"
+                  value={email} onChange={e => setEmail(e.target.value)} required autoComplete="email"/>
+              </div>
+
+              <div className="divider">
+                <div className="divider-line"/>
+                <span>Contraseña</span>
+                <div className="divider-line"/>
+              </div>
+
+              <div className="field-row">
+                <div className="field">
+                  <label>Contraseña</label>
+                  <div className="input-wrap">
+                    <input className="field-input"
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder="Mín. 8 caracteres"
+                      value={password} onChange={e => setPassword(e.target.value)}
+                      required autoComplete="new-password" style={{paddingRight:'44px'}}/>
+                    <button type="button" className="pw-toggle"
+                      onClick={() => setShowPassword(s => !s)} tabIndex={-1}>
+                      {showPassword ? (
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+                          <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+                          <line x1="1" y1="1" x2="23" y2="23"/>
+                        </svg>
+                      ) : (
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                          <circle cx="12" cy="12" r="3"/>
+                        </svg>
+                      )}
+                    </button>
+                  </div>
+                </div>
+                <div className="field">
+                  <label>Confirmar</label>
+                  <input className="field-input"
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="Repite la contraseña"
+                    value={confirmPassword} onChange={e => setConfirm(e.target.value)}
+                    required autoComplete="new-password"/>
+                </div>
+              </div>
+
+              {error && (
+                <div className="error-box">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0,marginTop:'1px'}}>
+                    <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                  </svg>
+                  {error}
+                </div>
+              )}
+
+              <p className="terms">
+                Al registrarte aceptas los <a href="#" style={{color:'#0B1426',fontWeight:600}}>Términos de servicio</a> y la <a href="#" style={{color:'#0B1426',fontWeight:600}}>Política de privacidad</a> de Vortu.
+              </p>
+
+              <button className="submit-btn" type="submit" disabled={loading}>
+                {loading ? (
+                  <><div className="spinner"/>Creando cuenta...</>
+                ) : (
+                  <>Crear cuenta gratis <span style={{opacity:0.5}}>→</span></>
+                )}
+              </button>
+
+            </form>
+
+            <div className="login-row">
+              ¿Ya tienes cuenta? <a href="/login">Inicia sesión</a>
+            </div>
+
+            <div className="form-footer">
+              Vortu by Nexum Solutions · Todos los derechos reservados · 2026
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </>
+  )
+}

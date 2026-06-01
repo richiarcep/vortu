@@ -1,0 +1,42 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# ── Secrets / environment ──────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ── Python ─────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ── Local database ─────────────────────────────────────────────────────────
+*.db
+*.sqlite
+*.sqlite3
+
+# ── Vector / graph data stores ─────────────────────────────────────────────
+data/chroma/
+
+# ── User-generated / runtime artifacts ─────────────────────────────────────
+uploads/
+payslips/
+reports/
+
+# ── TLS certs ──────────────────────────────────────────────────────────────
+*.pem
+
+# ── Editor / OS cruft ──────────────────────────────────────────────────────
+.DS_Store
+
+# ── Ad-hoc backups (do not commit) ─────────────────────────────────────────
+*.backup_*
+*.bak_*
+*.bak

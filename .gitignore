@@ -1,0 +1,47 @@
+# ── Secrets / environment (NEVER commit) ────────────────────────────────────
+**/.env
+**/.env.*
+!**/.env.example
+
+# ── Databases & local data ───────────────────────────────────────────────────
+*.db
+*.sqlite
+*.sqlite3
+backend/data/chroma/
+backend/uploads/
+backend/payslips/
+backend/reports/
+
+# ── Python ───────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ── Node / Next.js ───────────────────────────────────────────────────────────
+node_modules/
+.next/
+out/
+build/
+.vercel
+*.tsbuildinfo
+next-env.d.ts
+
+# ── TLS certs ────────────────────────────────────────────────────────────────
+*.pem
+
+# ── OS / editor ──────────────────────────────────────────────────────────────
+.DS_Store
+
+# ── Ad-hoc backups (do not commit) ───────────────────────────────────────────
+*.bak
+*.bak_*
+*.backup_*
+*.backup-*
+**/_backup_*/
+*.output

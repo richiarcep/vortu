@@ -1,0 +1,622 @@
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import FileResponse
+from sqlalchemy.orm import Session
+from pydantic import BaseModel
+from typing import Optional
+from core.database import get_db
+from core.security import get_current_user
+from models.user import User
+from models.document import Document
+from modules.hr.employees import Employee, EmployeeFeedback, analyze_feedback
+from modules.hr.payroll import process_payroll
+from modules.hr.extended import Vacation, Contract, Payslip
+from datetime import date, datetime, timedelta
+import json
+import os
+
+router = APIRouter(prefix="/api/hr", tags=["HR & Payroll"])
+
+
+# ── Schemas ───────────────────────────────────────────────────────────────────
+
+class EmployeeCreate(BaseModel):
+    full_name: str
+    email: str
+    department: Optional[str] = None
+    position: Optional[str] = None
+    gross_salary: float
+
+
+class VacationCreate(BaseModel):
+    employee_id: int
+    start_date: str       # ISO date YYYY-MM-DD
+    end_date: str
+    vacation_type: Optional[str] = "vacation"
+    notes: Optional[str] = None
+
+
+class VacationUpdate(BaseModel):
+    status: str           # approved | rejected
+    notes: Optional[str] = None
+
+
+class VeraHRRequest(BaseModel):
+    question: Optional[str] = None
+
+
+class FeedbackCreate(BaseModel):
+    employee_id: int
+    content: str
+
+
+class FeedbackBatchAnalyze(BaseModel):
+    comments: list[str]
+
+
+# ── Employee routes ───────────────────────────────────────────────────────────
+
+@router.post("/employees", status_code=201)
+def create_employee(
+    data: EmployeeCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Creates a new employee record."""
+
+    existing = db.query(Employee).filter(
+        Employee.email == data.email
+    ).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Employee email already exists")
+
+    employee = Employee(
+        full_name=data.full_name,
+        email=data.email,
+        department=data.department,
+        position=data.position,
+        gross_salary=data.gross_salary,
+        company_id=current_user.company_id
+    )
+    db.add(employee)
+    db.commit()
+    db.refresh(employee)
+
+    return {
+        "id": employee.id,
+        "full_name": employee.full_name,
+        "email": employee.email,
+        "department": employee.department,
+        "position": employee.position,
+        "gross_salary": employee.gross_salary,
+    }
+
+
+@router.get("/employees")
+def get_employees(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Returns all employees for the company."""
+    employees = db.query(Employee).filter(
+        Employee.company_id == current_user.company_id,
+        Employee.is_active == True
+    ).all()
+
+    return [{
+        "id": e.id,
+        "full_name": e.full_name,
+        "email": e.email,
+        "department": e.department,
+        "position": e.position,
+        "gross_salary": e.gross_salary,
+    } for e in employees]
+
+
+@router.delete("/employees/{employee_id}")
+def deactivate_employee(
+    employee_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Deactivates an employee (soft delete)."""
+    employee = db.query(Employee).filter(
+        Employee.id == employee_id,
+        Employee.company_id == current_user.company_id
+    ).first()
+
+    if not employee:
+        raise HTTPException(status_code=404, detail="Employee not found")
+
+    employee.is_active = False
+    db.commit()
+
+    return {"message": f"{employee.full_name} deactivated successfully"}
+
+
+# ── Payroll routes ────────────────────────────────────────────────────────────
+
+@router.get("/payroll/{document_id}")
+def process_payroll_document(
+    document_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Takes an uploaded payroll file and calculates
+    net wages for every employee automatically.
+    """
+    document = db.query(Document).filter(
+        Document.id == document_id,
+        Document.company_id == current_user.company_id
+    ).first()
+
+    if not document:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    from services.parsers import parse_file
+    parsed_data = parse_file(document.file_path, document.file_type)
+
+    result = process_payroll(parsed_data)
+
+    return {
+        "document_id": document_id,
+        "filename": document.filename,
+        "payroll": result
+    }
+
+
+@router.get("/payslip/{employee_name}")
+def download_payslip(
+    employee_name: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Downloads a generated payslip PDF for an employee."""
+    filename = f"payslips/{employee_name}_payslip.pdf"
+
+    if not os.path.exists(filename):
+        raise HTTPException(
+            status_code=404,
+            detail="Payslip not found. Run payroll processing first."
+        )
+
+    return FileResponse(
+        filename,
+        media_type="application/pdf",
+        filename=f"{employee_name}_payslip.pdf"
+    )
+
+
+# ── Feedback routes ───────────────────────────────────────────────────────────
+
+@router.post("/feedback", status_code=201)
+def add_feedback(
+    data: FeedbackCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Adds a feedback comment for an employee."""
+    employee = db.query(Employee).filter(
+        Employee.id == data.employee_id,
+        Employee.company_id == current_user.company_id
+    ).first()
+
+    if not employee:
+        raise HTTPException(status_code=404, detail="Employee not found")
+
+    feedback = EmployeeFeedback(
+        employee_id=data.employee_id,
+        content=data.content
+    )
+    db.add(feedback)
+    db.commit()
+
+    return {"message": "Feedback added successfully"}
+
+
+@router.post("/feedback/analyze")
+def analyze_employee_feedback(
+    data: FeedbackBatchAnalyze,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Sends a batch of feedback comments to Claude
+    for sentiment analysis.
+    """
+    if not data.comments:
+        raise HTTPException(status_code=400, detail="No comments provided")
+
+    result = analyze_feedback(data.comments)
+    return result
+
+
+@router.get("/summary")
+def get_hr_summary(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Returns HR overview — headcount, payroll cost, departments."""
+    employees = db.query(Employee).filter(
+        Employee.company_id == current_user.company_id,
+        Employee.is_active == True
+    ).all()
+
+    total_gross = sum(e.gross_salary for e in employees)
+
+    departments = {}
+    for e in employees:
+        dept = e.department or "General"
+        if dept not in departments:
+            departments[dept] = {"headcount": 0, "total_gross": 0}
+        departments[dept]["headcount"] += 1
+        departments[dept]["total_gross"] += e.gross_salary
+
+    return {
+        "total_employees": len(employees),
+        "total_gross_payroll": round(total_gross, 2),
+        "departments": departments
+    }
+
+
+# ─── VACACIONES ────────────────────────────────────────────────────────────
+@router.get("/vacations")
+def list_vacations(
+    status: Optional[str] = None,
+    employee_id: Optional[int] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Lista todas las vacaciones de la empresa."""
+    q = db.query(Vacation).filter(Vacation.company_id == current_user.company_id)
+    if status:
+        q = q.filter(Vacation.status == status)
+    if employee_id:
+        q = q.filter(Vacation.employee_id == employee_id)
+    vacations = q.order_by(Vacation.start_date.desc()).all()
+
+    result = []
+    for v in vacations:
+        emp = db.query(Employee).filter(Employee.id == v.employee_id).first()
+        result.append({
+            "id": v.id,
+            "employee_id": v.employee_id,
+            "employee_name": emp.full_name if emp else None,
+            "employee_department": emp.department if emp else None,
+            "start_date": v.start_date.isoformat() if v.start_date else None,
+            "end_date": v.end_date.isoformat() if v.end_date else None,
+            "days": v.days,
+            "vacation_type": v.vacation_type,
+            "status": v.status,
+            "notes": v.notes,
+            "requested_at": v.requested_at.isoformat() if v.requested_at else None,
+            "approved_at": v.approved_at.isoformat() if v.approved_at else None,
+        })
+
+    today = date.today()
+    summary = {
+        "total":      len(result),
+        "pending":    len([v for v in vacations if v.status == "pending"]),
+        "approved":   len([v for v in vacations if v.status == "approved"]),
+        "today_out":  len([v for v in vacations if v.status == "approved" and v.start_date <= today <= v.end_date]),
+        "this_week":  len([v for v in vacations if v.status == "approved" and v.start_date <= today + timedelta(days=7) and v.end_date >= today]),
+    }
+    return {"vacations": result, "summary": summary}
+
+
+@router.post("/vacations", status_code=201)
+def create_vacation(
+    data: VacationCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Crea una nueva solicitud de vacaciones."""
+    start = datetime.fromisoformat(data.start_date).date()
+    end = datetime.fromisoformat(data.end_date).date()
+    days = (end - start).days + 1
+
+    v = Vacation(
+        employee_id=data.employee_id,
+        company_id=current_user.company_id,
+        start_date=start,
+        end_date=end,
+        days=days,
+        vacation_type=data.vacation_type,
+        notes=data.notes,
+        status="pending",
+    )
+    db.add(v)
+    db.commit()
+    db.refresh(v)
+    return {"id": v.id, "status": "pending"}
+
+
+@router.put("/vacations/{vacation_id}")
+def update_vacation(
+    vacation_id: int,
+    data: VacationUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Aprueba o rechaza una solicitud."""
+    v = db.query(Vacation).filter(
+        Vacation.id == vacation_id,
+        Vacation.company_id == current_user.company_id
+    ).first()
+    if not v:
+        raise HTTPException(404, "Vacación no encontrada")
+
+    v.status = data.status
+    if data.notes:
+        v.notes = data.notes
+    if data.status == "approved":
+        v.approved_by = current_user.id
+        v.approved_at = datetime.now()
+    db.commit()
+    return {"id": v.id, "status": v.status}
+
+
+# ─── CONTRATOS ─────────────────────────────────────────────────────────────
+@router.get("/contracts")
+def list_contracts(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Lista contratos + alertas de vencimiento."""
+    contracts = db.query(Contract).filter(
+        Contract.company_id == current_user.company_id,
+        Contract.is_active == True
+    ).order_by(Contract.start_date.desc()).all()
+
+    today = date.today()
+    in_60_days = today + timedelta(days=60)
+
+    result = []
+    expiring = []
+    for c in contracts:
+        emp = db.query(Employee).filter(Employee.id == c.employee_id).first()
+        item = {
+            "id": c.id,
+            "employee_id": c.employee_id,
+            "employee_name": emp.full_name if emp else None,
+            "employee_department": emp.department if emp else None,
+            "employee_position": emp.position if emp else None,
+            "contract_type": c.contract_type,
+            "start_date": c.start_date.isoformat() if c.start_date else None,
+            "end_date": c.end_date.isoformat() if c.end_date else None,
+            "working_hours": c.working_hours,
+            "salary_gross": c.salary_gross,
+            "is_active": c.is_active,
+            "expires_soon": bool(c.end_date and today <= c.end_date <= in_60_days),
+            "expired":      bool(c.end_date and c.end_date < today),
+        }
+        result.append(item)
+        if item["expires_soon"]:
+            expiring.append(item)
+
+    return {
+        "contracts": result,
+        "summary": {
+            "total":            len(result),
+            "indefinidos":      len([c for c in contracts if c.contract_type == "indefinido"]),
+            "temporales":       len([c for c in contracts if c.contract_type == "temporal"]),
+            "practicas":        len([c for c in contracts if c.contract_type == "practicas"]),
+            "expiring_60d":     len(expiring),
+            "expiring_list":    expiring,
+        }
+    }
+
+
+# ─── NÓMINAS ──────────────────────────────────────────────────────────────
+@router.get("/payslips")
+def list_payslips(
+    employee_id: Optional[int] = None,
+    year: Optional[int] = None,
+    month: Optional[int] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Lista nóminas con filtros opcionales."""
+    q = db.query(Payslip).filter(Payslip.company_id == current_user.company_id)
+    if employee_id:
+        q = q.filter(Payslip.employee_id == employee_id)
+    if year:
+        q = q.filter(Payslip.period_year == year)
+    if month:
+        q = q.filter(Payslip.period_month == month)
+    payslips = q.order_by(Payslip.period_year.desc(), Payslip.period_month.desc()).all()
+
+    result = []
+    for p in payslips:
+        emp = db.query(Employee).filter(Employee.id == p.employee_id).first()
+        result.append({
+            "id": p.id,
+            "employee_id": p.employee_id,
+            "employee_name": emp.full_name if emp else None,
+            "employee_department": emp.department if emp else None,
+            "period_month": p.period_month,
+            "period_year": p.period_year,
+            "gross_amount": p.gross_amount,
+            "net_amount": p.net_amount,
+            "irpf": p.irpf,
+            "ss_employee": p.ss_employee,
+            "ss_company": p.ss_company,
+            "extras": p.extras,
+            "paid_at": p.paid_at.isoformat() if p.paid_at else None,
+        })
+
+    total_gross = sum(p["gross_amount"] for p in result)
+    total_net = sum(p["net_amount"] for p in result)
+    total_cost = sum(p["gross_amount"] + p["ss_company"] for p in result)
+
+    return {
+        "payslips": result,
+        "summary": {
+            "total":         len(result),
+            "total_gross":   round(total_gross, 2),
+            "total_net":     round(total_net, 2),
+            "total_cost":    round(total_cost, 2),
+        }
+    }
+
+
+# ─── DASHBOARD HR ─────────────────────────────────────────────────────────
+@router.get("/dashboard")
+def hr_dashboard(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """KPIs clave de HR estilo Vortu (dashboard simple)."""
+    employees = db.query(Employee).filter(
+        Employee.company_id == current_user.company_id,
+        Employee.is_active == True
+    ).all()
+
+    total_employees = len(employees)
+    total_salary = sum(e.gross_salary for e in employees)
+    monthly_cost = total_salary / 12
+
+    # Por departamento
+    by_dept = {}
+    for e in employees:
+        d = e.department or "Sin departamento"
+        if d not in by_dept:
+            by_dept[d] = {"count": 0, "salary": 0}
+        by_dept[d]["count"] += 1
+        by_dept[d]["salary"] += e.gross_salary
+
+    # Vacaciones hoy + esta semana
+    today = date.today()
+    in_7 = today + timedelta(days=7)
+    out_today = db.query(Vacation).filter(
+        Vacation.company_id == current_user.company_id,
+        Vacation.status == "approved",
+        Vacation.start_date <= today,
+        Vacation.end_date >= today
+    ).count()
+    out_week = db.query(Vacation).filter(
+        Vacation.company_id == current_user.company_id,
+        Vacation.status == "approved",
+        Vacation.start_date <= in_7,
+        Vacation.end_date >= today
+    ).count()
+
+    # Contratos por vencer (60 días)
+    in_60 = today + timedelta(days=60)
+    expiring = db.query(Contract).filter(
+        Contract.company_id == current_user.company_id,
+        Contract.is_active == True,
+        Contract.end_date.isnot(None),
+        Contract.end_date >= today,
+        Contract.end_date <= in_60
+    ).count()
+
+    # Feedback sentiment
+    feedbacks = db.query(EmployeeFeedback).join(Employee).filter(
+        Employee.company_id == current_user.company_id
+    ).all()
+    pos = len([f for f in feedbacks if f.sentiment == "positive"])
+    neg = len([f for f in feedbacks if f.sentiment == "negative"])
+    neu = len([f for f in feedbacks if f.sentiment == "neutral"])
+    feedback_score = round((pos * 9 + neu * 5 + neg * 2) / max(len(feedbacks), 1), 1)
+
+    # Empleados en riesgo (>50% feedback negativo)
+    at_risk = []
+    for e in employees:
+        emp_fb = [f for f in feedbacks if f.employee_id == e.id]
+        if len(emp_fb) >= 3:
+            neg_pct = len([f for f in emp_fb if f.sentiment == "negative"]) / len(emp_fb)
+            if neg_pct >= 0.5:
+                at_risk.append({
+                    "id": e.id,
+                    "name": e.full_name,
+                    "department": e.department,
+                    "negative_pct": round(neg_pct * 100),
+                    "feedback_count": len(emp_fb),
+                })
+
+    return {
+        "total_employees": total_employees,
+        "total_salary_annual": round(total_salary, 2),
+        "monthly_cost": round(monthly_cost, 2),
+        "by_department": [
+            {"department": d, "count": v["count"], "salary": round(v["salary"], 2)}
+            for d, v in by_dept.items()
+        ],
+        "out_today":     out_today,
+        "out_this_week": out_week,
+        "contracts_expiring_60d": expiring,
+        "feedback": {
+            "total": len(feedbacks),
+            "positive_pct": round(pos * 100 / max(len(feedbacks), 1), 1),
+            "negative_pct": round(neg * 100 / max(len(feedbacks), 1), 1),
+            "neutral_pct":  round(neu * 100 / max(len(feedbacks), 1), 1),
+            "score":        feedback_score,
+        },
+        "employees_at_risk": at_risk,
+    }
+
+
+# ─── VERA HR ──────────────────────────────────────────────────────────────
+@router.post("/vera/analyze")
+def vera_analyze_hr(
+    data: VeraHRRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Pregunta abierta a Vera con contexto HR completo."""
+    from vera.context import build_full_context
+    from vera.llm_router import VeraRouter
+
+    # Contexto HR específico
+    dashboard = hr_dashboard(db=db, current_user=current_user)
+
+    hr_context = f"""
+CONTEXTO RECURSOS HUMANOS de la empresa (datos en tiempo real):
+
+EQUIPO:
+- Total: {dashboard['total_employees']} empleados activos
+- Coste anual: {dashboard['total_salary_annual']:,.0f}€
+- Coste mensual: {dashboard['monthly_cost']:,.0f}€
+
+POR DEPARTAMENTO:
+{chr(10).join(f"- {d['department']}: {d['count']} personas, {d['salary']:,.0f}€/año" for d in dashboard['by_department'])}
+
+VACACIONES:
+- Fuera hoy: {dashboard['out_today']} personas
+- Fuera esta semana: {dashboard['out_this_week']} personas
+
+CONTRATOS:
+- Vencen en próximos 60 días: {dashboard['contracts_expiring_60d']}
+
+CLIMA LABORAL (feedback):
+- Score global: {dashboard['feedback']['score']}/10
+- Positivos: {dashboard['feedback']['positive_pct']}%
+- Negativos: {dashboard['feedback']['negative_pct']}%
+
+EMPLEADOS EN RIESGO (>50% feedback negativo):
+{chr(10).join(f"- {e['name']} ({e['department']}): {e['negative_pct']}% feedback negativo ({e['feedback_count']} comentarios)" for e in dashboard['employees_at_risk']) if dashboard['employees_at_risk'] else "Ninguno"}
+"""
+
+    question = data.question or "Analiza el estado actual de RH y dime qué requiere mi atención HOY. Sé breve y directo. Máximo 4 acciones prioritarias."
+
+    router = VeraRouter(db)
+    full_context = build_full_context(db, current_user.company_id, question)
+    full_system_prompt = f"""Eres Vera, IA central de gestión empresarial de Vortu.
+
+{hr_context}
+
+DATOS GENERALES:
+{full_context}
+
+Responde de forma breve, directa y accionable. Usa markdown ligero. Prioriza qué hacer ahora."""
+
+    result = router.route(
+        question=question,
+        system_prompt=full_system_prompt,
+        module="hr",
+    )
+
+    return {
+        "response": result.get('text') or result.get('error') or 'Sin respuesta',
+        "model_used": result.get('rule_used'),
+        "context_used": "hr_dashboard + sql + neo4j + chroma",
+    }
