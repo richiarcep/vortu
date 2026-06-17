@@ -3,13 +3,15 @@ import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
 import VeraPanel from '@/components/ui/VeraPanel'
-import { T, FONT, I } from '@/components/ui/tokens'
+import { useT, useTheme, FONT, I } from '@/components/ui/tokens'
 import VeraDrawer from '@/components/ui/VeraDrawer'
+import { HeaderActions } from '@/components/ui/primitives'
 
 import { API_BASE as API } from '@/lib/api'
 
 // ─────────── PRIMITIVOS ───────────
 function Card({ children, style = {}, padding = 20 }) {
+  const T = useT()
   return <div style={{
     background: T.card, borderRadius: 14,
     border: `.5px solid ${T.hairline}`,
@@ -17,18 +19,21 @@ function Card({ children, style = {}, padding = 20 }) {
     padding, ...style,
   }}>{children}</div>
 }
-function Btn({ children, onClick, disabled, color = T.blue, style = {} }) {
+function Btn({ children, onClick, disabled, color, style = {} }) {
+  const T = useT()
+  const c = color || T.blue
   return <button onClick={onClick} disabled={disabled} style={{
     padding: '7px 16px', borderRadius: 999, border: 'none',
     fontSize: 13, fontWeight: 500,
     cursor: disabled ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
-    background: disabled ? T.sidebar : color, color: disabled ? T.text4 : '#fff',
+    background: disabled ? T.sidebar : c, color: disabled ? T.text4 : '#fff',
     opacity: disabled ? .6 : 1,
     display: 'inline-flex', alignItems: 'center', gap: 6, ...style,
   }}>{children}</button>
 }
-function BtnSec({ children, onClick, style = {} }) {
-  return <button onClick={onClick} style={{
+function BtnSec({ children, onClick, style = {}, ...rest }) {
+  const T = useT()
+  return <button onClick={onClick} {...rest} style={{
     padding: '7px 16px', borderRadius: 999,
     border: `.5px solid ${T.hairline}`, background: T.card,
     fontSize: 13, fontWeight: 500, cursor: 'pointer',
@@ -37,10 +42,10 @@ function BtnSec({ children, onClick, style = {} }) {
   }}>{children}</button>
 }
 
-const inp = { width: '100%', padding: '8px 11px', borderRadius: 8, border: `.5px solid ${T.hairline}`, background: T.sidebar, fontSize: 13, color: T.text, fontFamily: 'inherit', outline: 'none' }
-function Input(props) { return <input style={inp} {...props} /> }
-function Sel({ children, ...props }) { return <select style={inp} {...props}>{children}</select> }
-function Textarea(props) { return <textarea style={{ ...inp, fontFamily: 'inherit', resize: 'vertical' }} {...props} /> }
+const inpStyle = (T) => ({ width: '100%', padding: '8px 11px', borderRadius: 8, border: `.5px solid ${T.hairline}`, background: T.sidebar, fontSize: 13, color: T.text, fontFamily: 'inherit', outline: 'none' })
+function Input(props) { const T = useT(); return <input style={inpStyle(T)} {...props} /> }
+function Sel({ children, ...props }) { const T = useT(); return <select style={inpStyle(T)} {...props}>{children}</select> }
+function Textarea(props) { const T = useT(); return <textarea style={{ ...inpStyle(T), fontFamily: 'inherit', resize: 'vertical' }} {...props} /> }
 
 function FlagES({ size = 14 }) {
   return <svg width={size} height={size * 0.66} viewBox="0 0 3 2" style={{ borderRadius: 2, boxShadow: '0 0 0 .5px rgba(0,0,0,0.1)', flexShrink: 0 }}>
@@ -48,7 +53,7 @@ function FlagES({ size = 14 }) {
     <rect y="0.5" width="3" height="1" fill="#F1BF00" />
   </svg>
 }
-function GreenDot() { return <span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: T.green }} /> }
+function GreenDot() { const T = useT(); return <span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: T.green }} /> }
 
 // ─────────── ICONOS POR CATEGORÍA ───────────
 function CatIcon({ name, size = 22, color = 'currentColor' }) {
@@ -80,6 +85,7 @@ async function call(path, token, opts = {}) {
 
 // ─────────── TABS PEGADOS ───────────
 function TabsPegados({ items, active, onChange }) {
+  const T = useT()
   return <div style={{ display: 'flex', gap: 4, marginTop: 14 }}>
     {items.map(it => (
       <button key={it.key} onClick={() => onChange(it.key)} style={{
@@ -101,13 +107,14 @@ function TabsPegados({ items, active, onChange }) {
 
 // ─────────── PULSE CARD ───────────
 function PulseCard({ kpis, variacion }) {
+  const T = useT()
   if (!kpis) return null
   const variacionLabel = kpis.total_mes_anterior === 0 ? 'Primer mes con gastos' : variacion === 0 ? 'Igual que mes anterior' : `${variacion > 0 ? '↑' : '↓'} ${Math.abs(variacion)}% vs mes anterior`
   const variacionColor = variacion > 10 ? T.red : variacion < -5 ? T.green : T.text3
   const pctTop = kpis.top_proveedor && kpis.total_mes > 0 ? Math.round((kpis.top_proveedor.total / kpis.total_mes) * 100) : 0
 
   return <Card padding={0} style={{ overflow: 'hidden' }}>
-    <div style={{ padding: '20px 24px', display: 'grid', gridTemplateColumns: '1.4fr 1fr 1.2fr', gap: 24, alignItems: 'center' }}>
+    <div className="cos-pulse" style={{ padding: '20px 24px', display: 'grid', gridTemplateColumns: '1.4fr 1fr 1.2fr', gap: 24, alignItems: 'center' }}>
       <div>
         <div style={{ fontSize: 11, color: T.text4, fontWeight: 500, letterSpacing: .3, textTransform: 'uppercase', marginBottom: 8 }}>Este mes · {kpis.mes_label}</div>
         <div style={{ fontSize: 38, fontWeight: 600, letterSpacing: -1, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{eur(kpis.total_mes)}</div>
@@ -141,6 +148,7 @@ function PulseCard({ kpis, variacion }) {
 
 // ─────────── BANNER INICIALIZACIÓN ───────────
 function InicializarBanner({ onInit, loading }) {
+  const T = useT()
   return <Card padding={18} style={{ background: 'linear-gradient(135deg, rgba(0,113,227,.05) 0%, rgba(0,180,216,.04) 100%)', border: `.5px solid rgba(0,113,227,.18)` }}>
     <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
       <div style={{ width: 40, height: 40, borderRadius: 10, background: 'linear-gradient(135deg,#0071E3,#00B4D8)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
@@ -150,13 +158,14 @@ function InicializarBanner({ onInit, loading }) {
         <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2 }}>Aún no has organizado tus gastos</div>
         <div style={{ fontSize: 12.5, color: T.text3, lineHeight: 1.5 }}>Vera creará 8 categorías típicas y clasificará automáticamente tus gastos existentes. Tardas un click.</div>
       </div>
-      <Btn onClick={onInit} disabled={loading}>{loading ? 'Creando…' : '✨ Inicializar con Vera'}</Btn>
+      <Btn onClick={onInit} disabled={loading}>{loading ? 'Creando…' : <><svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M8 1l1.5 5.5L15 8l-5.5 1.5L8 15l-1.5-5.5L1 8l5.5-1.5L8 1z" fill="#fff"/></svg> Inicializar con Vera</>}</Btn>
     </div>
   </Card>
 }
 
 // ─────────── CATEGORY CARD (la pieza estrella) ───────────
 function CategoryCard({ c, ancho = 'normal', onClick }) {
+  const T = useT()
   const color = c.color || T.text
   const isLarge = ancho === 'large'
 
@@ -202,6 +211,7 @@ function CategoryCard({ c, ancho = 'normal', onClick }) {
 // ─────────── VERA DRAWER ───────────
 // ─────────── PREVIEW DRAWER ───────────
 function PreviewDrawer({ detail, onClose }) {
+  const T = useT()
   const [showContable, setShowContable] = useState(false)
   if (!detail) return null
   const g = detail.gasto
@@ -213,14 +223,14 @@ function PreviewDrawer({ detail, onClose }) {
   const cuadrado = Math.abs(tDebe - tHaber) < 0.01
 
   return <div style={{ position: 'fixed', inset: 0, zIndex: 400, display: 'flex', justifyContent: 'flex-end', background: 'rgba(0,0,0,.15)', backdropFilter: 'blur(2px)' }} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
-    <div style={{ width: 'min(460px, 95vw)', height: '100vh', background: T.card, borderLeft: `.5px solid ${T.hairline}`, overflowY: 'auto', boxShadow: '-12px 0 40px rgba(0,0,0,.1)' }}>
+    <div style={{ width: 'min(460px, 95vw)', height: '100dvh', background: T.card, borderLeft: `.5px solid ${T.hairline}`, overflowY: 'auto', boxShadow: '-12px 0 40px rgba(0,0,0,.1)' }}>
       <div style={{ padding: '16px 20px', borderBottom: `.5px solid ${T.hairline}`, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 11, color: T.text4, fontWeight: 500, textTransform: 'uppercase', letterSpacing: .4, marginBottom: 4 }}>Detalle del gasto</div>
           <div style={{ fontSize: 15, fontWeight: 600, letterSpacing: -.2 }}>{g.description}</div>
           <div style={{ marginTop: 4, fontSize: 12, color: T.text3 }}>{g.provider || 'Sin proveedor'} · {fmtDate(g.date)}</div>
         </div>
-        <button onClick={onClose} style={{ width: 30, height: 30, borderRadius: 8, border: 'none', background: T.sidebar, color: T.text3, cursor: 'pointer', fontSize: 18 }}>×</button>
+        <button onClick={onClose} aria-label="Cerrar" style={{ width: 30, height: 30, borderRadius: 8, border: 'none', background: T.sidebar, color: T.text3, cursor: 'pointer', fontSize: 18 }}>×</button>
       </div>
       <div style={{ padding: 20, borderBottom: `.5px solid ${T.hairline}` }}>
         <div style={{ fontSize: 32, fontWeight: 600, letterSpacing: -.6, fontVariantNumeric: 'tabular-nums' }}>{eur(g.amount)}</div>
@@ -255,7 +265,7 @@ function PreviewDrawer({ detail, onClose }) {
         </button>
         {showContable && <div style={{ marginTop: 10, background: T.purpleSoft, borderRadius: 12, padding: 14, border: `.5px solid ${T.purple}30` }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-            <span style={{ fontSize: 10, fontWeight: 700, color: T.purple, background: '#fff', padding: '2px 6px', borderRadius: 4 }}>PGC</span>
+            <span style={{ fontSize: 10, fontWeight: 700, color: T.purple, background: T.card, padding: '2px 6px', borderRadius: 4 }}>PGC</span>
             <span style={{ fontSize: 12, fontWeight: 600, color: T.purple }}>Asiento contable</span>
             {cuadrado && <span style={{ marginLeft: 'auto', fontSize: 10, color: T.green, fontWeight: 600 }}>✓ Cuadrado</span>}
           </div>
@@ -284,6 +294,7 @@ function PreviewDrawer({ detail, onClose }) {
 
 // ─────────── REGISTRAR MODAL ───────────
 function RegistrarModal({ open, onClose, onSaved, token }) {
+  const T = useT()
   const [step, setStep] = useState('input')
   const [veraIn, setVeraIn] = useState('')
   const [parsing, setParsing] = useState(false)
@@ -336,11 +347,11 @@ function RegistrarModal({ open, onClose, onSaved, token }) {
             <span style={{ fontSize: 12, color: T.green, fontWeight: 500 }}>Vera entendió el gasto</span>
           </div>}
           <PreviewField label="Descripción" value={form.description} onChange={v => setForm({ ...form, description: v })} />
-          <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr', gap: 10 }}>
+          <div className="cos-row" style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr', gap: 10 }}>
             <PreviewField label="Importe (con IVA)" value={form.amount} onChange={v => setForm({ ...form, amount: v })} type="number" />
             <PreviewField label="IVA" value={form.iva_rate} onChange={v => setForm({ ...form, iva_rate: v })} type="select" options={[{ v: 21, l: '21%' }, { v: 10, l: '10%' }, { v: 4, l: '4%' }, { v: 0, l: '0%' }]} />
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.3fr', gap: 10 }}>
+          <div className="cos-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1.3fr', gap: 10 }}>
             <PreviewField label="Fecha" value={form.date} onChange={v => setForm({ ...form, date: v })} type="date" />
             <PreviewField label="Proveedor" value={form.provider} onChange={v => setForm({ ...form, provider: v })} />
           </div>
@@ -360,6 +371,7 @@ function RegistrarModal({ open, onClose, onSaved, token }) {
 }
 
 function PreviewField({ label, value, onChange, type = 'text', options }) {
+  const T = useT()
   return <div style={{ marginBottom: 12 }}>
     <div style={{ fontSize: 11, fontWeight: 500, color: T.text3, marginBottom: 4, letterSpacing: .2, textTransform: 'uppercase' }}>{label}</div>
     {type === 'select' ? (<Sel value={value} onChange={e => onChange(e.target.value)}>{options.map(o => <option key={o.v} value={o.v}>{o.l}</option>)}</Sel>) : (<Input type={type} value={value} onChange={e => onChange(e.target.value)} />)}
@@ -368,6 +380,7 @@ function PreviewField({ label, value, onChange, type = 'text', options }) {
 
 // ─────────── PÁGINA PRINCIPAL ───────────
 export default function CentroCostes() {
+  const T = useT()
   const router = useRouter()
   const [token, setToken] = useState(null)
   const [section, setSection] = useState('dashboard')
@@ -436,7 +449,16 @@ export default function CentroCostes() {
   const sinCategorias = aggCats?.items?.length === 0 || (aggCats?.items?.length === 1 && aggCats.items[0].name === 'Sin categoría')
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: T.bg, fontFamily: FONT, color: T.text }}>
+    <div style={{ display: 'flex', minHeight: '100dvh', background: T.bg, fontFamily: FONT, color: T.text }}>
+      <style>{`
+        *{box-sizing:border-box}
+        input:focus,select:focus,textarea:focus{border-color:${T.blue}!important;outline:none}
+        @media (max-width:768px){
+          .cos-pulse{grid-template-columns:1fr!important}
+          .cos-row-2{grid-template-columns:1fr!important}
+          .cos-row{grid-template-columns:1fr!important}
+        }
+      `}</style>
       <Sidebar />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ padding: '24px 32px 0' }}>
@@ -456,16 +478,9 @@ export default function CentroCostes() {
                 <span>IVA 21%</span>
               </div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <BtnSec onClick={() => {}} style={{ width: 36, padding: 0, justifyContent: 'center' }}>{I.bell}</BtnSec>
-              <BtnSec onClick={() => setVeraOpen(true)} style={{ background: 'rgba(0,113,227,.05)', borderColor: 'rgba(0,113,227,.18)', color: T.blue }}>
-                <span style={{ width: 14, height: 14, borderRadius: 4, background: 'linear-gradient(135deg,#0071E3,#00B4D8)', display: 'grid', placeItems: 'center' }}>
-                  <svg width="8" height="8" viewBox="0 0 16 16" fill="none"><path d="M8 1l1.5 5.5L15 8l-5.5 1.5L8 15l-1.5-5.5L1 8l5.5-1.5L8 1z" fill="#fff"/></svg>
-                </span>
-                Vera
-              </BtnSec>
+            <HeaderActions onVera={() => setVeraOpen(true)} router={router}>
               <Btn onClick={() => setRegistrarOpen(true)}>+ Registrar gasto</Btn>
-            </div>
+            </HeaderActions>
           </div>
           <TabsPegados items={[
             { key: 'dashboard', label: 'Dashboard' },
@@ -494,6 +509,7 @@ export default function CentroCostes() {
 
 // ─────────── DASHBOARD ───────────
 function DashboardSection({ kpis, variacion, aggCats, aggProvs, recientes, onSelect, onVerTodos, onVerCategorias }) {
+  const T = useT()
   const catsConGasto = (aggCats?.items || []).filter(c => c.total > 0)
   return <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
     <PulseCard kpis={kpis} variacion={variacion} />
@@ -513,7 +529,7 @@ function DashboardSection({ kpis, variacion, aggCats, aggProvs, recientes, onSel
     </div>}
 
     {/* Tabla gastos + Top proveedores */}
-    <div style={{ display: 'grid', gridTemplateColumns: '1.7fr 1fr', gap: 16 }}>
+    <div className="cos-row-2" style={{ display: 'grid', gridTemplateColumns: '1.7fr 1fr', gap: 16 }}>
       <Card padding={0}>
         <div style={{ padding: '14px 18px', borderBottom: `.5px solid ${T.hairline}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ fontSize: 13, fontWeight: 600 }}>Gastos recientes</div>
@@ -538,6 +554,7 @@ function DashboardSection({ kpis, variacion, aggCats, aggProvs, recientes, onSel
 }
 
 function ProveedorMiniRow({ p }) {
+  const T = useT()
   return <div style={{ padding: '10px 18px', borderBottom: `.5px solid ${T.hairline}`, display: 'flex', alignItems: 'center', gap: 10, fontSize: 12 }}>
     <div style={{ width: 26, height: 26, borderRadius: 6, background: T.sidebar, fontSize: 11, fontWeight: 600, display: 'grid', placeItems: 'center' }}>{p.inicial}</div>
     <div style={{ flex: 1, minWidth: 0 }}>
@@ -553,6 +570,7 @@ function ProveedorMiniRow({ p }) {
 
 // ─────────── GASTOS ───────────
 function GastosSection({ aggCats, gastos, filtroCat, setFiltroCat, search, setSearch, selectedId, onSelect }) {
+  const T = useT()
   return <div>
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
       <FilterPill active={filtroCat === null} onClick={() => setFiltroCat(null)} count={gastos.total}>Todos</FilterPill>
@@ -571,6 +589,7 @@ function GastosSection({ aggCats, gastos, filtroCat, setFiltroCat, search, setSe
 }
 
 function FilterPill({ active, onClick, children, count, color }) {
+  const T = useT()
   const activeColor = color || T.text
   return <button onClick={onClick} style={{
     padding: '3px 10px', fontSize: 11.5, fontWeight: 500,
@@ -585,6 +604,7 @@ function FilterPill({ active, onClick, children, count, color }) {
 }
 
 function GastoRow({ g, selected, onSelect }) {
+  const T = useT()
   return <div onClick={onSelect} style={{
     display: 'grid', gridTemplateColumns: '2fr 1.3fr 1fr 110px 80px',
     padding: '11px 18px', borderBottom: `.5px solid ${T.hairline}`,
@@ -603,6 +623,7 @@ function GastoRow({ g, selected, onSelect }) {
 
 // ─────────── CATEGORÍAS (cards grandes) ───────────
 function CategoriasSection({ data }) {
+  const T = useT()
   if (!data?.items?.length) return <div style={{ color: T.text4, padding: 24 }}>Sin datos.</div>
   return <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 14 }}>
     {data.items.map(c => <CategoryCard key={c.category_id || c.name} c={c} ancho="large" />)}
@@ -611,6 +632,7 @@ function CategoriasSection({ data }) {
 
 // ─────────── PROVEEDORES (expandibles) ───────────
 function ProveedoresSection({ data, expanded, onExpand, detail, onSelectGasto }) {
+  const T = useT()
   if (!data?.items?.length) return <div style={{ color: T.text4, padding: 24 }}>Sin proveedores.</div>
   return <Card padding={0}>
     <div style={{ display: 'grid', gridTemplateColumns: '24px 44px 2fr 80px 1fr 100px 1fr', padding: '10px 18px', borderBottom: `.5px solid ${T.hairline}`, fontSize: 10, fontWeight: 600, color: T.text4, textTransform: 'uppercase', letterSpacing: .4, background: T.sidebar }}>
@@ -647,10 +669,11 @@ function ProveedoresSection({ data, expanded, onExpand, detail, onSelectGasto })
 }
 
 function ProveedorExpandido({ d, onSelectGasto }) {
+  const T = useT()
   if (!d) return <div style={{ padding: 24, background: T.sidebar, borderBottom: `.5px solid ${T.hairline}`, fontSize: 12, color: T.text4, textAlign: 'center' }}>Cargando…</div>
   const maxEvol = Math.max(...d.evolucion.map(m => m.total), 1)
   return <div style={{ padding: '18px 24px 22px 56px', background: T.sidebar, borderBottom: `.5px solid ${T.hairline}` }}>
-    <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 2fr', gap: 24 }}>
+    <div className="cos-row-2" style={{ display: 'grid', gridTemplateColumns: '1.5fr 2fr', gap: 24 }}>
       {/* Evolución 12 meses */}
       <div>
         <div style={{ fontSize: 11, fontWeight: 600, color: T.text4, textTransform: 'uppercase', letterSpacing: .4, marginBottom: 10 }}>Evolución 12 meses</div>

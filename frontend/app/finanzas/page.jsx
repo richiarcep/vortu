@@ -5,6 +5,8 @@ import Sidebar from '@/components/Sidebar'
 import VeraPanel from '@/components/ui/VeraPanel'
 import VeraDrawer from '@/components/ui/VeraDrawer'
 import VeraInsights from '@/components/ui/VeraInsights'
+import { useT, FONT } from '@/components/ui/tokens'
+import { Skeleton, EmptyState, HeaderActions } from '@/components/ui/primitives'
 
 import { API_BASE as API } from '@/lib/api'
 
@@ -42,20 +44,8 @@ function timeAgo(t) {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// DESIGN TOKENS
+// DESIGN TOKENS — paleta reactiva vía useT() (soporta dark mode)
 // ════════════════════════════════════════════════════════════════════════════
-const T = {
-  bg:'#FBFBFD', card:'#FFFFFF', sidebar:'#F5F5F7',
-  hairline:'rgba(0,0,0,0.08)', soft:'rgba(0,0,0,0.05)',
-  text:'#1D1D1F', text2:'#424245', text3:'#6E6E73', text4:'#86868B',
-  blue:'#0071E3', cyan:'#00B4D8',
-  green:'#34C759', greenSoft:'rgba(52,199,89,.1)',
-  amber:'#FF9500', amberSoft:'rgba(255,149,0,.1)',
-  red:'#FF3B30', redSoft:'rgba(255,59,48,.08)',
-  purple:'#6366F1', purpleSoft:'rgba(99,102,241,.1)',
-}
-const FONT = "-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',system-ui,sans-serif"
-
 const Icon = ({ d, size=16, sw=1.5 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}>{d}</svg>
 )
@@ -71,15 +61,20 @@ const I = {
 // PRIMITIVOS UI
 // ════════════════════════════════════════════════════════════════════════════
 function Card({ children, style={}, padding=20 }) {
+  const T = useT()
   return <div style={{background:T.card,borderRadius:14,border:`.5px solid ${T.hairline}`,boxShadow:'0 1px 2px rgba(0,0,0,.02)',padding,...style}}>{children}</div>
 }
-function Btn({ children, onClick, disabled, color=T.blue, style={} }) {
+function Btn({ children, onClick, disabled, color, style={} }) {
+  const T = useT()
+  color = color || T.blue
   return <button onClick={onClick} disabled={disabled} style={{padding:'7px 16px',borderRadius:999,border:'none',fontSize:13,fontWeight:500,cursor:disabled?'not-allowed':'pointer',fontFamily:'inherit',background:disabled?T.sidebar:color,color:disabled?T.text4:'#fff',opacity:disabled?.6:1,display:'inline-flex',alignItems:'center',gap:6,transition:'opacity .15s',...style}}>{children}</button>
 }
 function BtnSec({ children, onClick, style={}, ...rest }) {
+  const T = useT()
   return <button onClick={onClick} {...rest} style={{padding:'7px 16px',borderRadius:999,border:`.5px solid ${T.hairline}`,background:T.card,fontSize:13,fontWeight:500,cursor:'pointer',fontFamily:'inherit',color:T.text,display:'inline-flex',alignItems:'center',gap:6,...style}}>{children}</button>
 }
 function IconBtn({ children, onClick, ariaLabel, style={} }) {
+  const T = useT()
   return <button onClick={onClick} aria-label={ariaLabel} style={{width:32,height:32,borderRadius:8,border:`.5px solid ${T.hairline}`,background:T.card,display:'grid',placeItems:'center',cursor:'pointer',color:T.text3,fontFamily:'inherit',...style}}
     onMouseEnter={e=>{e.currentTarget.style.background=T.sidebar;e.currentTarget.style.color=T.text}}
     onMouseLeave={e=>{e.currentTarget.style.background=T.card;e.currentTarget.style.color=T.text3}}>
@@ -87,9 +82,8 @@ function IconBtn({ children, onClick, ariaLabel, style={} }) {
   </button>
 }
 
-const inp = {width:'100%',padding:'8px 11px',borderRadius:8,border:`.5px solid ${T.hairline}`,background:T.sidebar,fontSize:13,color:T.text,fontFamily:'inherit',outline:'none'}
-
 function Toast({ msg }) {
+  const T = useT()
   if (!msg) return null
   const ok = msg.type==='success'
   return <div style={{padding:'10px 14px',background:ok?T.greenSoft:T.redSoft,border:`.5px solid ${ok?T.green:T.red}`,borderRadius:10,color:ok?T.green:T.red,fontSize:13,marginBottom:14}}>{msg.text}</div>
@@ -101,11 +95,12 @@ function FlagES({ size=14 }) {
     <rect y="0.5" width="3" height="1" fill="#F1BF00"/>
   </svg>
 }
-function GreenDot() { return <span style={{display:'inline-block',width:7,height:7,borderRadius:'50%',background:T.green}}/> }
-function RedDot() { return <span style={{display:'inline-block',width:7,height:7,borderRadius:'50%',background:T.red,boxShadow:`0 0 0 3px ${T.redSoft}`}}/> }
+function GreenDot() { const T = useT(); return <span style={{display:'inline-block',width:7,height:7,borderRadius:'50%',background:T.green}}/> }
+function RedDot() { const T = useT(); return <span style={{display:'inline-block',width:7,height:7,borderRadius:'50%',background:T.red,boxShadow:`0 0 0 3px ${T.redSoft}`}}/> }
 
 // ─── PILL GROUP (tabs estilo Vortu)
 function PillGroup({ items, active, onChange, size='md' }) {
+  const T = useT()
   const padding = size==='sm' ? '5px 12px' : '7px 14px'
   const fs = size==='sm' ? 12 : 13
   return (
@@ -128,42 +123,11 @@ function PillGroup({ items, active, onChange, size='md' }) {
   )
 }
 
-function ProfileBtn({ user, router }) {
-  const [open,setOpen]=useState(false)
-  const ref=useRef()
-  useEffect(()=>{
-    function h(e){if(ref.current&&!ref.current.contains(e.target))setOpen(false)}
-    document.addEventListener('mousedown',h)
-    return()=>document.removeEventListener('mousedown',h)
-  },[])
-  const initials=user?.name?user.name.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase():'US'
-  return (
-    <div ref={ref} style={{position:'relative'}}>
-      <div onClick={()=>setOpen(o=>!o)} style={{display:'flex',alignItems:'center',gap:8,padding:'3px 4px 3px 3px',borderRadius:999,cursor:'pointer'}}
-        onMouseEnter={e=>e.currentTarget.style.background='rgba(0,0,0,.04)'}
-        onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
-        <div style={{width:28,height:28,borderRadius:999,background:'linear-gradient(135deg,#0071E3,#00B4D8)',color:'#fff',display:'grid',placeItems:'center',fontWeight:600,fontSize:11}}>{initials}</div>
-        <span style={{fontSize:13,fontWeight:500,color:T.text}}>{user?.name?.split(' ')[0]||'Usuario'}</span>
-        <span style={{color:T.text4,display:'flex'}}>{I.chevron}</span>
-      </div>
-      {open&&(
-        <div style={{position:'absolute',top:44,right:0,width:180,background:T.card,borderRadius:12,border:`.5px solid ${T.hairline}`,boxShadow:'0 8px 32px rgba(0,0,0,.12)',zIndex:200,overflow:'hidden'}}>
-          <div style={{padding:'6px 0'}}>
-            <button onClick={()=>{router.push('/settings');setOpen(false)}} style={{width:'100%',padding:'9px 14px',background:'none',border:'none',cursor:'pointer',fontFamily:'inherit',fontSize:13,color:T.text,textAlign:'left'}} onMouseEnter={e=>e.currentTarget.style.background=T.sidebar} onMouseLeave={e=>e.currentTarget.style.background='none'}>Configuración</button>
-          </div>
-          <div style={{padding:'6px 8px 10px',borderTop:`.5px solid ${T.hairline}`}}>
-            <button onClick={()=>{localStorage.removeItem('nexum_token');router.push('/login')}} style={{width:'100%',padding:'8px',background:T.redSoft,border:'none',borderRadius:8,color:T.red,fontSize:13,fontWeight:500,cursor:'pointer',fontFamily:'inherit'}}>Cerrar sesión</button>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
 // ════════════════════════════════════════════════════════════════════════════
 // GAUGE & TREND CHART (preservados del original)
 // ════════════════════════════════════════════════════════════════════════════
 function Gauge({ score=0, size=120 }) {
+  const T = useT()
   const pct = Math.min(score/10, 1)
   const color = score>=7?T.green:score>=5?T.amber:score>0?T.red:T.text4
   const r=46, cx=size/2, cy=size/2
@@ -182,6 +146,7 @@ function Gauge({ score=0, size=120 }) {
 }
 
 function ProgressBar({ label, value, max, color, format }) {
+  const T = useT()
   const pct = max>0?Math.min(value/max*100,100):0
   return (
     <div style={{marginBottom:10}}>
@@ -197,8 +162,17 @@ function ProgressBar({ label, value, max, color, format }) {
 }
 
 function TrendChart({ data=[] }) {
+  const T = useT()
   const [hover,setHover]=useState(null)
-  if (!data.length) return <div style={{height:140,display:'flex',alignItems:'center',justifyContent:'center',color:T.text4,fontSize:12}}>Sin datos</div>
+  if (!data.length) return (
+    <div style={{minHeight:140,display:'grid',placeItems:'center'}}>
+      <EmptyState
+        icon={<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 5-5"/></svg>}
+        title="Sin movimientos aún"
+        hint="Cuando registres ingresos y gastos, verás aquí la evolución de los últimos meses."
+      />
+    </div>
+  )
   const W=580, H=140, padL=40, padR=10, padT=10, padB=28
   const plotW=W-padL-padR, plotH=H-padT-padB
   const maxVal=Math.max(...data.flatMap(d=>[d.ingresos||0,d.gastos||0]),1)
@@ -266,6 +240,7 @@ function TrendChart({ data=[] }) {
 // COMPONENTE PRINCIPAL
 // ════════════════════════════════════════════════════════════════════════════
 export default function Finanzas() {
+  const T = useT()
   const router = useRouter()
   const [section, setSection] = useState('resumen')
   const [summary, setSummary] = useState(null)
@@ -458,13 +433,13 @@ export default function Finanzas() {
 
   // ─── Render ──────────────────────────────────────────────────────────────
   return (
-    <div style={{minHeight:'100vh',background:T.bg,display:'flex',fontFamily:FONT,WebkitFontSmoothing:'antialiased'}}>
-      <style>{`*{box-sizing:border-box}::-webkit-scrollbar{width:5px}::-webkit-scrollbar-thumb{background:rgba(0,0,0,.12);border-radius:999px}input:focus,select:focus{border-color:${T.blue}!important;outline:none}@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}.spin{animation:spin 1s linear infinite}`}</style>
+    <div style={{minHeight:'100dvh',background:T.bg,display:'flex',fontFamily:FONT,WebkitFontSmoothing:'antialiased'}}>
+      <style>{`*{box-sizing:border-box}::-webkit-scrollbar{width:5px}::-webkit-scrollbar-thumb{background:${T.hairline};border-radius:999px}input:focus,select:focus{border-color:${T.blue}!important;outline:none}@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}.spin{animation:spin 1s linear infinite}@media (max-width:768px){.fin-kpis{grid-template-columns:repeat(auto-fit,minmax(180px,1fr))!important}.fin-row{grid-template-columns:1fr!important}.fin-3{grid-template-columns:repeat(auto-fit,minmax(120px,1fr))!important}.fin-4{grid-template-columns:repeat(auto-fit,minmax(160px,1fr))!important}.fin-2{grid-template-columns:1fr!important}.fin-proy{grid-template-columns:1fr!important}}`}</style>
 
       <Sidebar active="/finanzas"/>
 
       <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
-        <div style={{flex:1,overflowY:'auto'}}>
+        <div className="fade-in" style={{flex:1,overflowY:'auto'}}>
           {/* HEADER MÓDULO */}
           <div style={{padding:'24px 28px 0'}}>
             <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',flexWrap:'wrap',gap:16,marginBottom:18}}>
@@ -484,22 +459,15 @@ export default function Finanzas() {
                   <span>IVA 21%</span>
                 </div>
               </div>
-              <div style={{display:'flex',alignItems:'center',gap:8}}>
+              <HeaderActions onVera={()=>setVeraOpen(true)} user={user} router={router}>
                 <span style={{fontSize:11,color:T.text4,fontVariantNumeric:'tabular-nums',marginRight:4}}>
                   {refreshing ? 'Actualizando…' : `Actualizado ${timeAgo(summaryT)}`}
                 </span>
                 <IconBtn onClick={()=>loadSummary(false, true)} ariaLabel="Refrescar">
                   <span className={refreshing ? 'spin' : ''} style={{display:'flex'}}>{I.refresh}</span>
                 </IconBtn>
-                <IconBtn ariaLabel="Notificaciones">{I.bell}</IconBtn>
-                <BtnSec onClick={()=>setVeraOpen(true)} style={{background:'rgba(0,113,227,.05)',borderColor:'rgba(0,113,227,.18)',color:T.blue}}>
-                  <span style={{width:14,height:14,borderRadius:4,background:'linear-gradient(135deg,#0071E3,#00B4D8)',display:'grid',placeItems:'center'}}>
-                    <svg width="8" height="8" viewBox="0 0 16 16" fill="none"><path d="M8 1l1.5 5.5L15 8l-5.5 1.5L8 15l-1.5-5.5L1 8l5.5-1.5L8 1z" fill="#fff"/></svg>
-                  </span>
-                  Vera
-                </BtnSec>
                 <Btn onClick={()=>setSection('analizar')}>+ Analizar documento</Btn>
-              </div>
+              </HeaderActions>
             </div>
 
             {/* TABS PILL */}
@@ -544,7 +512,7 @@ export default function Finanzas() {
                 <VeraInsights modulo="finanzas" />
 
                 {/* KPI ROW */}
-                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr 200px',gap:12,marginBottom:14}}>
+                <div className="fin-kpis" style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr 200px',gap:12,marginBottom:14}}>
                   <Card padding={18}>
                     <div style={{fontSize:11,color:T.text4,fontWeight:500,letterSpacing:.3,textTransform:'uppercase',marginBottom:8}}>Ingresos</div>
                     <div style={{fontSize:30,fontWeight:600,letterSpacing:-.8,color:T.text,fontVariantNumeric:'tabular-nums',lineHeight:1,marginBottom:10}}>€{(datos.ingresos||0).toLocaleString('es-ES')}</div>
@@ -575,7 +543,7 @@ export default function Finanzas() {
                 </div>
 
                 {/* GRÁFICO + TOP GASTOS */}
-                <div style={{display:'grid',gridTemplateColumns:'1fr 300px',gap:14,marginBottom:14}}>
+                <div className="fin-row" style={{display:'grid',gridTemplateColumns:'1fr 300px',gap:14,marginBottom:14}}>
                   <Card>
                     <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}}>
                       <div>
@@ -589,7 +557,7 @@ export default function Finanzas() {
                       </div>
                     </div>
                     <TrendChart data={trend}/>
-                    <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,marginTop:14}}>
+                    <div className="fin-3" style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,marginTop:14}}>
                       {[
                         {label:'Mejor mes',value:trend.length?`€${Math.max(...trend.map(d=>d.ingresos||0)).toLocaleString('es-ES')}`:'—',color:T.green},
                         {label:'Promedio mensual',value:trend.length?`€${Math.round(trend.reduce((a,d)=>a+(d.ingresos||0),0)/trend.length).toLocaleString('es-ES')}`:'—',color:T.blue},
@@ -606,7 +574,11 @@ export default function Finanzas() {
                   <Card>
                     <div style={{fontSize:14,fontWeight:600,color:T.text,letterSpacing:-.2,marginBottom:14}}>Top gastos del año</div>
                     {topGastos.length===0
-                      ? <div style={{padding:32,textAlign:'center',color:T.text4,fontSize:12}}>Sin datos de gastos</div>
+                      ? <EmptyState
+                          icon={<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>}
+                          title="Sin gastos registrados"
+                          hint="Tus principales categorías de gasto aparecerán aquí."
+                        />
                       : topGastos.map((g,i)=>(
                         <div key={i} style={{marginBottom:12}}>
                           <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:4}}>
@@ -629,14 +601,14 @@ export default function Finanzas() {
                 </div>
 
                 {/* ACCIONES RÁPIDAS */}
-                <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10}}>
+                <div className="fin-4" style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10}}>
                   {[
                     {icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>,title:'Analizar documento', desc:'Sube CSV, Excel o PDF',     action:()=>setSection('analizar'),       color:T.blue},
                     {icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 5-5"/></svg>,title:'Proyecciones IA',    desc:'3 escenarios a 3 meses',    action:()=>setSection('proyecciones'),   color:T.purple},
                     {icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>,title:'Ratios financieros', desc:'8 indicadores clave',       action:()=>setSection('ratios'),         color:T.amber},
                     {icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>,title:'Estados financieros',desc:'P&L, Balance, Cash flow',   action:()=>router.push('/contabilidad'), color:T.green},
                   ].map(m => (
-                    <div key={m.title} onClick={m.action} style={{padding:'16px',background:T.card,borderRadius:14,border:`.5px solid ${T.hairline}`,cursor:'pointer',transition:'all .15s'}}
+                    <div key={m.title} className="hover-lift" onClick={m.action} style={{padding:'16px',background:T.card,borderRadius:14,border:`.5px solid ${T.hairline}`,cursor:'pointer',transition:'all .15s'}}
                       onMouseEnter={e=>{e.currentTarget.style.background=T.sidebar;e.currentTarget.style.transform='translateY(-1px)';e.currentTarget.style.boxShadow='0 4px 16px rgba(0,0,0,.06)'}}
                       onMouseLeave={e=>{e.currentTarget.style.background=T.card;e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='none'}}>
                       <div style={{width:38,height:38,borderRadius:10,background:`${m.color}15`,color:m.color,display:'grid',placeItems:'center',marginBottom:10}}>{m.icon}</div>
@@ -654,7 +626,7 @@ export default function Finanzas() {
                 ══════════════════════════════════════════════════════════════ */}
             {section==='analizar' && (
               <div>
-                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:16}}>
+                <div className="fin-2" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:16}}>
                   {[
                     {key:'financial',iconName:'chart',title:'Estado financiero',desc:'CSV, Excel o PDF de estado de cuenta. Genera P&L automático y health score.'},
                     {key:'general',  iconName:'search',title:'Análisis libre',   desc:'Cualquier documento — factura, contrato, informe. Vera hace análisis completo.'},
@@ -667,7 +639,7 @@ export default function Finanzas() {
                     </button>
                   ))}
                 </div>
-                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
+                <div className="fin-2" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
                   <Card>
                     <div style={{fontSize:15,fontWeight:600,color:T.text,letterSpacing:-.2,marginBottom:14}}>{uploadMode==='financial'?'Subir estado financiero':'Subir documento'}</div>
                     <form onSubmit={uploadDocument}>
@@ -701,7 +673,7 @@ export default function Finanzas() {
                           </div>
                           {ai.summary && <div style={{padding:'12px 14px',background:T.sidebar,borderRadius:10,marginBottom:12,fontSize:13,color:T.text2,lineHeight:1.6}}>{ai.summary}</div>}
                           {(ai.total_income !== undefined) && (
-                            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:12}}>
+                            <div className="fin-2" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:12}}>
                               {[
                                 {label:'Ingresos', value:`€${(ai.total_income||0).toLocaleString('es-ES')}`,color:T.green},
                                 {label:'Gastos',   value:`€${(ai.total_expenses||0).toLocaleString('es-ES')}`,color:T.red},
@@ -738,7 +710,7 @@ export default function Finanzas() {
                 SECCIÓN: PROYECCIONES
                 ══════════════════════════════════════════════════════════════ */}
             {section==='proyecciones' && (
-              <div style={{display:'grid',gridTemplateColumns:'260px 1fr',gap:20}}>
+              <div className="fin-proy" style={{display:'grid',gridTemplateColumns:'260px 1fr',gap:20}}>
                 <div style={{display:'flex',flexDirection:'column',gap:12}}>
                   <Card>
                     <div style={{fontSize:14,fontWeight:600,color:T.text,letterSpacing:-.2,marginBottom:4}}>Contexto adicional</div>
@@ -777,7 +749,14 @@ export default function Finanzas() {
                       <div style={{fontSize:13,color:T.text3,lineHeight:1.6,maxWidth:360,margin:'0 auto'}}>Vera usará tus datos de contabilidad para generar 3 escenarios. Se guardan 7 días automáticamente.</div>
                     </Card>
                   )}
-                  {proyLoading && <Card style={{padding:60,textAlign:'center'}}><div style={{fontSize:13,color:T.text3}}>Vera está analizando tus datos...</div></Card>}
+                  {proyLoading && (
+                    <Card style={{display:'flex',flexDirection:'column',gap:12}}>
+                      <Skeleton w={200} h={16}/>
+                      <Skeleton w="100%" h={120} radius={10}/>
+                      <Skeleton w="100%" h={120} radius={10}/>
+                      <Skeleton w="100%" h={120} radius={10}/>
+                    </Card>
+                  )}
                   {proyecciones?.error && <Card style={{padding:20,borderLeft:`2px solid ${T.red}`}}><div style={{color:T.red,fontSize:13}}>{proyecciones.error}</div></Card>}
                   {proyecciones && !proyecciones.error && (
                     <div style={{display:'flex',flexDirection:'column',gap:12}}>
@@ -799,7 +778,7 @@ export default function Finanzas() {
                               </div>
                               <span style={{padding:'3px 10px',background:cSoft,color:c,borderRadius:999,fontSize:11,fontWeight:500,flexShrink:0}}>{esc.probabilidad}</span>
                             </div>
-                            <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,marginBottom:12}}>
+                            <div className="fin-3" style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,marginBottom:12}}>
                               {esc.meses?.map((mes,j) => (
                                 <div key={j} style={{padding:'12px',background:cSoft,borderRadius:10,textAlign:'center'}}>
                                   <div style={{fontSize:11,fontWeight:500,color:c,marginBottom:6}}>{mes.mes}</div>
@@ -854,7 +833,17 @@ export default function Finanzas() {
                     <Btn onClick={generateRatios} style={{padding:'10px 24px',borderRadius:10}}>Calcular mis ratios</Btn>
                   </Card>
                 )}
-                {ratiosLoading && <Card style={{padding:60,textAlign:'center'}}><div style={{fontSize:13,color:T.text3}}>Calculando ratios financieros...</div></Card>}
+                {ratiosLoading && (
+                  <div className="fin-2" style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:12}}>
+                    {[0,1,2,3].map(i=>(
+                      <Card key={i} style={{display:'flex',flexDirection:'column',gap:10}}>
+                        <Skeleton w={140} h={14}/>
+                        <Skeleton w={80} h={22}/>
+                        <Skeleton w="100%" h={32} radius={8}/>
+                      </Card>
+                    ))}
+                  </div>
+                )}
                 {ratios?.error && <Card style={{padding:20,borderLeft:`2px solid ${T.red}`}}><div style={{color:T.red,fontSize:13}}>{ratios.error}</div></Card>}
                 {ratios && !ratios.error && (
                   <div>
@@ -878,7 +867,7 @@ export default function Finanzas() {
                         </div>
                       </Card>
                     )}
-                    <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:12,marginBottom:14}}>
+                    <div className="fin-2" style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:12,marginBottom:14}}>
                       {ratios.ratios?.map((ratio,i) => {
                         const sc = ratio.estado==='bueno'?T.green:ratio.estado==='regular'?T.amber:ratio.estado==='malo'?T.red:T.text4
                         const sSoft = ratio.estado==='bueno'?T.greenSoft:ratio.estado==='regular'?T.amberSoft:ratio.estado==='malo'?T.redSoft:T.sidebar

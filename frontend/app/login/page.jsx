@@ -1,9 +1,12 @@
 'use client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useT, useTheme } from '@/components/ui/tokens'
 
 export default function LoginPage() {
   const router = useRouter()
+  const T = useT()
+  const { theme } = useTheme()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -76,9 +79,9 @@ export default function LoginPage() {
         body { font-family: 'DM Sans', system-ui, sans-serif; }
 
         .login-root {
-          min-height: 100vh;
+          min-height: 100dvh;
           display: flex;
-          background: #f4f6fb;
+          background: ${theme === 'dark' ? T.bg : '#f4f6fb'};
           font-family: 'DM Sans', system-ui, sans-serif;
         }
 
@@ -275,7 +278,7 @@ export default function LoginPage() {
         .form-eyebrow {
           font-size: 11px;
           font-weight: 700;
-          color: #00B4D8;
+          color: ${T.cyan};
           text-transform: uppercase;
           letter-spacing: 0.1em;
           margin-bottom: 10px;
@@ -284,7 +287,7 @@ export default function LoginPage() {
         .form-title {
           font-size: 30px;
           font-weight: 800;
-          color: #0B1426;
+          color: ${T.text};
           letter-spacing: -0.7px;
           line-height: 1.1;
           margin-bottom: 8px;
@@ -292,7 +295,7 @@ export default function LoginPage() {
 
         .form-subtitle {
           font-size: 14px;
-          color: #6b7280;
+          color: ${T.text3};
           line-height: 1.6;
         }
 
@@ -305,7 +308,7 @@ export default function LoginPage() {
           display: block;
           font-size: 12px;
           font-weight: 700;
-          color: #374151;
+          color: ${T.text2};
           margin-bottom: 7px;
           letter-spacing: 0.03em;
           text-transform: uppercase;
@@ -319,19 +322,19 @@ export default function LoginPage() {
           width: 100%;
           padding: 12px 14px;
           border-radius: 10px;
-          border: 1.5px solid #e5e9f0;
-          background: white;
+          border: 1.5px solid ${theme === 'dark' ? T.hairline : '#e5e9f0'};
+          background: ${theme === 'dark' ? T.card : 'white'};
           font-size: 14px;
-          color: #0B1426;
+          color: ${T.text};
           font-family: 'DM Sans', system-ui;
           outline: none;
           transition: border-color 0.15s, box-shadow 0.15s;
         }
         .field-input:focus {
-          border-color: #0B1426;
-          box-shadow: 0 0 0 3px rgba(11,20,38,0.06);
+          border-color: ${theme === 'dark' ? T.blue : '#0B1426'};
+          box-shadow: 0 0 0 3px ${theme === 'dark' ? 'rgba(10,132,255,0.18)' : 'rgba(11,20,38,0.06)'};
         }
-        .field-input::placeholder { color: #9ca3af; }
+        .field-input::placeholder { color: ${T.text4}; }
 
         .pw-toggle {
           position: absolute;
@@ -341,13 +344,13 @@ export default function LoginPage() {
           background: none;
           border: none;
           cursor: pointer;
-          color: #9ca3af;
+          color: ${T.text4};
           display: flex;
           align-items: center;
           padding: 4px;
           transition: color 0.15s;
         }
-        .pw-toggle:hover { color: #0B1426; }
+        .pw-toggle:hover { color: ${T.text}; }
 
         /* Error */
         .error-box {
@@ -355,10 +358,10 @@ export default function LoginPage() {
           align-items: flex-start;
           gap: 10px;
           padding: 12px 14px;
-          background: #fef2f2;
-          border: 1px solid #fecaca;
+          background: ${theme === 'dark' ? T.redSoft : '#fef2f2'};
+          border: 1px solid ${theme === 'dark' ? T.red : '#fecaca'};
           border-radius: 10px;
-          color: #dc2626;
+          color: ${theme === 'dark' ? T.red : '#dc2626'};
           font-size: 13px;
           margin-bottom: 20px;
           animation: fadeUp 0.2s ease;
@@ -370,7 +373,7 @@ export default function LoginPage() {
           padding: 13px;
           border-radius: 10px;
           border: none;
-          background: #0B1426;
+          background: ${theme === 'dark' ? T.blue : '#0B1426'};
           color: white;
           font-size: 14px;
           font-weight: 700;
@@ -387,7 +390,7 @@ export default function LoginPage() {
           margin-bottom: 16px;
         }
         .submit-btn:hover:not(:disabled) {
-          background: #162038;
+          background: ${theme === 'dark' ? '#3395FF' : '#162038'};
           transform: translateY(-1px);
           box-shadow: 0 8px 24px rgba(11,20,38,0.25);
         }
@@ -414,19 +417,19 @@ export default function LoginPage() {
           gap: 12px;
           margin: 20px 0;
         }
-        .divider-line { flex: 1; height: 1px; background: #e5e9f0; }
-        .divider-text { font-size: 12px; color: #9ca3af; }
+        .divider-line { flex: 1; height: 1px; background: ${theme === 'dark' ? T.hairline : '#e5e9f0'}; }
+        .divider-text { font-size: 12px; color: ${T.text4}; }
 
         .register-row {
           text-align: center;
           font-size: 13px;
-          color: #6b7280;
+          color: ${T.text3};
         }
         .register-row a {
-          color: #0B1426;
+          color: ${theme === 'dark' ? T.text : '#0B1426'};
           font-weight: 700;
           text-decoration: none;
-          border-bottom: 1px solid #0B1426;
+          border-bottom: 1px solid ${theme === 'dark' ? T.text : '#0B1426'};
           padding-bottom: 1px;
           transition: opacity 0.15s;
         }
@@ -435,10 +438,10 @@ export default function LoginPage() {
         .form-footer {
           margin-top: 40px;
           padding-top: 24px;
-          border-top: 1px solid #f0f2f7;
+          border-top: 1px solid ${theme === 'dark' ? T.hairline : '#f0f2f7'};
           text-align: center;
           font-size: 11px;
-          color: #9ca3af;
+          color: ${T.text4};
         }
 
         /* Responsive */
@@ -531,8 +534,9 @@ export default function LoginPage() {
 
             <form onSubmit={handleLogin}>
               <div className="field">
-                <label>Correo electrónico</label>
+                <label htmlFor="login-email">Correo electrónico</label>
                 <input
+                  id="login-email"
                   className="field-input"
                   type="email"
                   placeholder="tu@empresa.com"
@@ -544,9 +548,10 @@ export default function LoginPage() {
               </div>
 
               <div className="field">
-                <label>Contraseña</label>
+                <label htmlFor="login-password">Contraseña</label>
                 <div className="input-wrap">
                   <input
+                    id="login-password"
                     className="field-input"
                     type={showPassword ? 'text' : 'password'}
                     placeholder="••••••••"
@@ -556,7 +561,7 @@ export default function LoginPage() {
                     autoComplete="current-password"
                     style={{ paddingRight: '44px' }}
                   />
-                  <button type="button" className="pw-toggle" onClick={() => setShowPassword(s => !s)} tabIndex={-1}>
+                  <button type="button" className="pw-toggle" onClick={() => setShowPassword(s => !s)} tabIndex={-1} aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}>
                     {showPassword ? (
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
@@ -611,18 +616,18 @@ export default function LoginPage() {
 
         {needs2FA && (
           <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.5)',backdropFilter:'blur(8px)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:9999}}>
-            <form onSubmit={handle2FAVerify} style={{background:'white',borderRadius:20,padding:'40px 36px',maxWidth:380,width:'90%',textAlign:'center',boxShadow:'0 20px 60px rgba(0,0,0,.2)'}}>
-              <div style={{width:56,height:56,borderRadius:16,background:'#eff6ff',margin:'0 auto 16px',display:'grid',placeItems:'center'}}>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <form onSubmit={handle2FAVerify} style={{background:T.card,borderRadius:20,padding:'40px 36px',maxWidth:380,width:'90%',textAlign:'center',boxShadow:'0 20px 60px rgba(0,0,0,.2)'}}>
+              <div style={{width:56,height:56,borderRadius:16,background:theme==='dark'?'rgba(10,132,255,.18)':'#eff6ff',margin:'0 auto 16px',display:'grid',placeItems:'center'}}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={T.blue} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
               </div>
-              <div style={{fontSize:20,fontWeight:700,color:'#1D1D1F',marginBottom:6}}>Verificacion 2FA</div>
-              <div style={{fontSize:13,color:'#6E6E73',marginBottom:24}}>Introduce el codigo de tu app de autenticacion</div>
-              <input value={totpCode} onChange={e=>setTotpCode(e.target.value.replace(/\D/g,'').slice(0,6))} placeholder="000000" maxLength={6} autoFocus style={{width:'100%',padding:'14px',borderRadius:12,border:'1.5px solid #e5e9f0',fontSize:24,fontFamily:'monospace',textAlign:'center',letterSpacing:8,outline:'none',marginBottom:16}} />
-              {error && <div style={{fontSize:13,color:'#FF3B30',marginBottom:12}}>{error}</div>}
-              <button type="submit" disabled={totpCode.length!==6||verifying2FA} style={{width:'100%',padding:14,borderRadius:12,border:'none',background:totpCode.length===6?'#0071E3':'#e5e9f0',color:totpCode.length===6?'white':'#9ca3af',fontSize:15,fontWeight:600,cursor:totpCode.length===6?'pointer':'default',fontFamily:'inherit'}}>
+              <div style={{fontSize:20,fontWeight:700,color:T.text,marginBottom:6}}>Verificacion 2FA</div>
+              <div style={{fontSize:13,color:T.text3,marginBottom:24}}>Introduce el codigo de tu app de autenticacion</div>
+              <input aria-label="Código de verificación 2FA" value={totpCode} onChange={e=>setTotpCode(e.target.value.replace(/\D/g,'').slice(0,6))} placeholder="000000" maxLength={6} autoFocus style={{width:'100%',padding:'14px',borderRadius:12,border:`1.5px solid ${theme==='dark'?T.hairline:'#e5e9f0'}`,background:theme==='dark'?T.bg:'#fff',color:T.text,fontSize:24,fontFamily:'monospace',textAlign:'center',letterSpacing:8,outline:'none',marginBottom:16}} />
+              {error && <div style={{fontSize:13,color:T.red,marginBottom:12}}>{error}</div>}
+              <button type="submit" disabled={totpCode.length!==6||verifying2FA} style={{width:'100%',padding:14,borderRadius:12,border:'none',background:totpCode.length===6?T.blue:(theme==='dark'?T.sidebar:'#e5e9f0'),color:totpCode.length===6?'white':T.text4,fontSize:15,fontWeight:600,cursor:totpCode.length===6?'pointer':'default',fontFamily:'inherit'}}>
                 {verifying2FA?'Verificando...':'Continuar'}
               </button>
-              <button type="button" onClick={()=>{setNeeds2FA(false);setTempToken(null);setTotpCode('');setError('')}} style={{marginTop:12,background:'none',border:'none',color:'#6E6E73',fontSize:13,cursor:'pointer',fontFamily:'inherit'}}>Volver al login</button>
+              <button type="button" onClick={()=>{setNeeds2FA(false);setTempToken(null);setTotpCode('');setError('')}} style={{marginTop:12,background:'none',border:'none',color:T.text3,fontSize:13,cursor:'pointer',fontFamily:'inherit'}}>Volver al login</button>
             </form>
           </div>
         )}

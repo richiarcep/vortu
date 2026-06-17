@@ -146,10 +146,10 @@ def migrate_all_to_graph(db):
         for item in items:
             try:
                 sync_sale_product(item.sale_id, item.product_id, item.quantity, item.unit_price)
-            except:
+            except Exception:
                 pass
         stats['sale_items'] = len(items)
-    except:
+    except Exception:
         stats['sale_items'] = 0
 
     contacts = db.query(Contact).all()
@@ -168,7 +168,7 @@ def migrate_all_to_graph(db):
         if t.assigned_to:
             try:
                 sync_task_assignment(t.id, t.assigned_to)
-            except:
+            except Exception:
                 pass
     stats['tasks'] = len(tasks)
 

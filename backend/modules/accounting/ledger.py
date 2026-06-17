@@ -86,11 +86,29 @@ def get_trial_balance(db: Session, company_id: int,
 def get_general_ledger(db: Session, company_id: int,
                         account_code: str = None,
                         start_date: date = None,
-                        end_date: date = None) -> dict:
+                        end_date: date = None,
+                        max_entries_per_account: int = 500) -> dict:
     """
     Returns the general ledger — every transaction recorded,
     organized by account with running balances.
+
+    Para no devolver payloads enormes que congelan el navegador, cada cuenta
+    devuelve como máximo `max_entries_per_account` asientos (los más recientes
+    del rango). El saldo de cierre y el saldo acumulado se calculan SIEMPRE sobre
+    la totalidad de los asientos del rango, así que las cifras son exactas; solo
+    se recorta la lista mostrada (se indica con `entries_total` / `truncated`).
     """
+    # Tope defensivo: sin rango de fechas el libro mayor devolvería TODO el histórico
+    # (172k+ asientos ≈ 30 MB) y congela el navegador. Acotamos a los últimos 90 días.
+    from datetime import timedelta
+    if end_date is None:
+        end_date = date.today()
+    if start_date is None:
+        start_date = end_date - timedelta(days=90)
+    # Tope duro de ventana: nunca más de ~2 años aunque pidan un rango enorme.
+    if (end_date - start_date).days > 730:
+        start_date = end_date - timedelta(days=730)
+
     query = db.query(Account).filter(
         Account.company_id == company_id,
         Account.is_active == True
@@ -141,13 +159,20 @@ def get_general_ledger(db: Session, company_id: int,
                 "source": entry.module_source,
             })
 
+        # Recorta a los más recientes para acotar el payload (saldos ya calculados arriba).
+        entries_total = len(entry_list)
+        truncated = entries_total > max_entries_per_account
+        shown = entry_list[-max_entries_per_account:] if truncated else entry_list
+
         ledger.append({
             "account_code": account.code,
             "account_name": account.name,
             "account_type": account.account_type,
             "normal_balance": account.normal_balance,
             "closing_balance": float(running_balance),
-            "entries": entry_list,
+            "entries": shown,
+            "entries_total": entries_total,
+            "truncated": truncated,
         })
 
     return {

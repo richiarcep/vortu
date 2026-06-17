@@ -13,6 +13,7 @@ from sqlalchemy import func, text
 from core.database import get_db
 from core.security import get_admin_user
 from vera.models import OPUS
+from vera.compat import vera_client   # IA por Vera (cuota + config admin)
 from models.user import User, Company
 from models.billing import Subscription, License, PLANS
 from models.analytics import BusinessSnapshot, BusinessAIMemory
@@ -872,7 +873,7 @@ Analiza estos datos reales de la plataforma y devuelve SOLO un JSON válido con 
 DATOS REALES DE LA PLATAFORMA:
 {json.dumps(summary, ensure_ascii=False, indent=2)}"""
 
-    client = _anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+    client = vera_client(db, admin.company_id, module="admin")
     response = client.messages.create(
         model=OPUS,
         max_tokens=3000,

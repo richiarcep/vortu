@@ -44,4 +44,8 @@ next-env.d.ts
 *.backup_*
 *.backup-*
 **/_backup_*/
+_backups/
 *.output
+
+# ── Local/internal data dumps (no secrets, but not for the repo) ─────────────
+backend/data/

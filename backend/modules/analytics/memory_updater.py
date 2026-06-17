@@ -6,6 +6,7 @@ Sistema de memoria IA por empresa.
 - TXT: generado desde BD, descargable
 """
 import anthropic
+from vera.compat import vera_client
 import json
 from datetime import datetime
 from sqlalchemy.orm import Session
@@ -15,7 +16,7 @@ from services.vector.memory_sync import sync_entry_to_vector, sync_manual_contex
 from core.config import get_settings
 
 settings = get_settings()
-client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+client = vera_client(None, None, module="analytics")
 
 
 def get_or_create_memory(db: Session, company_id: int) -> BusinessAIMemory:

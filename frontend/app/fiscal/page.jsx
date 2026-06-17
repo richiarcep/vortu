@@ -2,17 +2,23 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
+import { useT, useTheme, FONT } from '@/components/ui/tokens'
 
 import { API_BASE as API } from '@/lib/api'
-const T = {
-  bg:'#FBFBFD', card:'#FFFFFF', sidebar:'#F5F5F7',
-  hairline:'rgba(0,0,0,0.08)', soft:'rgba(0,0,0,0.05)',
-  text:'#1D1D1F', text2:'#424245', text3:'#6E6E73', text4:'#86868B',
-  blue:'#0071E3', cyan:'#00B4D8',
-  green:'#34C759', greenSoft:'rgba(52,199,89,.1)',
-  amber:'#FF9500', amberSoft:'rgba(255,149,0,.1)',
-  red:'#FF3B30', redSoft:'rgba(255,59,48,.08)',
-}
+
+// SVG icons (reemplazan emojis-icono ✓ 🔐 🎉 para a11y/consistencia visual)
+const SvgCheck = ({ size=14, sw=2.5 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}><path d="M20 6L9 17l-5-5"/></svg>
+)
+const SvgX = ({ size=14, sw=2.5 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}><path d="M18 6L6 18M6 6l12 12"/></svg>
+)
+const SvgLock = ({ size=24, sw=1.6 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+)
+const SvgParty = ({ size=48, sw=1.4 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}><path d="M2 22l3-9 6 6-9 3z"/><path d="M11 13l9-9"/><path d="M16 3l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3z"/></svg>
+)
 
 const PAISES = [
   { code:'SV', name:'El Salvador', flag:'🇸🇻', desc:'DTE — Ministerio de Hacienda', disponible:true },
@@ -37,24 +43,29 @@ const ACTIVIDADES = [
 ]
 
 function Card({ children, style={} }) {
+  const T = useT()
   return <div style={{background:T.card,borderRadius:16,border:`.5px solid ${T.hairline}`,boxShadow:'0 1px 2px rgba(0,0,0,.03)',padding:20,...style}}>{children}</div>
 }
 
-function Btn({ children, onClick, disabled, color=T.blue, style={} }) {
-  return <button onClick={onClick} disabled={disabled} style={{padding:'9px 20px',borderRadius:999,border:'none',fontSize:13,fontWeight:500,cursor:disabled?'not-allowed':'pointer',fontFamily:'inherit',background:disabled?T.sidebar:color,color:disabled?T.text4:'#fff',opacity:disabled?.6:1,display:'inline-flex',alignItems:'center',gap:6,transition:'all .15s',...style}}>{children}</button>
+function Btn({ children, onClick, disabled, color, style={} }) {
+  const T = useT()
+  const c = color ?? T.blue
+  return <button onClick={onClick} disabled={disabled} style={{padding:'9px 20px',borderRadius:999,border:'none',fontSize:13,fontWeight:500,cursor:disabled?'not-allowed':'pointer',fontFamily:'inherit',background:disabled?T.sidebar:c,color:disabled?T.text4:'#fff',opacity:disabled?.6:1,display:'inline-flex',alignItems:'center',gap:6,transition:'all .15s',...style}}>{children}</button>
 }
 
 function BtnSec({ children, onClick, style={} }) {
+  const T = useT()
   return <button onClick={onClick} style={{padding:'9px 20px',borderRadius:999,border:`.5px solid ${T.hairline}`,background:T.card,fontSize:13,fontWeight:500,cursor:'pointer',fontFamily:'inherit',color:T.text,display:'inline-flex',alignItems:'center',gap:6,...style}}>{children}</button>
 }
 
-const inp = {
+const inp = (T) => ({
   width:'100%',padding:'9px 12px',borderRadius:10,
   border:`.5px solid ${T.hairline}`,background:T.sidebar,
   fontSize:13,color:T.text,fontFamily:'inherit',outline:'none',
-}
+})
 
 function Field({ label, hint, children, valid, error }) {
+  const T = useT()
   return (
     <div style={{marginBottom:14}}>
       <div style={{display:'flex',justifyContent:'space-between',marginBottom:5}}>
@@ -62,24 +73,27 @@ function Field({ label, hint, children, valid, error }) {
         {hint&&<div style={{fontSize:11,color:T.text4}}>{hint}</div>}
       </div>
       {children}
-      {valid&&<div style={{fontSize:11,color:T.green,marginTop:4}}>✓ {valid}</div>}
-      {error&&<div style={{fontSize:11,color:T.red,marginTop:4}}>✗ {error}</div>}
+      {valid&&<div style={{fontSize:11,color:T.green,marginTop:4,display:'inline-flex',alignItems:'center',gap:4}}><SvgCheck size={11}/> {valid}</div>}
+      {error&&<div style={{fontSize:11,color:T.red,marginTop:4,display:'inline-flex',alignItems:'center',gap:4}}><SvgX size={11}/> {error}</div>}
     </div>
   )
 }
 
 function Input({ style={}, ...props }) {
-  return <input style={{...inp,...style}} {...props}
+  const T = useT()
+  return <input style={{...inp(T),...style}} {...props}
     onFocus={e=>e.target.style.borderColor=T.blue}
-    onBlur={e=>e.target.style.borderColor='rgba(0,0,0,0.08)'}
+    onBlur={e=>e.target.style.borderColor=T.hairline}
   />
 }
 
 function Sel({ children, style={}, ...props }) {
-  return <select style={{...inp,...style}} {...props}>{children}</select>
+  const T = useT()
+  return <select style={{...inp(T),...style}} {...props}>{children}</select>
 }
 
 function StepIndicator({ paso, total }) {
+  const T = useT()
   return (
     <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:28}}>
       {Array.from({length:total}).map((_,i)=>(
@@ -92,7 +106,7 @@ function StepIndicator({ paso, total }) {
             border: i+1===paso?`2px solid ${T.blue}`:'none',
             transition:'all .3s'
           }}>
-            {i+1<paso?'✓':i+1}
+            {i+1<paso?<SvgCheck size={13}/>:i+1}
           </div>
           {i<total-1&&<div style={{width:32,height:1.5,background:i+1<paso?T.green:T.hairline,transition:'background .3s'}}/>}
         </div>
@@ -102,6 +116,8 @@ function StepIndicator({ paso, total }) {
 }
 
 export default function FiscalConfig() {
+  const T = useT()
+  const { theme } = useTheme()
   const router = useRouter()
   const [token, setToken] = useState(null)
   const [user, setUser] = useState(null)
@@ -227,21 +243,21 @@ export default function FiscalConfig() {
   const isConfigured = config?.wizard_completado
 
   return (
-    <div style={{minHeight:'100vh',background:T.bg,display:'flex',fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',system-ui,sans-serif",WebkitFontSmoothing:'antialiased'}}>
-      <style>{`*{box-sizing:border-box}::-webkit-scrollbar{width:5px}::-webkit-scrollbar-thumb{background:rgba(0,0,0,.12);border-radius:999px}input:focus,select:focus{border-color:${T.blue}!important;outline:none}`}</style>
+    <div style={{minHeight:'100dvh',background:T.bg,display:'flex',fontFamily:FONT,WebkitFontSmoothing:'antialiased'}}>
+      <style>{`*{box-sizing:border-box}::-webkit-scrollbar{width:5px}::-webkit-scrollbar-thumb{background:${T.hairline};border-radius:999px}input:focus,select:focus{border-color:${T.blue}!important;outline:none}@media (max-width:768px){.fis-row{grid-template-columns:1fr!important}}`}</style>
 
       <Sidebar active="/fiscal"/>
 
       <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
         {/* Header */}
-        <header style={{height:56,background:'rgba(251,251,253,.9)',backdropFilter:'saturate(180%) blur(20px)',WebkitBackdropFilter:'saturate(180%) blur(20px)',borderBottom:`.5px solid ${T.hairline}`,display:'flex',alignItems:'center',padding:'0 24px',flexShrink:0,position:'sticky',top:0,zIndex:10}}>
+        <header style={{height:56,background:theme==='dark'?'rgba(11,11,12,.9)':'rgba(251,251,253,.9)',backdropFilter:'saturate(180%) blur(20px)',WebkitBackdropFilter:'saturate(180%) blur(20px)',borderBottom:`.5px solid ${T.hairline}`,display:'flex',alignItems:'center',padding:'0 24px',flexShrink:0,position:'sticky',top:0,zIndex:10}}>
           <div style={{display:'flex',flexDirection:'column',lineHeight:1.1}}>
             <div style={{fontSize:15,fontWeight:600,color:T.text,letterSpacing:-0.3}}>Configuracion Fiscal</div>
             <div style={{fontSize:11,color:T.text4}}>Facturacion electronica y DTE</div>
           </div>
           {isConfigured&&(
-            <div style={{marginLeft:16,padding:'3px 10px',background:T.greenSoft,borderRadius:999,fontSize:11,fontWeight:500,color:T.green}}>
-              ✓ Activo — {paisSeleccionado}
+            <div style={{marginLeft:16,padding:'3px 10px',background:T.greenSoft,borderRadius:999,fontSize:11,fontWeight:500,color:T.green,display:'inline-flex',alignItems:'center',gap:4}}>
+              <SvgCheck size={11}/> Activo — {paisSeleccionado}
             </div>
           )}
           <div style={{marginLeft:'auto',display:'flex',alignItems:'center',gap:8}}>
@@ -255,7 +271,7 @@ export default function FiscalConfig() {
 
           {/* Stats si ya configurado */}
           {isConfigured&&stats&&(
-            <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:12,marginBottom:24}}>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(200px,1fr))',gap:12,marginBottom:24}}>
               {[
                 {label:'DTE emitidos',value:stats.total,color:T.text},
                 {label:'Aceptados',   value:stats.aceptados,color:T.green},
@@ -275,7 +291,7 @@ export default function FiscalConfig() {
             <Card>
               <div style={{fontSize:18,fontWeight:600,color:T.text,letterSpacing:-0.3,marginBottom:4}}>¿En qué país opera tu empresa?</div>
               <div style={{fontSize:13,color:T.text3,marginBottom:24}}>Configuraremos la facturación electrónica según la normativa local vigente.</div>
-              <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10,marginBottom:24}}>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(200px,1fr))',gap:10,marginBottom:24}}>
                 {PAISES.map(p=>(
                   <div key={p.code} onClick={()=>{if(p.disponible)setPaisSeleccionado(p.code)}}
                     style={{
@@ -314,7 +330,7 @@ export default function FiscalConfig() {
 
               {msg&&<div style={{padding:'10px 14px',background:msg.type==='success'?T.greenSoft:T.redSoft,borderRadius:10,color:msg.type==='success'?T.green:T.red,fontSize:13,marginBottom:16}}>{msg.text}</div>}
 
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
+              <div className="fis-row" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
                 <Field label="Nombre comercial" hint="Como aparece en facturas">
                   <Input placeholder="Ej: Mi Empresa" value={form.nombre_comercial} onChange={e=>setForm(f=>({...f,nombre_comercial:e.target.value}))}/>
                 </Field>
@@ -323,7 +339,7 @@ export default function FiscalConfig() {
                 </Field>
               </div>
 
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
+              <div className="fis-row" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
                 <Field label="NIT" hint="14 dígitos" valid={nitValido?.valido?nitValido.nit_formateado:null} error={nitValido?.valido===false?nitValido.mensaje:null}>
                   <div style={{display:'flex',gap:8}}>
                     <Input placeholder="0000-000000-000-0" value={form.nit} onChange={e=>setForm(f=>({...f,nit:e.target.value}))} style={{flex:1}}/>
@@ -342,7 +358,7 @@ export default function FiscalConfig() {
                 <Input placeholder="Ej: Venta de ropa y accesorios" value={form.giro} onChange={e=>setForm(f=>({...f,giro:e.target.value}))}/>
               </Field>
 
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
+              <div className="fis-row" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
                 <Field label="Actividad económica">
                   <Sel value={form.actividad_economica} onChange={e=>setForm(f=>({...f,actividad_economica:e.target.value}))}>
                     <option value="">Selecciona...</option>
@@ -358,7 +374,7 @@ export default function FiscalConfig() {
                 </Field>
               </div>
 
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 2fr',gap:14}}>
+              <div className="fis-row" style={{display:'grid',gridTemplateColumns:'1fr 1fr 2fr',gap:14}}>
                 <Field label="Departamento">
                   <Sel value={form.departamento} onChange={e=>setForm(f=>({...f,departamento:e.target.value}))}>
                     {DEPARTAMENTOS_SV.map(d=><option key={d} value={d}>{d}</option>)}
@@ -372,7 +388,7 @@ export default function FiscalConfig() {
                 </Field>
               </div>
 
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
+              <div className="fis-row" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
                 <Field label="Teléfono">
                   <Input placeholder="0000-0000" value={form.telefono} onChange={e=>setForm(f=>({...f,telefono:e.target.value}))}/>
                 </Field>
@@ -419,7 +435,7 @@ export default function FiscalConfig() {
                   <Field label="Archivo del certificado (.p12)">
                     <div style={{border:`1.5px dashed ${certFile?T.green:T.hairline}`,borderRadius:12,padding:'24px',textAlign:'center',background:certFile?T.greenSoft:T.sidebar,cursor:'pointer'}}
                       onClick={()=>document.getElementById('certInput').click()}>
-                      <div style={{fontSize:24,marginBottom:6}}>{certFile?'✓':'🔐'}</div>
+                      <div style={{marginBottom:6,display:'flex',justifyContent:'center',color:certFile?T.green:T.text3}}>{certFile?<SvgCheck size={24}/>:<SvgLock size={24}/>}</div>
                       <div style={{fontSize:13,fontWeight:500,color:T.text}}>{certFile?certFile.name:'Seleccionar archivo .p12'}</div>
                       <div style={{fontSize:11,color:T.text4,marginTop:2}}>Certificado emitido por la DGII</div>
                       <input id="certInput" type="file" accept=".p12,.pfx" style={{display:'none'}} onChange={e=>setCertFile(e.target.files[0])}/>
@@ -468,7 +484,7 @@ export default function FiscalConfig() {
                 </div>
               </div>
 
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:14}}>
+              <div className="fis-row" style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:14}}>
                 <Field label="Serie de documentos" hint="Letra identificadora">
                   <Input placeholder="A" maxLength={3} value={form.serie_dte} onChange={e=>setForm(f=>({...f,serie_dte:e.target.value.toUpperCase()}))}/>
                 </Field>
@@ -486,7 +502,7 @@ export default function FiscalConfig() {
               <div style={{marginTop:4,padding:'14px 16px',background:T.sidebar,borderRadius:12,border:`.5px solid ${T.hairline}`,marginBottom:20}}>
                 <div style={{fontSize:13,fontWeight:500,color:T.text,marginBottom:4}}>Credenciales API Hacienda</div>
                 <div style={{fontSize:12,color:T.text3,marginBottom:12}}>Las obtienes en factura.gob.sv al registrarte como emisor. Son opcionales en ambiente de pruebas.</div>
-                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+                <div className="fis-row" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
                   <Field label="Usuario / API Key">
                     <Input placeholder="Usuario de la plataforma" value={form.api_key} onChange={e=>setForm(f=>({...f,api_key:e.target.value}))}/>
                   </Field>
@@ -500,8 +516,8 @@ export default function FiscalConfig() {
                       {loading?'Probando...':'Probar conexión'}
                     </button>
                     {testResult&&(
-                      <div style={{marginTop:10,padding:'10px 14px',background:testResult.ok?T.greenSoft:T.redSoft,borderRadius:10,fontSize:12,color:testResult.ok?T.green:T.red}}>
-                        {testResult.ok?'✓':'✗'} {testResult.mensaje}
+                      <div style={{marginTop:10,padding:'10px 14px',background:testResult.ok?T.greenSoft:T.redSoft,borderRadius:10,fontSize:12,color:testResult.ok?T.green:T.red,display:'flex',alignItems:'center',gap:6}}>
+                        {testResult.ok?<SvgCheck size={12}/>:<SvgX size={12}/>} {testResult.mensaje}
                       </div>
                     )}
                   </div>
@@ -524,7 +540,7 @@ export default function FiscalConfig() {
               <div style={{fontSize:17,fontWeight:600,color:T.text,letterSpacing:-0.3,marginBottom:4}}>Revisar y activar</div>
               <div style={{fontSize:13,color:T.text3,marginBottom:24}}>Revisa tu configuración antes de activar la facturación electrónica.</div>
 
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginBottom:20}}>
+              <div className="fis-row" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginBottom:20}}>
                 {[
                   {label:'País fiscal',         value:PAISES.find(p=>p.code===paisSeleccionado)?.name||'—'},
                   {label:'Nombre legal',         value:form.nombre_legal||'—'},
@@ -555,7 +571,7 @@ export default function FiscalConfig() {
               <div style={{display:'flex',gap:10}}>
                 <BtnSec onClick={()=>setPaso(4)}>Atrás</BtnSec>
                 <Btn onClick={completarWizard} disabled={loading||(form.ambiente==='produccion'&&!tieneCert)} color={T.green} style={{padding:'10px 24px'}}>
-                  {loading?'Activando...':'✓ Activar facturación electrónica'}
+                  {loading?'Activando...':<><SvgCheck size={13}/> Activar facturación electrónica</>}
                 </Btn>
               </div>
             </Card>
@@ -565,7 +581,7 @@ export default function FiscalConfig() {
           {paso===6&&(
             <div>
               <Card style={{textAlign:'center',padding:'40px 32px',marginBottom:16}}>
-                <div style={{fontSize:48,marginBottom:14}}>🎉</div>
+                <div style={{marginBottom:14,display:'flex',justifyContent:'center',color:T.green}}><SvgParty size={48}/></div>
                 <div style={{fontSize:22,fontWeight:600,color:T.text,letterSpacing:-0.4,marginBottom:8}}>Facturación electrónica activa</div>
                 <div style={{fontSize:14,color:T.text3,marginBottom:24,maxWidth:420,margin:'0 auto 24px',lineHeight:1.6}}>
                   Tu empresa está configurada para emitir DTE en El Salvador. Puedes generar facturas desde el módulo de Ventas.
@@ -576,7 +592,7 @@ export default function FiscalConfig() {
                 </div>
               </Card>
 
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
+              <div className="fis-row" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
                 <Card>
                   <div style={{fontSize:14,fontWeight:600,color:T.text,letterSpacing:-0.2,marginBottom:12}}>Tipos de DTE disponibles</div>
                   {[

@@ -3,17 +3,9 @@ import { useState, useEffect, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 
 const API = 'http://127.0.0.1:8000'
-const T = {
-  bg:'#FBFBFD', card:'#FFFFFF', sidebar:'#F5F5F7',
-  hairline:'rgba(0,0,0,0.08)', soft:'rgba(0,0,0,0.05)',
-  text:'#1D1D1F', text2:'#424245', text3:'#6E6E73', text4:'#86868B',
-  blue:'#0071E3', cyan:'#00B4D8',
-  green:'#34C759', greenSoft:'rgba(52,199,89,.1)',
-  amber:'#FF9500', amberSoft:'rgba(255,149,0,.1)',
-  red:'#FF3B30', redSoft:'rgba(255,59,48,.08)',
-}
 
 import Sidebar from '@/components/Sidebar'
+import { useT, useTheme } from '@/components/ui/tokens'
 
 const MODULE_ACCESS = [
   { key:'dashboard',    label:'Dashboard'        },
@@ -43,13 +35,14 @@ const PROVINCIAS_ES = ['Álava','Albacete','Alicante','Almería','Asturias','Áv
 const ACTIVIDADES_ES = ['Comercio al por menor','Comercio al por mayor','Industria manufacturera','Construcción','Hostelería y restauración','Transporte y logística','Servicios profesionales','Tecnología e información','Salud y servicios sociales','Educación','Agricultura y ganadería','Servicios financieros','Inmobiliaria','Otros servicios']
 const REGIMENES_ES = ['General','Simplificado','Recargo de equivalencia','Criterio de caja','Arrendamiento','Agricola ganadero y pesquero','Grupos de entidades']
 
-function Card({children,style={}}){ return <div style={{background:T.card,borderRadius:16,border:`.5px solid ${T.hairline}`,boxShadow:'0 1px 2px rgba(0,0,0,.03)',padding:20,...style}}>{children}</div> }
-function Btn({children,onClick,disabled,color=T.blue,style={}}){ return <button onClick={onClick} disabled={disabled} style={{padding:'8px 18px',borderRadius:999,border:'none',fontSize:13,fontWeight:500,cursor:disabled?'not-allowed':'pointer',fontFamily:'inherit',background:disabled?T.sidebar:color,color:disabled?T.text4:'#fff',opacity:disabled?.6:1,display:'inline-flex',alignItems:'center',gap:6,transition:'all .15s',...style}}>{children}</button> }
-function BtnSec({children,onClick,style={}}){ return <button onClick={onClick} style={{padding:'8px 18px',borderRadius:999,border:`.5px solid ${T.hairline}`,background:T.card,fontSize:13,fontWeight:500,cursor:'pointer',fontFamily:'inherit',color:T.text,display:'inline-flex',alignItems:'center',gap:6,...style}}>{children}</button> }
+function Card({children,style={}}){ const T = useT(); return <div style={{background:T.card,borderRadius:16,border:`.5px solid ${T.hairline}`,boxShadow:'0 1px 2px rgba(0,0,0,.03)',padding:20,...style}}>{children}</div> }
+function Btn({children,onClick,disabled,color,style={}}){ const T = useT(); const c = color ?? T.blue; return <button onClick={onClick} disabled={disabled} style={{padding:'8px 18px',borderRadius:999,border:'none',fontSize:13,fontWeight:500,cursor:disabled?'not-allowed':'pointer',fontFamily:'inherit',background:disabled?T.sidebar:c,color:disabled?T.text4:'#fff',opacity:disabled?.6:1,display:'inline-flex',alignItems:'center',gap:6,transition:'all .15s',...style}}>{children}</button> }
+function BtnSec({children,onClick,style={}}){ const T = useT(); return <button onClick={onClick} style={{padding:'8px 18px',borderRadius:999,border:`.5px solid ${T.hairline}`,background:T.card,fontSize:13,fontWeight:500,cursor:'pointer',fontFamily:'inherit',color:T.text,display:'inline-flex',alignItems:'center',gap:6,...style}}>{children}</button> }
 
-const inp = {width:'100%',padding:'8px 11px',borderRadius:8,border:`.5px solid ${T.hairline}`,background:T.sidebar,fontSize:13,color:T.text,fontFamily:'inherit',outline:'none',transition:'border-color .15s'}
+const inp = (T) => ({width:'100%',padding:'8px 11px',borderRadius:8,border:`.5px solid ${T.hairline}`,background:T.sidebar,fontSize:13,color:T.text,fontFamily:'inherit',outline:'none',transition:'border-color .15s'})
 
 function Field({label,hint,ok,err,children}){
+  const T = useT()
   return (
     <div style={{marginBottom:14}}>
       <div style={{display:'flex',justifyContent:'space-between',marginBottom:5}}>
@@ -64,17 +57,20 @@ function Field({label,hint,ok,err,children}){
 }
 
 function Input({style={},...props}){
-  return <input style={{...inp,...style}} {...props}
+  const T = useT()
+  return <input style={{...inp(T),...style}} {...props}
     onFocus={e=>e.target.style.borderColor=T.blue}
-    onBlur={e=>e.target.style.borderColor='rgba(0,0,0,0.08)'}
+    onBlur={e=>e.target.style.borderColor=T.hairline}
   />
 }
 
 function Sel({children,style={},...props}){
-  return <select style={{...inp,...style}} {...props}>{children}</select>
+  const T = useT()
+  return <select style={{...inp(T),...style}} {...props}>{children}</select>
 }
 
 function Toggle({value,onChange}){
+  const T = useT()
   return (
     <div onClick={()=>onChange(!value)} style={{width:40,height:22,borderRadius:999,background:value?T.blue:T.hairline,cursor:'pointer',position:'relative',transition:'background .2s',flexShrink:0}}>
       <div style={{width:18,height:18,borderRadius:999,background:'#fff',position:'absolute',top:2,left:value?20:2,transition:'left .2s',boxShadow:'0 1px 3px rgba(0,0,0,.15)'}}/>
@@ -83,6 +79,7 @@ function Toggle({value,onChange}){
 }
 
 function Steps({current,total,labels}){
+  const T = useT()
   return (
     <div style={{display:'flex',alignItems:'center',gap:0,marginBottom:24}}>
       {Array.from({length:total}).map((_,i)=>(
@@ -102,6 +99,7 @@ function Steps({current,total,labels}){
 
 // ── Fiscal Wizard ──────────────────────────────────────────────────────────────
 function FiscalWizard({token}){
+  const T = useT()
   const [paso,setPaso]=useState(1)
   const [companyCountry,setCompanyCountry]=useState(null)
   const [config,setConfig]=useState(null)
@@ -126,8 +124,6 @@ function FiscalWizard({token}){
   })
 
   const H={Authorization:`Bearer ${token}`}
-
-  useEffect(()=>{if(token)load()},[token])
 
   async function load(){
     try{
@@ -208,6 +204,8 @@ function FiscalWizard({token}){
     setLoading(false)
   }
 
+  useEffect(()=>{if(token)load()},[token])
+
   const paisInfo=PAISES_FISCAL.find(p=>p.code===companyCountry)
 
   if(!token)return null
@@ -222,7 +220,7 @@ function FiscalWizard({token}){
 
       {/* Stats si activo */}
       {config?.wizard_completado&&stats&&(
-        <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10,marginBottom:20}}>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(200px,1fr))',gap:10,marginBottom:20}}>
           {[
             {label:'DTE emitidos',value:stats.total,          color:T.text},
             {label:'Aceptados',   value:stats.aceptados,      color:T.green},
@@ -281,7 +279,7 @@ function FiscalWizard({token}){
               : 'Esta informacion aparecera en todos tus documentos fiscales. Debe coincidir exactamente con tu registro ante el Ministerio de Hacienda.'}
           </div>
 
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
+          <div className="set-row" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
             <Field label="Nombre comercial" hint="Como te conocen tus clientes">
               <Input placeholder="Mi Empresa" value={form.nombre_comercial} onChange={e=>setForm(f=>({...f,nombre_comercial:e.target.value}))}/>
             </Field>
@@ -293,7 +291,7 @@ function FiscalWizard({token}){
           {/* Campos segun pais */}
           {companyCountry==='ES'&&(
             <div>
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
+              <div className="set-row" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
                 <Field label="CIF / NIF" hint="Identificacion fiscal" ok={nitOk?.valido?'CIF valido':null} err={nitOk?.valido===false?'Formato incorrecto. Ej: B12345678 o 12345678Z':null}>
                   <div style={{display:'flex',gap:8}}>
                     <Input placeholder="B12345678" value={form.nit} onChange={e=>{setForm(f=>({...f,nit:e.target.value}));setNitOk(null)}} style={{flex:1}}/>
@@ -315,7 +313,7 @@ function FiscalWizard({token}){
               <Field label="Descripcion de la actividad" hint="Que vende o que servicios ofrece">
                 <Input placeholder="Ej: Venta de ropa y accesorios" value={form.giro} onChange={e=>setForm(f=>({...f,giro:e.target.value}))}/>
               </Field>
-              <div style={{display:'grid',gridTemplateColumns:'1fr 2fr',gap:14}}>
+              <div className="set-row" style={{display:'grid',gridTemplateColumns:'1fr 2fr',gap:14}}>
                 <Field label="Provincia">
                   <Sel value={form.departamento} onChange={e=>setForm(f=>({...f,departamento:e.target.value}))}>
                     <option value="">Selecciona...</option>
@@ -326,7 +324,7 @@ function FiscalWizard({token}){
                   <Input placeholder="Calle, numero, piso, codigo postal, ciudad" value={form.direccion} onChange={e=>setForm(f=>({...f,direccion:e.target.value}))}/>
                 </Field>
               </div>
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
+              <div className="set-row" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
                 <Field label="Telefono"><Input placeholder="+34 600 000 000" value={form.telefono} onChange={e=>setForm(f=>({...f,telefono:e.target.value}))}/></Field>
                 <Field label="Email fiscal"><Input type="email" placeholder="fiscal@empresa.com" value={form.email_fiscal} onChange={e=>setForm(f=>({...f,email_fiscal:e.target.value}))}/></Field>
               </div>
@@ -335,7 +333,7 @@ function FiscalWizard({token}){
 
           {companyCountry==='SV'&&(
             <div>
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
+              <div className="set-row" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
                 <Field label="NIT" hint="14 digitos" ok={nitOk?.valido?'NIT valido':null} err={nitOk?.valido===false?'Formato incorrecto. Ejemplo: 0614-010101-001-0':null}>
                   <div style={{display:'flex',gap:8}}>
                     <Input placeholder="0000-000000-000-0" value={form.nit} onChange={e=>{setForm(f=>({...f,nit:e.target.value}));setNitOk(null)}} onBlur={()=>{if(form.nit)validarNIT()}} style={{flex:1,borderColor:nitOk?.valido===true?T.green:nitOk?.valido===false?T.red:undefined}}/>
@@ -358,7 +356,7 @@ function FiscalWizard({token}){
               <Field label="Descripcion del giro" hint="Que vende o que servicios ofrece">
                 <Input placeholder="Ej: Venta de ropa y accesorios" value={form.giro} onChange={e=>setForm(f=>({...f,giro:e.target.value}))}/>
               </Field>
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
+              <div className="set-row" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
                 <Field label="Tipo de contribuyente">
                   <Sel value={form.tipo_contribuyente} onChange={e=>setForm(f=>({...f,tipo_contribuyente:e.target.value}))}>
                     <option value="grande">Grande</option>
@@ -372,7 +370,7 @@ function FiscalWizard({token}){
                   </Sel>
                 </Field>
               </div>
-              <div style={{display:'grid',gridTemplateColumns:'1fr 2fr',gap:14}}>
+              <div className="set-row" style={{display:'grid',gridTemplateColumns:'1fr 2fr',gap:14}}>
                 <Field label="Municipio">
                   <Input placeholder="Municipio" value={form.municipio} onChange={e=>setForm(f=>({...f,municipio:e.target.value}))}/>
                 </Field>
@@ -380,7 +378,7 @@ function FiscalWizard({token}){
                   <Input placeholder="Calle, numero, colonia, referencia" value={form.direccion} onChange={e=>setForm(f=>({...f,direccion:e.target.value}))}/>
                 </Field>
               </div>
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
+              <div className="set-row" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
                 <Field label="Telefono"><Input placeholder="0000-0000" value={form.telefono} onChange={e=>setForm(f=>({...f,telefono:e.target.value}))}/></Field>
                 <Field label="Email fiscal"><Input type="email" placeholder="fiscal@empresa.com" value={form.email_fiscal} onChange={e=>setForm(f=>({...f,email_fiscal:e.target.value}))}/></Field>
               </div>
@@ -414,7 +412,7 @@ function FiscalWizard({token}){
           </div>
 
           {tieneCert===null&&(
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:20}}>
+            <div className="set-row" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:20}}>
               {[
                 {v:true, t:'Ya tengo mi firma digital',    d:'Tengo el archivo .p12 y su contrasena listos para subir.'},
                 {v:false,t:'Todavia no la tengo',          d:'La estoy tramitando o no la he solicitado aun.'},
@@ -516,7 +514,7 @@ function FiscalWizard({token}){
             </div>
           </Field>
 
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:14}}>
+          <div className="set-row" style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:14}}>
             <Field label="Serie" hint="Letra identificadora">
               <Input placeholder="A" maxLength={3} value={form.serie_dte} onChange={e=>setForm(f=>({...f,serie_dte:e.target.value.toUpperCase()}))}/>
             </Field>
@@ -621,7 +619,7 @@ function FiscalWizard({token}){
             </div>
           </Card>
 
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
+          <div className="set-row" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
             <Card>
               <div style={{fontSize:14,fontWeight:600,color:T.text,letterSpacing:-0.2,marginBottom:14}}>Documentos que puedes emitir</div>
               {[
@@ -665,8 +663,10 @@ function FiscalWizard({token}){
 
 // ── Main Settings ──────────────────────────────────────────────────────────────
 function SettingsInner(){
+  const T = useT()
   const router=useRouter()
   const searchParams=useSearchParams()
+  const { theme, setTheme }=useTheme()
   const [tab,setTab]=useState(searchParams?.get('tab')||'company')
   const [token,setToken]=useState(null)
   const [user,setUser]=useState(null)
@@ -797,21 +797,22 @@ function SettingsInner(){
     {id:'subscription', label:'Suscripcion'},
     {id:'team',         label:'Equipo'},
     {id:'notifications',label:'Notificaciones'},
+    {id:'apariencia',   label:'Apariencia'},
     {id:'security',     label:'Seguridad'},
     {id:'fiscal',       label:'Fiscal'},
   ]
 
   return (
-    <div style={{minHeight:'100vh',background:T.bg,display:'flex',fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',system-ui,sans-serif",WebkitFontSmoothing:'antialiased'}}>
-      <style>{`*{box-sizing:border-box}::-webkit-scrollbar{width:5px}::-webkit-scrollbar-thumb{background:rgba(0,0,0,.12);border-radius:999px}input:focus,select:focus,textarea:focus{border-color:${T.blue}!important;outline:none}`}</style>
+    <div style={{minHeight:'100dvh',background:T.bg,display:'flex',fontFamily:"-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',system-ui,sans-serif",WebkitFontSmoothing:'antialiased'}}>
+      <style>{`*{box-sizing:border-box}::-webkit-scrollbar{width:5px}::-webkit-scrollbar-thumb{background:${T.hairline};border-radius:999px}input:focus,select:focus,textarea:focus{border-color:${T.blue}!important;outline:none}@media (max-width:768px){.set-row{grid-template-columns:1fr!important}}`}</style>
 
       <Sidebar active="/settings"/>
 
       <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
         {/* Header */}
-        <header style={{height:56,background:'rgba(251,251,253,.9)',backdropFilter:'saturate(180%) blur(20px)',WebkitBackdropFilter:'saturate(180%) blur(20px)',borderBottom:`.5px solid ${T.hairline}`,display:'flex',alignItems:'center',padding:'0 24px',flexShrink:0,position:'sticky',top:0,zIndex:10}}>
-          <button onClick={()=>router.back()} style={{display:'flex',alignItems:'center',gap:6,background:'none',border:'none',cursor:'pointer',color:T.text3,fontSize:13,fontFamily:'inherit',marginRight:12,padding:'4px 8px',borderRadius:8}}
-            onMouseEnter={e=>e.currentTarget.style.background='rgba(0,0,0,.06)'}
+        <header style={{height:56,background:theme==='dark'?'rgba(11,11,12,.9)':'rgba(251,251,253,.9)',backdropFilter:'saturate(180%) blur(20px)',WebkitBackdropFilter:'saturate(180%) blur(20px)',borderBottom:`.5px solid ${T.hairline}`,display:'flex',alignItems:'center',padding:'0 24px',flexShrink:0,position:'sticky',top:0,zIndex:10}}>
+          <button onClick={()=>router.back()} aria-label="Volver al dashboard" style={{display:'flex',alignItems:'center',gap:6,background:'none',border:'none',cursor:'pointer',color:T.text3,fontSize:13,fontFamily:'inherit',marginRight:12,padding:'4px 8px',borderRadius:8}}
+            onMouseEnter={e=>e.currentTarget.style.background=T.soft}
             onMouseLeave={e=>e.currentTarget.style.background='none'}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
@@ -825,7 +826,7 @@ function SettingsInner(){
           <div style={{marginLeft:'auto',display:'flex',alignItems:'center',gap:8}}>
             <div ref={profileRef} style={{position:'relative'}}>
               <div onClick={()=>setProfileOpen(o=>!o)} style={{display:'flex',alignItems:'center',gap:8,padding:'3px 4px 3px 3px',borderRadius:999,cursor:'pointer'}}
-                onMouseEnter={e=>e.currentTarget.style.background='rgba(0,0,0,.04)'}
+                onMouseEnter={e=>e.currentTarget.style.background=T.soft}
                 onMouseLeave={e=>e.currentTarget.style.background='transparent'}
               >
                 <div style={{width:28,height:28,borderRadius:999,background:'linear-gradient(135deg,#0071E3,#00B4D8)',color:'#fff',display:'grid',placeItems:'center',fontWeight:600,fontSize:11}}>{initials}</div>
@@ -847,7 +848,7 @@ function SettingsInner(){
 
         <div style={{flex:1,overflowY:'auto'}}>
           {/* Tab bar */}
-          <div style={{borderBottom:`.5px solid ${T.hairline}`,background:'rgba(251,251,253,.9)',backdropFilter:'saturate(180%) blur(20px)',display:'flex',padding:'0 24px'}}>
+          <div style={{borderBottom:`.5px solid ${T.hairline}`,background:theme==='dark'?'rgba(11,11,12,.9)':'rgba(251,251,253,.9)',backdropFilter:'saturate(180%) blur(20px)',display:'flex',padding:'0 24px'}}>
             {TABS.map(t=>(
               <button key={t.id} onClick={()=>setTab(t.id)} style={{padding:'0 16px',height:44,background:'none',border:'none',borderBottom:tab===t.id?`2px solid ${T.text}`:'2px solid transparent',color:tab===t.id?T.text:T.text3,fontWeight:tab===t.id?600:400,fontSize:13,cursor:'pointer',fontFamily:'inherit',whiteSpace:'nowrap',transition:'all .15s'}}>
                 {t.label}
@@ -857,12 +858,47 @@ function SettingsInner(){
 
           <div style={{padding:'24px 28px',maxWidth:860,margin:'0 auto',paddingTop:28}}>
 
+            {/* APARIENCIA */}
+            {tab==='apariencia'&&(
+              <div style={{display:'flex',flexDirection:'column',gap:14}}>
+                <Card>
+                  <div style={{fontSize:15,fontWeight:600,color:T.text,letterSpacing:-0.2,marginBottom:4}}>Tema</div>
+                  <div style={{fontSize:13,color:T.text3,marginBottom:16,lineHeight:1.5}}>Elige cómo se ve Vortu. Se guarda en este dispositivo.</div>
+                  <div className="set-row" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,maxWidth:420}}>
+                    {[
+                      {k:'light',l:'Claro',d:'Fondo claro',
+                        icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>},
+                      {k:'dark',l:'Oscuro',d:'Fondo oscuro',
+                        icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>},
+                    ].map(o=>{
+                      const active=theme===o.k
+                      return (
+                        <button key={o.k} type="button" onClick={()=>setTheme(o.k)}
+                          aria-pressed={active}
+                          style={{textAlign:'left',padding:16,borderRadius:12,cursor:'pointer',fontFamily:'inherit',
+                            border:`1px solid ${active?T.blue:T.hairline}`,
+                            background:active?'rgba(0,113,227,.06)':T.card,
+                            color:active?T.blue:T.text2,transition:'all .15s'}}>
+                          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
+                            {o.icon}
+                            {active&&<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
+                          </div>
+                          <div style={{fontSize:13.5,fontWeight:600,color:active?T.blue:T.text}}>{o.l}</div>
+                          <div style={{fontSize:11.5,color:T.text4,marginTop:2}}>{o.d}</div>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </Card>
+              </div>
+            )}
+
             {/* EMPRESA */}
             {tab==='company'&&(
               <div style={{display:'flex',flexDirection:'column',gap:14}}>
                 <Card>
                   <div style={{fontSize:15,fontWeight:600,color:T.text,letterSpacing:-0.2,marginBottom:16}}>Datos de la empresa</div>
-                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
+                  <div className="set-row" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
                     {[
                       {key:'name',    label:'Nombre de la empresa', placeholder:'Mi Empresa S.L.'},
                       {key:'cif',     label:'CIF / NIF',            placeholder:'B12345678'},
@@ -911,7 +947,7 @@ function SettingsInner(){
                   <Card style={{marginBottom:14,padding:0,overflow:'hidden'}}>
                     <div style={{padding:'14px 18px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
                       <div style={{display:'flex',alignItems:'center',gap:10}}>
-                        <div style={{width:7,height:7,borderRadius:'50%',background:'#16a34a',boxShadow:'0 0 6px rgba(22,163,74,.4)'}}/>
+                        <div style={{width:7,height:7,borderRadius:'50%',background:'#059669',boxShadow:'0 0 6px rgba(5,150,105,.4)'}}/>
                         <span style={{fontSize:14,fontWeight:600,color:T.text}}>Plan {billingStatus.plan_name||billingStatus.plan}</span>
                         <span style={{fontSize:12,color:T.text4}}>{billingStatus.fase==='beta'?'Beta gratuita':billingStatus.status==='active'?'Activo':billingStatus.status}</span>
                         {billingStatus.pending_downgrade_plan&&(
@@ -933,7 +969,7 @@ function SettingsInner(){
                   </Card>
                 )})()}
 
-                <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:14,marginBottom:16}}>
+                <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(200px,1fr))',gap:14,marginBottom:16}}>
                   {[
                     {id:'starter',name:'Starter',monthly:19,users:1,ai:'50/mes',docs:'25/mes',color:'#6b7280',modules:4,sub:'Contabilidad + Ventas + Finanzas',tag:null,popular:false,highlights:[]},
                     {id:'pro',name:'Pro',monthly:39,users:3,ai:'500/mes',docs:'100/mes',color:T.cyan,modules:9,sub:'Todo lo que necesita tu pyme',tag:'Mas popular',popular:true,highlights:['Vera IA con 500 consultas','3 usuarios incluidos','CRM + Proyectos completo']},
@@ -1003,7 +1039,7 @@ function SettingsInner(){
                 {/* UPGRADE MODAL */}
                 {showUpgradeModal&&(
                   <div style={{position:'fixed',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,.45)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:9999,backdropFilter:'blur(4px)'}} onClick={()=>setShowUpgradeModal(null)}>
-                    <div style={{background:'#fff',borderRadius:20,padding:32,maxWidth:420,width:'90%',boxShadow:'0 20px 60px rgba(0,0,0,.15)'}} onClick={e=>e.stopPropagation()}>
+                    <div style={{background:T.card,borderRadius:20,padding:32,maxWidth:420,width:'90%',boxShadow:'0 20px 60px rgba(0,0,0,.15)'}} onClick={e=>e.stopPropagation()}>
                       <div style={{textAlign:'center',marginBottom:24}}>
                         <div style={{width:52,height:52,borderRadius:14,margin:'0 auto 14px',background:`${showUpgradeModal.plan.color}15`,display:'grid',placeItems:'center'}}><svg width='22' height='22' viewBox='0 0 24 24' fill='none' stroke={showUpgradeModal.plan.color} strokeWidth='1.5' strokeLinecap='round' strokeLinejoin='round'><path d='M13 2L3 14h9l-1 8 10-12h-9l1-8z'/></svg></div>
                         <div style={{fontSize:19,fontWeight:700,color:T.text,marginBottom:6}}>Activar plan {showUpgradeModal.plan.name}</div>
@@ -1011,7 +1047,7 @@ function SettingsInner(){
                       </div>
                       <div style={{background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:12,padding:14,marginBottom:16}}>
                         <div style={{fontSize:11,fontWeight:700,color:'#166534',marginBottom:8,textTransform:'uppercase',letterSpacing:'.04em'}}>Lo que desbloqueas</div>
-                        <div style={{fontSize:13,color:'#15803d'}}>
+                        <div style={{fontSize:13,color:'#047857'}}>
                           {showUpgradeModal.plan.moduleCount} modulos · {showUpgradeModal.plan.users} usuario{showUpgradeModal.plan.users>1?'s':''} · {showUpgradeModal.plan.ai===-1?'IA sin limite':showUpgradeModal.plan.ai+' consultas IA/mes'}
                         </div>
                       </div>
@@ -1031,7 +1067,7 @@ function SettingsInner(){
                               <span style={{fontWeight:600}}>€{showUpgradeModal.plan.monthly}/mes</span>
                             </div>
                             {showUpgradeModal.prorationCredit>0&&(
-                              <div style={{display:'flex',justifyContent:'space-between',fontSize:13,color:'#16a34a',marginBottom:4}}>
+                              <div style={{display:'flex',justifyContent:'space-between',fontSize:13,color:'#059669',marginBottom:4}}>
                                 <span>Credito del plan actual</span>
                                 <span style={{fontWeight:600}}>-€{showUpgradeModal.prorationCredit.toFixed(2)}</span>
                               </div>
@@ -1057,7 +1093,7 @@ function SettingsInner(){
                 {/* DOWNGRADE MODAL — LOSS AVERSION */}
                 {showDowngradeModal&&(
                   <div style={{position:'fixed',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,.45)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:9999,backdropFilter:'blur(4px)'}} onClick={()=>setShowDowngradeModal(null)}>
-                    <div style={{background:'#fff',borderRadius:20,padding:32,maxWidth:440,width:'90%',boxShadow:'0 20px 60px rgba(0,0,0,.15)'}} onClick={e=>e.stopPropagation()}>
+                    <div style={{background:T.card,borderRadius:20,padding:32,maxWidth:440,width:'90%',boxShadow:'0 20px 60px rgba(0,0,0,.15)'}} onClick={e=>e.stopPropagation()}>
                       <div style={{textAlign:'center',marginBottom:24}}>
                         <div style={{width:52,height:52,borderRadius:14,margin:'0 auto 14px',background:'#fef2f2',display:'grid',placeItems:'center',fontSize:22}}>⚠️</div>
                         <div style={{fontSize:19,fontWeight:700,color:T.text,marginBottom:6}}>¿Seguro que quieres cambiar?</div>
@@ -1086,7 +1122,7 @@ function SettingsInner(){
                           <div style={{fontSize:12,fontWeight:600,color:T.text,marginBottom:6}}>Calendario del cambio</div>
                           <div style={{display:'flex',justifyContent:'space-between',fontSize:12,marginBottom:4}}>
                             <span style={{color:T.text3}}>Plan actual ({showDowngradeModal.from.name})</span>
-                            <span style={{color:'#16a34a',fontWeight:600}}>Activo hasta {new Date(showDowngradeModal.periodEnd).toLocaleDateString('es-ES')}</span>
+                            <span style={{color:'#059669',fontWeight:600}}>Activo hasta {new Date(showDowngradeModal.periodEnd).toLocaleDateString('es-ES')}</span>
                           </div>
                           <div style={{display:'flex',justifyContent:'space-between',fontSize:12}}>
                             <span style={{color:T.text3}}>Plan nuevo ({showDowngradeModal.to.name})</span>
@@ -1158,7 +1194,7 @@ function SettingsInner(){
 
             {/* NOTIFICACIONES */}
             {tab==='notifications'&&(
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
+              <div className="set-row" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
                 <Card>
                   <div style={{fontSize:15,fontWeight:600,color:T.text,letterSpacing:-0.2,marginBottom:4}}>Alertas de modulos</div>
                   <div style={{fontSize:13,color:T.text3,marginBottom:16}}>Elige que alertas quieres recibir</div>
@@ -1264,7 +1300,7 @@ function SecurityTab({token,T,showSaved}){
   const Btn=({children,onClick,disabled,style:s})=><button onClick={onClick} disabled={disabled} style={{padding:'9px 18px',borderRadius:10,border:'none',background:T.blue,color:'#fff',fontSize:13,fontWeight:600,cursor:disabled?'default':'pointer',fontFamily:'inherit',opacity:disabled?.6:1,...s}}>{children}</button>
 
   return (
-    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
+    <div className="set-row" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
       <Card>
         <div style={{fontSize:15,fontWeight:600,color:T.text,letterSpacing:-0.2,marginBottom:4}}>Cambiar contrasena</div>
         <div style={{fontSize:13,color:T.text3,marginBottom:16}}>Minimo 12 caracteres</div>
@@ -1287,12 +1323,12 @@ function SecurityTab({token,T,showSaved}){
           ):tfa.enabled&&!tfa.step?(
             <div>
               <div style={{padding:'14px 16px',background:'#f0fdf4',borderRadius:12,border:'1px solid #bbf7d0',display:'flex',alignItems:'center',gap:12,marginBottom:14}}>
-                <div style={{width:36,height:36,borderRadius:10,background:'#16a34a',display:'grid',placeItems:'center'}}>
+                <div style={{width:36,height:36,borderRadius:10,background:'#059669',display:'grid',placeItems:'center'}}>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
                 </div>
                 <div>
                   <div style={{fontSize:13,fontWeight:600,color:'#166534'}}>2FA activo</div>
-                  <div style={{fontSize:11,color:'#16a34a'}}>Tu cuenta esta protegida</div>
+                  <div style={{fontSize:11,color:'#059669'}}>Tu cuenta esta protegida</div>
                 </div>
               </div>
               <div style={{fontSize:12,color:T.text3,marginBottom:10}}>Para desactivar, introduce tu codigo actual:</div>

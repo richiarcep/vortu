@@ -2,8 +2,9 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
-import { T, FONT } from '@/components/ui/tokens'
+import { FONT, useT, useTheme } from '@/components/ui/tokens'
 import VeraDrawer from '@/components/ui/VeraDrawer'
+import { Skeleton, EmptyState, HeaderActions } from '@/components/ui/primitives'
 
 import { API_BASE as API } from '@/lib/api'
 const VERA_BLUE = '#0071E3'
@@ -12,7 +13,7 @@ const VERA_BLUE = '#0071E3'
 // CONFIGS
 // ─────────────────────────────────────────────────────────
 const STATUS_CFG = {
-  active:    { label: 'Activo',    color: '#16a34a', bg: 'rgba(22,163,74,.1)', dot: '#16a34a' },
+  active:    { label: 'Activo',    color: '#059669', bg: 'rgba(5,150,105,.1)', dot: '#059669' },
   paused:    { label: 'Pausado',   color: '#d97706', bg: 'rgba(217,119,6,.1)', dot: '#F59E0B' },
   completed: { label: 'Completado', color: '#0EA5E9', bg: 'rgba(14,165,233,.1)', dot: '#0EA5E9' },
   cancelled: { label: 'Cancelado', color: '#6b7280', bg: 'rgba(107,114,128,.1)', dot: '#9CA3AF' },
@@ -22,7 +23,7 @@ const TASK_STATUS = {
   todo:        { label: 'Por hacer',   color: '#6b7280', bg: '#f3f4f6' },
   in_progress: { label: 'En progreso', color: '#0071E3', bg: 'rgba(0,113,227,.1)' },
   review:      { label: 'En revisión', color: '#7c3aed', bg: 'rgba(124,58,237,.1)' },
-  done:        { label: 'Hecho',       color: '#16a34a', bg: 'rgba(22,163,74,.1)' },
+  done:        { label: 'Hecho',       color: '#059669', bg: 'rgba(5,150,105,.1)' },
 }
 
 const PRIORITY_CFG = {
@@ -47,13 +48,13 @@ function fmtDateShort(d) {
 function healthColor(score) {
   // score puede venir 0-10 o 0-100
   const s = score > 10 ? score / 10 : score
-  if (s >= 8) return { color: '#16a34a', bg: 'rgba(22,163,74,.1)', label: 'Excelente' }
+  if (s >= 8) return { color: '#059669', bg: 'rgba(5,150,105,.1)', label: 'Excelente' }
   if (s >= 6) return { color: '#0EA5E9', bg: 'rgba(14,165,233,.1)', label: 'Bien' }
   if (s >= 4) return { color: '#d97706', bg: 'rgba(217,119,6,.1)', label: 'Atención' }
   return { color: '#dc2626', bg: 'rgba(220,38,38,.1)', label: 'Crítico' }
 }
 function avatarColor(name) {
-  const colors = ['#0071E3', '#7c3aed', '#16a34a', '#dc2626', '#d97706', '#0EA5E9']
+  const colors = ['#0071E3', '#7c3aed', '#059669', '#dc2626', '#d97706', '#0EA5E9']
   let hash = 0
   for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash)
   return colors[Math.abs(hash) % colors.length]
@@ -105,10 +106,11 @@ function Avatar({ name, size = 32 }) {
 }
 
 function Tab({ active, onClick, label, badge }) {
+  const T = useT()
   return (
     <button onClick={onClick} style={{
       padding: '7px 14px', borderRadius: 8,
-      background: active ? '#fff' : 'transparent',
+      background: active ? T.card : 'transparent',
       color: active ? T.text : T.text3, border: 'none',
       boxShadow: active ? '0 1px 2px rgba(0,0,0,.06)' : 'none',
       fontSize: 12.5, fontWeight: 500, cursor: 'pointer',
@@ -129,6 +131,7 @@ function Tab({ active, onClick, label, badge }) {
 
 // Barra de progreso circular para health
 function HealthRing({ score, size = 36 }) {
+  const T = useT()
   const s = score > 10 ? score / 10 : score
   const pct = (s / 10) * 100
   const hc = healthColor(score)
@@ -162,6 +165,7 @@ function HealthRing({ score, size = 36 }) {
 // TAB 1: PROYECTOS (Lista horizontal estilo Asana)
 // ─────────────────────────────────────────────────────────
 function ProyectosTab({ projects, onSelect, employees }) {
+  const T = useT()
   const [filter, setFilter] = useState('all')
   const [sortBy, setSortBy] = useState('priority')
 
@@ -205,7 +209,7 @@ function ProyectosTab({ projects, onSelect, employees }) {
           ].map(f => (
             <button key={f.k} onClick={() => setFilter(f.k)} style={{
               padding: '5px 12px', borderRadius: 6, border: 'none',
-              background: filter === f.k ? '#fff' : 'transparent',
+              background: filter === f.k ? T.card : 'transparent',
               color: filter === f.k ? T.text : T.text3,
               boxShadow: filter === f.k ? '0 1px 2px rgba(0,0,0,.06)' : 'none',
               fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
@@ -218,7 +222,7 @@ function ProyectosTab({ projects, onSelect, employees }) {
           <select value={sortBy} onChange={e => setSortBy(e.target.value)} style={{
             padding: '6px 10px', borderRadius: 8,
             border: `.5px solid ${T.hairline}`,
-            fontSize: 12, color: T.text2, background: '#fff',
+            fontSize: 12, color: T.text2, background: T.card,
             fontFamily: 'inherit', cursor: 'pointer',
           }}>
             <option value="priority">Prioridad de atención</option>
@@ -230,7 +234,7 @@ function ProyectosTab({ projects, onSelect, employees }) {
 
       {/* Lista horizontal */}
       <div style={{
-        background: '#fff', borderRadius: 12,
+        background: T.card, borderRadius: 12,
         border: `.5px solid ${T.hairline}`,
         overflow: 'hidden',
       }}>
@@ -265,7 +269,7 @@ function ProyectosTab({ projects, onSelect, employees }) {
           const overBudget = spent > (p.budget || 0)
 
           return (
-            <div key={p.id} onClick={() => onSelect(p)}
+            <div key={p.id} onClick={() => onSelect(p)} className="hover-lift"
               onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,.015)'}
               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
               style={{
@@ -332,7 +336,7 @@ function ProyectosTab({ projects, onSelect, employees }) {
                   <div style={{
                     height: '100%',
                     width: `${completion}%`,
-                    background: completion >= 100 ? '#16a34a' :
+                    background: completion >= 100 ? '#059669' :
                                 completion < 30 ? '#dc2626' :
                                 completion < 70 ? '#d97706' : hc.color,
                     transition: 'width .4s ease',
@@ -367,9 +371,11 @@ function ProyectosTab({ projects, onSelect, employees }) {
         })}
 
         {sorted.length === 0 && (
-          <div style={{ padding: 60, textAlign: 'center', color: T.text4, fontSize: 13 }}>
-            Sin proyectos en esta categoría
-          </div>
+          <EmptyState
+            icon={<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /></svg>}
+            title="Sin proyectos en esta categoría"
+            hint="No hay proyectos que coincidan con este filtro. Prueba con otra categoría o crea un nuevo proyecto."
+          />
         )}
       </div>
 
@@ -378,7 +384,7 @@ function ProyectosTab({ projects, onSelect, employees }) {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, marginTop: 16 }}>
           {/* Proyectos que requieren atención */}
           <div style={{
-            background: '#fff', borderRadius: 12,
+            background: T.card, borderRadius: 12,
             border: `.5px solid ${T.hairline}`, padding: 16,
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
@@ -400,7 +406,7 @@ function ProyectosTab({ projects, onSelect, employees }) {
                 const h = p.health?.score ?? p.health_score ?? 0
                 const hc = healthColor(h)
                 return (
-                  <div key={p.id} onClick={() => onSelect(p)} style={{
+                  <div key={p.id} onClick={() => onSelect(p)} className="hover-lift" style={{
                     padding: '8px 10px', borderRadius: 8,
                     background: T.sidebar,
                     borderLeft: `3px solid ${hc.color}`,
@@ -427,7 +433,7 @@ function ProyectosTab({ projects, onSelect, employees }) {
 
           {/* Próximos deadlines */}
           <div style={{
-            background: '#fff', borderRadius: 12,
+            background: T.card, borderRadius: 12,
             border: `.5px solid ${T.hairline}`, padding: 16,
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
@@ -442,7 +448,7 @@ function ProyectosTab({ projects, onSelect, employees }) {
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {projects.filter(p => p.status === 'active' && p.days_left != null && p.days_left >= 0).sort((a, b) => a.days_left - b.days_left).slice(0, 3).map(p => (
-                <div key={p.id} onClick={() => onSelect(p)} style={{
+                <div key={p.id} onClick={() => onSelect(p)} className="hover-lift" style={{
                   padding: '8px 10px', borderRadius: 8,
                   background: T.sidebar,
                   cursor: 'pointer',
@@ -471,11 +477,10 @@ function ProyectosTab({ projects, onSelect, employees }) {
 // TAB 2: TAREAS (Kanban)
 // ─────────────────────────────────────────────────────────
 function TareasTab({ token, projects, employees }) {
+  const T = useT()
   const [tasks, setTasks] = useState([])
   const [loading, setLoading] = useState(true)
   const [projectFilter, setProjectFilter] = useState('all')
-
-  useEffect(() => { load() }, [projects])
 
   async function load() {
     if (projects.length === 0) return
@@ -495,6 +500,8 @@ function TareasTab({ token, projects, employees }) {
     } catch {}
     setLoading(false)
   }
+
+  useEffect(() => { load() }, [projects])
 
   async function updateStatus(task, newStatus) {
     try {
@@ -516,7 +523,24 @@ function TareasTab({ token, projects, employees }) {
     return e?.full_name || null
   }
 
-  if (loading) return <div style={{ padding: 60, textAlign: 'center', color: T.text4, fontSize: 13 }}>Cargando tareas...</div>
+  if (loading) return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+      {[0, 1, 2, 3].map(col => (
+        <div key={col} style={{ background: T.sidebar, borderRadius: 12, padding: 12, minHeight: 200 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+            <Skeleton w={80} h={11} /><Skeleton w={16} h={11} />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {[0, 1].map(i => (
+              <div key={i} style={{ background: T.card, borderRadius: 10, border: `.5px solid ${T.hairline}`, padding: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <Skeleton w="90%" h={12} /><Skeleton w="50%" h={10} />
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
 
   return (
     <>
@@ -526,7 +550,7 @@ function TareasTab({ token, projects, employees }) {
           style={{
             padding: '6px 10px', borderRadius: 8,
             border: `.5px solid ${T.hairline}`,
-            fontSize: 12, color: T.text2, background: '#fff',
+            fontSize: 12, color: T.text2, background: T.card,
             fontFamily: 'inherit', outline: 'none',
           }}>
           <option value="all">Todos los proyectos</option>
@@ -559,7 +583,7 @@ function TareasTab({ token, projects, employees }) {
 
                   return (
                     <div key={t.id} style={{
-                      background: '#fff', borderRadius: 10,
+                      background: T.card, borderRadius: 10,
                       border: `.5px solid ${T.hairline}`,
                       padding: 10,
                       borderLeft: `3px solid ${prio.color}`,
@@ -606,7 +630,10 @@ function TareasTab({ token, projects, employees }) {
                   )
                 })}
                 {items.length === 0 && (
-                  <div style={{ padding: 20, textAlign: 'center', color: T.text4, fontSize: 11 }}>Vacío</div>
+                  <EmptyState
+                    icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M9 12h6" /></svg>}
+                    title="Sin tareas"
+                  />
                 )}
               </div>
             </div>
@@ -621,6 +648,7 @@ function TareasTab({ token, projects, employees }) {
 // TAB 3: CALENDARIO
 // ─────────────────────────────────────────────────────────
 function CalendarioTab({ projects }) {
+  const T = useT()
   const today = new Date()
   const [month, setMonth] = useState(today.getMonth())
   const [year, setYear] = useState(today.getFullYear())
@@ -657,19 +685,19 @@ function CalendarioTab({ projects }) {
         <div style={{ display: 'flex', gap: 4 }}>
           <button onClick={prev} style={{
             width: 32, height: 32, borderRadius: 8,
-            background: '#fff', border: `.5px solid ${T.hairline}`,
+            background: T.card, border: `.5px solid ${T.hairline}`,
             cursor: 'pointer', display: 'grid', placeItems: 'center',
           }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
           </button>
           <button onClick={() => { setMonth(today.getMonth()); setYear(today.getFullYear()) }} style={{
             padding: '0 12px', height: 32, borderRadius: 8,
-            background: '#fff', border: `.5px solid ${T.hairline}`,
+            background: T.card, border: `.5px solid ${T.hairline}`,
             cursor: 'pointer', fontSize: 12, fontFamily: 'inherit',
           }}>Hoy</button>
           <button onClick={next} style={{
             width: 32, height: 32, borderRadius: 8,
-            background: '#fff', border: `.5px solid ${T.hairline}`,
+            background: T.card, border: `.5px solid ${T.hairline}`,
             cursor: 'pointer', display: 'grid', placeItems: 'center',
           }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
@@ -677,7 +705,7 @@ function CalendarioTab({ projects }) {
         </div>
       </div>
 
-      <div style={{ background: '#fff', borderRadius: 12, border: `.5px solid ${T.hairline}`, overflow: 'hidden' }}>
+      <div style={{ background: T.card, borderRadius: 12, border: `.5px solid ${T.hairline}`, overflow: 'hidden' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
           {DIAS.map(d => (
             <div key={d} style={{
@@ -731,6 +759,7 @@ function CalendarioTab({ projects }) {
 // DRAWER DETALLE PROYECTO
 // ─────────────────────────────────────────────────────────
 function ProjectDrawer({ project, onClose, token, employees }) {
+  const T = useT()
   const [detail, setDetail] = useState(null)
   const [analysis, setAnalysis] = useState(null)
   const [analyzing, setAnalyzing] = useState(false)
@@ -768,7 +797,7 @@ function ProjectDrawer({ project, onClose, token, employees }) {
       display: 'flex', justifyContent: 'flex-end', zIndex: 100,
     }} onClick={onClose}>
       <div onClick={e => e.stopPropagation()} style={{
-        width: 580, height: '100vh', background: '#fff',
+        width: 580, height: '100dvh', background: T.card,
         display: 'flex', flexDirection: 'column', overflow: 'hidden',
         animation: 'slideIn .2s ease',
       }}>
@@ -794,7 +823,14 @@ function ProjectDrawer({ project, onClose, token, employees }) {
 
         <div style={{ flex: 1, overflowY: 'auto', padding: 20 }}>
           {loading ? (
-            <div style={{ padding: 40, textAlign: 'center', color: T.text4, fontSize: 13 }}>Cargando...</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <Skeleton w="100%" h={40} />
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
+                {[0, 1, 2, 3].map(i => <Skeleton key={i} w="100%" h={56} radius={10} />)}
+              </div>
+              <Skeleton w="40%" h={11} />
+              {[0, 1, 2].map(i => <Skeleton key={i} w="100%" h={44} radius={10} />)}
+            </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
@@ -854,9 +890,13 @@ function ProjectDrawer({ project, onClose, token, employees }) {
                 <div style={{ fontSize: 11, color: T.text4, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
                   Tareas · {tasks.length}
                 </div>
-                <div style={{ background: '#fff', border: `.5px solid ${T.hairline}`, borderRadius: 10, overflow: 'hidden' }}>
+                <div style={{ background: T.card, border: `.5px solid ${T.hairline}`, borderRadius: 10, overflow: 'hidden' }}>
                   {tasks.length === 0 ? (
-                    <div style={{ padding: 20, textAlign: 'center', color: T.text4, fontSize: 12 }}>Sin tareas</div>
+                    <EmptyState
+                      icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></svg>}
+                      title="Sin tareas"
+                      hint="Este proyecto aún no tiene tareas asignadas."
+                    />
                   ) : tasks.slice(0, 12).map(t => {
                     const ts = TASK_STATUS[t.status] || TASK_STATUS.todo
                     const prio = PRIORITY_CFG[t.priority] || PRIORITY_CFG.medium
@@ -901,6 +941,8 @@ function ProjectDrawer({ project, onClose, token, employees }) {
 // PÁGINA PRINCIPAL
 // ─────────────────────────────────────────────────────────
 export default function ProjectsPage() {
+  const T = useT()
+  const { theme } = useTheme()
   const router = useRouter()
   const [tab, setTab] = useState('proyectos')
   const [projects, setProjects] = useState([])
@@ -910,13 +952,6 @@ export default function ProjectsPage() {
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [token, setToken] = useState(null)
   const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    const t = typeof window !== 'undefined' ? localStorage.getItem('nexum_token') : null
-    if (!t) { router.push('/login'); return }
-    setToken(t)
-    loadAll(t)
-  }, [])
 
   async function loadAll(t) {
     setLoading(true)
@@ -936,6 +971,13 @@ export default function ProjectsPage() {
     } catch {}
     setLoading(false)
   }
+
+  useEffect(() => {
+    const t = typeof window !== 'undefined' ? localStorage.getItem('nexum_token') : null
+    if (!t) { router.push('/login'); return }
+    setToken(t)
+    loadAll(t)
+  }, [])
 
   // KPIs calculados
   const summary = useMemo(() => {
@@ -970,17 +1012,17 @@ export default function ProjectsPage() {
 
   return (
     <div style={{
-      minHeight: '100vh', background: T.bg, display: 'flex',
+      minHeight: '100dvh', background: T.bg, display: 'flex',
       fontFamily: FONT, WebkitFontSmoothing: 'antialiased',
     }}>
       <style>{`*{box-sizing:border-box}::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-thumb{background:rgba(0,0,0,.12);border-radius:999px}input:focus,select:focus{outline:none}`}</style>
 
       <Sidebar active="/proyectos" />
 
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', height: '100vh' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', height: '100dvh' }}>
         <header style={{
           padding: '20px 32px 0',
-          background: 'rgba(251,251,253,.85)',
+          background: theme === 'dark' ? 'rgba(11,11,12,.85)' : 'rgba(251,251,253,.85)',
           backdropFilter: 'saturate(180%) blur(20px)',
           borderBottom: `.5px solid ${T.hairline}`,
         }}>
@@ -988,7 +1030,7 @@ export default function ProjectsPage() {
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
                 <h1 style={{ fontSize: 22, fontWeight: 600, color: T.text, margin: 0, letterSpacing: -0.3 }}>Proyectos</h1>
-                <span style={{ width: 6, height: 6, borderRadius: 999, background: '#16a34a' }} />
+                <span style={{ width: 6, height: 6, borderRadius: 999, background: '#059669' }} />
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: T.text4 }}>
                 <FlagES size={11} />
@@ -998,11 +1040,13 @@ export default function ProjectsPage() {
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={() => setNotificationsOpen(o => !o)} style={{
+            <HeaderActions onVera={() => setVeraOpen(true)} router={router}>
+              <button onClick={() => setNotificationsOpen(o => !o)}
+                aria-label={`Notificaciones${notifCount > 0 ? ` (${notifCount})` : ''}`}
+                aria-expanded={notificationsOpen} style={{
                 position: 'relative',
                 padding: '7px 10px', borderRadius: 8,
-                background: '#fff', color: T.text2,
+                background: T.card, color: T.text2,
                 border: `.5px solid ${T.hairline}`,
                 cursor: 'pointer', fontFamily: 'inherit',
                 display: 'grid', placeItems: 'center',
@@ -1020,25 +1064,13 @@ export default function ProjectsPage() {
                   }}>{notifCount}</span>
                 )}
               </button>
-              <button onClick={() => setVeraOpen(true)} style={{
-                padding: '7px 14px', borderRadius: 8,
-                background: '#fff', color: VERA_BLUE,
-                border: `.5px solid rgba(0,113,227,.3)`,
-                fontSize: 12, fontWeight: 500, cursor: 'pointer',
-                fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6,
-              }}>
-                <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor">
-                  <path d="M8 1l1.5 5.5L15 8l-5.5 1.5L8 15l-1.5-5.5L1 8l5.5-1.5L8 1z" />
-                </svg>
-                Vera
-              </button>
               <button style={{
                 padding: '7px 14px', borderRadius: 8,
                 background: VERA_BLUE, color: '#fff', border: 'none',
                 fontSize: 12, fontWeight: 500, cursor: 'pointer',
                 fontFamily: 'inherit',
               }}>+ Nuevo proyecto</button>
-            </div>
+            </HeaderActions>
           </div>
 
           <div style={{ display: 'flex', gap: 2, background: T.sidebar, borderRadius: 8, padding: 3, width: 'fit-content' }}>
@@ -1050,9 +1082,32 @@ export default function ProjectsPage() {
           <div style={{ height: 16 }} />
         </header>
 
-        <div style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
+        <div className="fade-in" style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
           {loading ? (
-            <div style={{ padding: 60, textAlign: 'center', color: T.text4, fontSize: 13 }}>Cargando...</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <Skeleton w={280} h={36} radius={8} />
+                <Skeleton w={200} h={32} radius={8} style={{ marginLeft: 'auto' }} />
+              </div>
+              <div style={{ background: T.card, borderRadius: 12, border: `.5px solid ${T.hairline}`, overflow: 'hidden' }}>
+                {[0, 1, 2, 3, 4].map(i => (
+                  <div key={i} style={{
+                    display: 'grid', gridTemplateColumns: '60px 1fr 120px 160px 140px 120px',
+                    gap: 16, padding: '16px 20px', alignItems: 'center',
+                    borderBottom: `.5px solid ${T.hairline}`,
+                  }}>
+                    <div style={{ display: 'grid', placeItems: 'center' }}><Skeleton w={44} h={44} radius={999} /></div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      <Skeleton w="60%" h={14} /><Skeleton w="40%" h={11} />
+                    </div>
+                    <Skeleton w={72} h={20} radius={6} />
+                    <Skeleton w="100%" h={14} />
+                    <Skeleton w="80%" h={14} style={{ marginLeft: 'auto' }} />
+                    <Skeleton w="70%" h={14} style={{ marginLeft: 'auto' }} />
+                  </div>
+                ))}
+              </div>
+            </div>
           ) : (
             <>
               {tab === 'proyectos' && <ProyectosTab projects={projects} onSelect={setSelected} />}
@@ -1071,7 +1126,7 @@ export default function ProjectsPage() {
           <div onClick={e => e.stopPropagation()} style={{
             position: 'fixed', top: 70, right: 32,
             width: 380, maxHeight: 500, overflowY: 'auto',
-            background: '#fff', borderRadius: 12,
+            background: T.card, borderRadius: 12,
             border: `.5px solid ${T.hairline}`,
             boxShadow: '0 8px 30px rgba(0,0,0,.12)',
             padding: 14,
@@ -1085,7 +1140,11 @@ export default function ProjectsPage() {
             </div>
 
             {notifCount === 0 ? (
-              <div style={{ padding: 24, textAlign: 'center', color: T.text4, fontSize: 12 }}>Sin alertas</div>
+              <EmptyState
+                icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" /></svg>}
+                title="Sin alertas"
+                hint="Todos los proyectos están en orden. Te avisaremos si algo requiere atención."
+              />
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {summary.atRiskProjects.map(p => (

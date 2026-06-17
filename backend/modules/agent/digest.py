@@ -2,6 +2,7 @@ import json
 from datetime import date, timedelta
 from sqlalchemy.orm import Session
 from anthropic import Anthropic
+from vera.compat import vera_client
 from core.config import get_settings
 from modules.accounting.journal import get_account_balance
 from modules.accounting.statements import generate_pl_statement
@@ -94,7 +95,7 @@ def generate_weekly_digest(db: Session, company_id: int) -> dict:
 
 def generate_digest_narrative(data: dict) -> str:
     """Claude writes the weekly digest narrative in Spanish."""
-    client = Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+    client = vera_client(None, None, module="agente")
 
     message = client.messages.create(
         model="claude-opus-4-6",
@@ -117,7 +118,7 @@ Solo el párrafo, sin títulos."""
 
 def generate_recommendations(data: dict) -> list:
     """Claude generates 3 specific recommendations for the week."""
-    client = Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+    client = vera_client(None, None, module="agente")
 
     message = client.messages.create(
         model="claude-opus-4-6",

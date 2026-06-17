@@ -3,8 +3,9 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
 import VeraPanel from '@/components/ui/VeraPanel'
-import { T, FONT, I } from '@/components/ui/tokens'
+import { FONT, useT, useTheme } from '@/components/ui/tokens'
 import VeraDrawer from '@/components/ui/VeraDrawer'
+import { HeaderActions } from '@/components/ui/primitives'
 
 import { API_BASE as API } from '@/lib/api'
 
@@ -13,6 +14,7 @@ import { API_BASE as API } from '@/lib/api'
 // ───────────────────────────────────────────────────────────────
 
 function Card({ children, style = {}, padding = 20 }) {
+  const T = useT()
   return (
     <div style={{
       background: T.card,
@@ -25,14 +27,16 @@ function Card({ children, style = {}, padding = 20 }) {
   )
 }
 
-function Btn({ children, onClick, disabled, color = T.blue, style = {} }) {
+function Btn({ children, onClick, disabled, color, style = {} }) {
+  const T = useT()
+  const btnColor = color || T.blue
   return (
     <button onClick={onClick} disabled={disabled} style={{
       padding: '7px 16px', borderRadius: 999, border: 'none',
       fontSize: 13, fontWeight: 500,
       cursor: disabled ? 'not-allowed' : 'pointer',
       fontFamily: 'inherit',
-      background: disabled ? T.sidebar : color,
+      background: disabled ? T.sidebar : btnColor,
       color: disabled ? T.text4 : '#fff',
       opacity: disabled ? .6 : 1,
       display: 'inline-flex', alignItems: 'center', gap: 6,
@@ -43,6 +47,7 @@ function Btn({ children, onClick, disabled, color = T.blue, style = {} }) {
 }
 
 function BtnSec({ children, onClick, style = {} }) {
+  const T = useT()
   return (
     <button onClick={onClick} style={{
       padding: '7px 16px', borderRadius: 999,
@@ -55,13 +60,14 @@ function BtnSec({ children, onClick, style = {} }) {
   )
 }
 
-const inp = {
+const inp = (T) => ({
   width: '100%', padding: '8px 11px', borderRadius: 8,
   border: `.5px solid ${T.hairline}`, background: T.sidebar,
   fontSize: 13, color: T.text, fontFamily: 'inherit', outline: 'none',
-}
+})
 
 function Field({ label, children }) {
+  const T = useT()
   return (
     <div style={{ marginBottom: 12 }}>
       <div style={{ fontSize: 12, fontWeight: 500, color: T.text3, marginBottom: 5 }}>{label}</div>
@@ -71,18 +77,21 @@ function Field({ label, children }) {
 }
 
 function Input({ style = {}, ...props }) {
+  const T = useT()
   return (
-    <input style={{ ...inp, ...style }} {...props}
+    <input style={{ ...inp(T), ...style }} {...props}
       onFocus={e => e.target.style.borderColor = T.blue}
-      onBlur={e => e.target.style.borderColor = 'rgba(0,0,0,0.08)'} />
+      onBlur={e => e.target.style.borderColor = T.hairline} />
   )
 }
 
 function Sel({ children, style = {}, ...props }) {
-  return <select style={{ ...inp, ...style }} {...props}>{children}</select>
+  const T = useT()
+  return <select style={{ ...inp(T), ...style }} {...props}>{children}</select>
 }
 
 function Toast({ msg }) {
+  const T = useT()
   if (!msg) return null
   const ok = msg.type === 'success'
   return (
@@ -113,70 +122,11 @@ function FlagES({ size = 14 }) {
 // ───────────────────────────────────────────────────────────────
 // PROFILE BUTTON
 // ───────────────────────────────────────────────────────────────
-function ProfileBtn({ user, router }) {
-  const [open, setOpen] = useState(false)
-  const ref = useRef()
-  useEffect(() => {
-    function h(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
-    document.addEventListener('mousedown', h)
-    return () => document.removeEventListener('mousedown', h)
-  }, [])
-  const initials = user?.name
-    ? user.name.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase()
-    : 'US'
-  return (
-    <div ref={ref} style={{ position: 'relative' }}>
-      <div onClick={() => setOpen(o => !o)} style={{
-        display: 'flex', alignItems: 'center', gap: 8,
-        padding: '3px 4px 3px 3px', borderRadius: 999, cursor: 'pointer',
-      }}
-        onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,.04)'}
-        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-      >
-        <div style={{
-          width: 28, height: 28, borderRadius: 999,
-          background: 'linear-gradient(135deg,#0071E3,#00B4D8)',
-          color: '#fff', display: 'grid', placeItems: 'center',
-          fontWeight: 600, fontSize: 11,
-        }}>{initials}</div>
-        <span style={{ fontSize: 13, fontWeight: 500, color: T.text }}>
-          {user?.name?.split(' ')[0] || 'Usuario'}
-        </span>
-      </div>
-      {open && (
-        <div style={{
-          position: 'absolute', top: 44, right: 0, width: 180,
-          background: T.card, borderRadius: 12,
-          border: `.5px solid ${T.hairline}`,
-          boxShadow: '0 8px 32px rgba(0,0,0,.12)', zIndex: 200, overflow: 'hidden',
-        }}>
-          <div style={{ padding: '6px 0' }}>
-            <button onClick={() => { router.push('/settings'); setOpen(false) }} style={{
-              width: '100%', padding: '9px 14px', background: 'none',
-              border: 'none', cursor: 'pointer', fontFamily: 'inherit',
-              fontSize: 13, color: T.text, textAlign: 'left',
-            }}
-              onMouseEnter={e => e.currentTarget.style.background = T.sidebar}
-              onMouseLeave={e => e.currentTarget.style.background = 'none'}
-            >Configuración</button>
-          </div>
-          <div style={{ padding: '6px 8px 10px', borderTop: `.5px solid ${T.hairline}` }}>
-            <button onClick={() => { localStorage.removeItem('nexum_token'); router.push('/login') }} style={{
-              width: '100%', padding: '8px', background: T.redSoft,
-              border: 'none', borderRadius: 8, color: T.red,
-              fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
-            }}>Cerrar sesión</button>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
 // ───────────────────────────────────────────────────────────────
 // DONUT CHART
 // ───────────────────────────────────────────────────────────────
 function DonutChart({ value, max, color, size = 80 }) {
+  const T = useT()
   const pct = max > 0 ? Math.min(value / max, 1) : 0
   const r = 32, cx = size / 2, cy = size / 2
   const circ = 2 * Math.PI * r
@@ -198,6 +148,7 @@ function DonutChart({ value, max, color, size = 80 }) {
 // VERA INSIGHT INLINE — análisis automático, no chat
 // ───────────────────────────────────────────────────────────────
 function VeraInsight({ insight, loading, onOpenChat, onRegenerate }) {
+  const T = useT()
   return (
     <Card padding={18}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
@@ -283,6 +234,7 @@ function VeraInsight({ insight, loading, onOpenChat, onRegenerate }) {
 // PILL TAB GROUP (segmented control estilo iOS)
 // ───────────────────────────────────────────────────────────────
 function PillGroup({ items, active, onChange }) {
+  const T = useT()
   return (
     <div style={{
       display: 'flex', gap: 2, alignItems: 'center',
@@ -310,6 +262,7 @@ function PillGroup({ items, active, onChange }) {
 // DOWNLOAD MODAL
 // ───────────────────────────────────────────────────────────────
 function DownloadModal({ onClose, estadosPeriodo, downloadReport, downloadingReport }) {
+  const T = useT()
   const reports = [
     { key: 'pl', title: 'Estado de Resultados', desc: 'P&L completo con análisis Vera', color: T.green },
     { key: 'balance', title: 'Balance General', desc: 'Activos, pasivos y patrimonio', color: T.blue },
@@ -331,7 +284,7 @@ function DownloadModal({ onClose, estadosPeriodo, downloadReport, downloadingRep
           <div style={{ fontSize: 17, fontWeight: 600, color: T.text, letterSpacing: -0.3 }}>
             Descargar reportes PDF
           </div>
-          <button onClick={onClose} style={{
+          <button onClick={onClose} aria-label="Cerrar" style={{
             background: 'none', border: 'none', fontSize: 22,
             cursor: 'pointer', color: T.text4, fontFamily: 'inherit',
           }}>×</button>
@@ -367,6 +320,8 @@ function DownloadModal({ onClose, estadosPeriodo, downloadReport, downloadingRep
 // COMPONENTE PRINCIPAL
 // ───────────────────────────────────────────────────────────────
 export default function Contabilidad() {
+  const T = useT()
+  const { theme } = useTheme()
   const router = useRouter()
   const [section, setSection] = useState('resumen')
   const [tab, setTab] = useState('ingreso')
@@ -390,6 +345,12 @@ export default function Contabilidad() {
     fin: new Date().toISOString().split('T')[0],
   })
   const [ledger, setLedger] = useState(null)
+  const [expandedAcc, setExpandedAcc] = useState(() => new Set())
+  const toggleAcc = (code) => setExpandedAcc(prev => {
+    const next = new Set(prev)
+    next.has(code) ? next.delete(code) : next.add(code)
+    return next
+  })
   const [balanza, setBalanza] = useState(null)
   const [showModal, setShowModal] = useState(false)
   const [downloadingReport, setDownloadingReport] = useState(null)
@@ -466,7 +427,11 @@ export default function Contabilidad() {
       })
       if (res.ok) {
         const d = await res.json()
-        setVeraInsight(d.insight)
+        // La API devuelve {insights:[{label,text,tone}]}; el banner espera un string.
+        const txt = Array.isArray(d.insights)
+          ? d.insights.map(i => (i.label ? `${i.label}: ${i.text}` : i.text)).filter(Boolean).join('\n')
+          : (typeof d.insight === 'string' ? d.insight : '')
+        setVeraInsight(txt || null)
       }
     } catch { }
     setVeraInsightLoading(false)
@@ -577,7 +542,10 @@ export default function Contabilidad() {
 
   async function loadLedger() {
     setLoading(true)
-    const res = await fetch(`${API}/api/contabilidad/libro-mayor`, {
+    // Acotar al mes en curso para no pedir el histórico completo (~30 MB) que congela el navegador.
+    const today = new Date().toISOString().split('T')[0]
+    const monthStart = today.substring(0, 8) + '01'
+    const res = await fetch(`${API}/api/contabilidad/libro-mayor?fecha_inicio=${monthStart}&fecha_fin=${today}`, {
       headers: { Authorization: `Bearer ${getToken()}` },
     })
     if (res.ok) setLedger(await res.json())
@@ -636,21 +604,23 @@ export default function Contabilidad() {
   const periodos = [
     { key: 'month', label: 'Este mes' },
     { key: 'quarter', label: 'Trimestre' },
-    { key: 'semester', label: 'Semestre' },
     { key: 'year', label: 'Este año' },
   ]
 
   return (
     <div style={{
-      minHeight: '100vh', background: T.bg, display: 'flex',
+      minHeight: '100dvh', background: T.bg, display: 'flex',
       fontFamily: FONT, WebkitFontSmoothing: 'antialiased',
     }}>
       <style>{`
         *{box-sizing:border-box}
         ::-webkit-scrollbar{width:5px;height:5px}
-        ::-webkit-scrollbar-thumb{background:rgba(0,0,0,.12);border-radius:999px}
-        ::-webkit-scrollbar-thumb:hover{background:rgba(0,0,0,.2)}
+        ::-webkit-scrollbar-thumb{background:${T.hairline};border-radius:999px}
+        ::-webkit-scrollbar-thumb:hover{background:${T.text4}}
         input:focus,select:focus{border-color:${T.blue}!important;outline:none}
+        @media (max-width:768px){
+          .cont-row{grid-template-columns:1fr!important}
+        }
       `}</style>
 
       <Sidebar active="/contabilidad" />
@@ -668,7 +638,7 @@ export default function Contabilidad() {
 
         {/* ═══════════════ HEADER ═══════════════ */}
         <header style={{
-          height: 64, background: 'rgba(251,251,253,.85)',
+          height: 64, background: theme === 'dark' ? 'rgba(11,11,12,.85)' : 'rgba(251,251,253,.85)',
           backdropFilter: 'saturate(180%) blur(20px)',
           WebkitBackdropFilter: 'saturate(180%) blur(20px)',
           borderBottom: `.5px solid ${T.hairline}`,
@@ -709,36 +679,9 @@ export default function Contabilidad() {
           {/* Pills tabs */}
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <PillGroup items={sections} active={section} onChange={setSection} />
-            <button onClick={() => setVeraOpen(true)} style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              padding: '5px 12px', height: 32, borderRadius: 999,
-              background: 'rgba(0,113,227,.06)',
-              border: `.5px solid rgba(0,113,227,.18)`,
-              color: T.blue, fontSize: 12.5, fontWeight: 500,
-              cursor: 'pointer', fontFamily: 'inherit',
-              transition: 'all .15s', whiteSpace: 'nowrap',
-            }}
-              onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,113,227,.1)'}
-              onMouseLeave={e => e.currentTarget.style.background = 'rgba(0,113,227,.06)'}
-            >
-              <svg width="11" height="11" viewBox="0 0 16 16" fill="none">
-                <path d="M8 1l1.5 5.5L15 8l-5.5 1.5L8 15l-1.5-5.5L1 8l5.5-1.5L8 1z" fill={T.blue} />
-              </svg>
-              Vera
-            </button>
           </div>
 
-          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <button onClick={() => router.push('/settings')} style={{
-              width: 32, height: 32, borderRadius: 8, border: 'none',
-              background: 'transparent', display: 'grid', placeItems: 'center',
-              cursor: 'pointer', color: T.text3,
-            }}
-              onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,.06)'}
-              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-            >{I.gear}</button>
-            <ProfileBtn user={user} router={router} />
-          </div>
+          <HeaderActions onVera={() => setVeraOpen(true)} user={user} router={router} />
         </header>
 
         {/* ═══════════════ CONTENIDO ═══════════════ */}
@@ -775,7 +718,7 @@ export default function Contabilidad() {
 
               {/* KPI STRIP — números sutiles, sin grito de color */}
               <div style={{
-                display: 'grid', gridTemplateColumns: 'repeat(4,1fr)',
+                display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
                 gap: 12, marginBottom: 16,
               }}>
                 {[
@@ -834,7 +777,7 @@ export default function Contabilidad() {
               </div>
 
               {/* P&L + Balance */}
-              <div style={{
+              <div className="cont-row" style={{
                 display: 'grid', gridTemplateColumns: '1fr 1fr',
                 gap: 14, marginBottom: 14,
               }}>
@@ -961,7 +904,7 @@ export default function Contabilidad() {
                   {flujo && (
                     <div style={{
                       marginTop: 12, display: 'grid',
-                      gridTemplateColumns: '1fr 1fr', gap: 8,
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 8,
                     }}>
                       {[
                         { label: 'Flujo operativo', value: flujo.actividades_operativas?.flujo_operativo_neto || 0 },
@@ -985,7 +928,7 @@ export default function Contabilidad() {
               </div>
 
               {/* VERA INSIGHT + MOVIMIENTOS */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+              <div className="cont-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                 <VeraInsight insight={veraInsight} loading={veraInsightLoading}
                   onOpenChat={() => setVeraOpen(true)} onRegenerate={loadVeraInsight} />
                 <Card>
@@ -1081,7 +1024,13 @@ export default function Contabilidad() {
                               padding: '3px 10px', background: T.sidebar,
                               borderRadius: 999, fontSize: 11, color: T.text2,
                               border: `.5px solid ${T.hairline}`,
-                            }}>✓ {f}</span>
+                              display: 'inline-flex', alignItems: 'center', gap: 4,
+                            }}>
+                              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                <path d="M20 6L9 17l-5-5" />
+                              </svg>
+                              {f}
+                            </span>
                           ))}
                         </div>
                       </div>
@@ -1118,7 +1067,7 @@ export default function Contabilidad() {
                         </div>
                       </div>
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                    <div className="cont-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                       <div>
                         {[
                           { label: 'Total Ingresos', value: `€${(pl?.ingresos?.total_ingresos || 0).toLocaleString('es-ES')}` },
@@ -1170,7 +1119,7 @@ export default function Contabilidad() {
                         borderRadius: 999, fontSize: 11.5, fontWeight: 500,
                       }}>{bal?.ecuacion_balanceada ? 'Balanceado' : 'No balanceado'}</span>
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                    <div className="cont-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                       <div>
                         {[
                           { label: 'Total Activos', value: `€${(bal?.activos?.total_activos || 0).toLocaleString('es-ES')}` },
@@ -1211,7 +1160,7 @@ export default function Contabilidad() {
                       Flujo de Efectivo
                     </div>
                     <div style={{
-                      display: 'grid', gridTemplateColumns: 'repeat(4,1fr)',
+                      display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
                       gap: 10, marginBottom: 14,
                     }}>
                       {[
@@ -1257,7 +1206,7 @@ export default function Contabilidad() {
           {section === 'registro' && (
             <>
               <div style={{
-                display: 'grid', gridTemplateColumns: 'repeat(3,1fr)',
+                display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
                 gap: 10, marginBottom: 16,
               }}>
                 {[
@@ -1282,7 +1231,7 @@ export default function Contabilidad() {
                 ))}
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <div className="cont-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                 <Card>
                   {mode === 'manual' && (
                     <>
@@ -1422,9 +1371,12 @@ export default function Contabilidad() {
                         ].map((item, i) => (
                           <div key={i} style={{
                             fontSize: 12, color: T.text3, marginBottom: 3,
-                            display: 'flex', gap: 6,
+                            display: 'flex', gap: 6, alignItems: 'center',
                           }}>
-                            <span style={{ color: T.green }}>✓</span>{item}
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={T.green} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }} aria-hidden="true">
+                              <path d="M20 6L9 17l-5-5" />
+                            </svg>
+                            {item}
                           </div>
                         ))}
                       </div>
@@ -1452,7 +1404,7 @@ export default function Contabilidad() {
                   {registro && (
                     <>
                       <div style={{
-                        display: 'grid', gridTemplateColumns: '1fr 1fr 1fr',
+                        display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(90px, 1fr))',
                         gap: 8, marginBottom: 14,
                       }}>
                         {[
@@ -1511,7 +1463,7 @@ export default function Contabilidad() {
           {section === 'libros' && (
             <div>
               <div style={{
-                display: 'grid', gridTemplateColumns: '1fr 1fr',
+                display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
                 gap: 14, marginBottom: 16,
               }}>
                 <Btn onClick={loadLedger} disabled={loading}>
@@ -1528,31 +1480,50 @@ export default function Contabilidad() {
                     fontSize: 14, fontWeight: 600, color: T.text,
                     marginBottom: 12, letterSpacing: -0.2,
                   }}>Libro Mayor — {ledger.total_accounts} cuentas</div>
-                  {ledger.ledger?.map((account, i) => (
+                  {ledger.ledger?.map((account, i) => {
+                    const isOpen = expandedAcc.has(account.account_code)
+                    const nEntries = account.entries_total ?? account.entries?.length ?? 0
+                    return (
                     <Card key={i} style={{ marginBottom: 10 }} padding={16}>
-                      <div style={{
-                        display: 'flex', justifyContent: 'space-between',
-                        alignItems: 'center', marginBottom: 10,
-                      }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <button
+                        onClick={() => toggleAcc(account.account_code)}
+                        aria-expanded={isOpen}
+                        aria-label={`${account.account_code} ${account.account_name} — ${nEntries} asientos`}
+                        style={{
+                          width: '100%', background: 'none', border: 'none', cursor: 'pointer',
+                          fontFamily: 'inherit', padding: 0,
+                          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                        }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={T.text4}
+                            strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                            style={{ transform: isOpen ? 'rotate(90deg)' : 'none', transition: 'transform .15s', flexShrink: 0 }}>
+                            <path d="M9 6l6 6-6 6" />
+                          </svg>
                           <span style={{
                             fontSize: 12, fontWeight: 600, color: T.blue,
                             background: 'rgba(0,113,227,.08)',
-                            padding: '2px 8px', borderRadius: 999,
+                            padding: '2px 8px', borderRadius: 999, flexShrink: 0,
                           }}>{account.account_code}</span>
-                          <span style={{ fontSize: 13, fontWeight: 500, color: T.text }}>{account.account_name}</span>
+                          <span style={{ fontSize: 13, fontWeight: 500, color: T.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{account.account_name}</span>
                           <span style={{
-                            fontSize: 11, color: T.text4, background: T.sidebar,
-                            padding: '2px 8px', borderRadius: 999,
+                            fontSize: 11, color: T.text3, background: T.sidebar,
+                            padding: '2px 8px', borderRadius: 999, flexShrink: 0,
                             border: `.5px solid ${T.hairline}`,
-                          }}>{account.account_type}</span>
+                          }}>{nEntries} {nEntries === 1 ? 'asiento' : 'asientos'}</span>
                         </div>
                         <span style={{
                           fontSize: 14, fontWeight: 600, color: T.text,
-                          fontVariantNumeric: 'tabular-nums',
+                          fontVariantNumeric: 'tabular-nums', flexShrink: 0, marginLeft: 12,
                         }}>€{account.closing_balance?.toFixed(2)}</span>
-                      </div>
-                      <div style={{ maxHeight: 160, overflowY: 'auto' }}>
+                      </button>
+                      {isOpen && (
+                      <div style={{ maxHeight: 280, overflowY: 'auto', marginTop: 12 }}>
+                        {account.truncated && (
+                          <div style={{ fontSize: 11, color: T.amber, marginBottom: 8 }}>
+                            Mostrando los {account.entries?.length} asientos más recientes de {nEntries}. El saldo es exacto sobre el total.
+                          </div>
+                        )}
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                           <thead>
                             <tr style={{ borderBottom: `.5px solid ${T.hairline}` }}>
@@ -1560,7 +1531,7 @@ export default function Contabilidad() {
                                 <th key={h} style={{
                                   padding: '5px 8px',
                                   textAlign: h === 'Debe' || h === 'Haber' || h === 'Saldo' ? 'right' : 'left',
-                                  fontSize: 11, fontWeight: 500, color: T.text4,
+                                  fontSize: 11, fontWeight: 500, color: T.text3,
                                 }}>{h}</th>
                               ))}
                             </tr>
@@ -1570,7 +1541,7 @@ export default function Contabilidad() {
                               <tr key={j} style={{ borderBottom: `.5px solid ${T.soft}` }}
                                 onMouseEnter={e => e.currentTarget.style.background = T.sidebar}
                                 onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                                <td style={{ padding: '5px 8px', color: T.text4 }}>{entry.date}</td>
+                                <td style={{ padding: '5px 8px', color: T.text3 }}>{entry.date}</td>
                                 <td style={{
                                   padding: '5px 8px', color: T.text2,
                                   maxWidth: 200, overflow: 'hidden',
@@ -1593,8 +1564,10 @@ export default function Contabilidad() {
                           </tbody>
                         </table>
                       </div>
+                      )}
                     </Card>
-                  ))}
+                    )
+                  })}
                   {ledger.ledger?.length === 0 && (
                     <Card style={{ textAlign: 'center', padding: 48 }}>
                       <div style={{ fontSize: 13, color: T.text4 }}>Sin asientos contables registrados</div>

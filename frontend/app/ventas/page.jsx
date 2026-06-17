@@ -3,7 +3,8 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
 import VeraPanel from '@/components/ui/VeraPanel'
-import { T, FONT, I } from '@/components/ui/tokens'
+import { FONT, useT, useTheme } from '@/components/ui/tokens'
+import { Skeleton, EmptyState, HeaderActions } from '@/components/ui/primitives'
 import VeraDrawer from '@/components/ui/VeraDrawer'
 
 import { API_BASE as API } from '@/lib/api'
@@ -12,6 +13,7 @@ import { API_BASE as API } from '@/lib/api'
 // PRIMITIVOS LOCALES
 // ───────────────────────────────────────────────────────────────
 function Card({ children, style = {}, padding = 20 }) {
+  const T = useT()
   return (
     <div style={{
       background: T.card, borderRadius: 14,
@@ -22,14 +24,16 @@ function Card({ children, style = {}, padding = 20 }) {
   )
 }
 
-function Btn({ children, onClick, disabled, color = T.blue, style = {} }) {
+function Btn({ children, onClick, disabled, color, style = {} }) {
+  const T = useT()
+  const bg = color || T.blue
   return (
     <button onClick={onClick} disabled={disabled} style={{
       padding: '7px 16px', borderRadius: 999, border: 'none',
       fontSize: 13, fontWeight: 500,
       cursor: disabled ? 'not-allowed' : 'pointer',
       fontFamily: 'inherit',
-      background: disabled ? T.sidebar : color,
+      background: disabled ? T.sidebar : bg,
       color: disabled ? T.text4 : '#fff',
       opacity: disabled ? .6 : 1,
       display: 'inline-flex', alignItems: 'center', gap: 6,
@@ -39,6 +43,7 @@ function Btn({ children, onClick, disabled, color = T.blue, style = {} }) {
 }
 
 function BtnSec({ children, onClick, style = {} }) {
+  const T = useT()
   return (
     <button onClick={onClick} style={{
       padding: '7px 16px', borderRadius: 999,
@@ -50,13 +55,14 @@ function BtnSec({ children, onClick, style = {} }) {
   )
 }
 
-const inp = {
+const inp = (T) => ({
   width: '100%', padding: '8px 11px', borderRadius: 8,
   border: `.5px solid ${T.hairline}`, background: T.sidebar,
   fontSize: 13, color: T.text, fontFamily: 'inherit', outline: 'none',
-}
+})
 
 function Field({ label, children }) {
+  const T = useT()
   return (
     <div style={{ marginBottom: 12 }}>
       <div style={{ fontSize: 12, fontWeight: 500, color: T.text3, marginBottom: 5 }}>{label}</div>
@@ -66,18 +72,21 @@ function Field({ label, children }) {
 }
 
 function Input({ style = {}, ...props }) {
+  const T = useT()
   return (
-    <input style={{ ...inp, ...style }} {...props}
+    <input style={{ ...inp(T), ...style }} {...props}
       onFocus={e => e.target.style.borderColor = T.blue}
-      onBlur={e => e.target.style.borderColor = 'rgba(0,0,0,0.08)'} />
+      onBlur={e => e.target.style.borderColor = T.hairline} />
   )
 }
 
 function Sel({ children, style = {}, ...props }) {
-  return <select style={{ ...inp, ...style }} {...props}>{children}</select>
+  const T = useT()
+  return <select style={{ ...inp(T), ...style }} {...props}>{children}</select>
 }
 
 function Toast({ msg }) {
+  const T = useT()
   if (!msg) return null
   const ok = msg.type === 'success'
   return (
@@ -102,61 +111,8 @@ function FlagES({ size = 14 }) {
   )
 }
 
-function ProfileBtn({ user, router }) {
-  const [open, setOpen] = useState(false)
-  const ref = useRef()
-  useEffect(() => {
-    function h(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
-    document.addEventListener('mousedown', h)
-    return () => document.removeEventListener('mousedown', h)
-  }, [])
-  const initials = user?.name
-    ? user.name.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase()
-    : 'US'
-  return (
-    <div ref={ref} style={{ position: 'relative' }}>
-      <div onClick={() => setOpen(o => !o)} style={{
-        display: 'flex', alignItems: 'center', gap: 8,
-        padding: '3px 4px 3px 3px', borderRadius: 999, cursor: 'pointer',
-      }}>
-        <div style={{
-          width: 28, height: 28, borderRadius: 999,
-          background: 'linear-gradient(135deg,#0071E3,#00B4D8)',
-          color: '#fff', display: 'grid', placeItems: 'center',
-          fontWeight: 600, fontSize: 11,
-        }}>{initials}</div>
-        <span style={{ fontSize: 13, fontWeight: 500, color: T.text }}>
-          {user?.name?.split(' ')[0] || 'Usuario'}
-        </span>
-      </div>
-      {open && (
-        <div style={{
-          position: 'absolute', top: 44, right: 0, width: 180,
-          background: T.card, borderRadius: 12,
-          border: `.5px solid ${T.hairline}`,
-          boxShadow: '0 8px 32px rgba(0,0,0,.12)', zIndex: 200, overflow: 'hidden',
-        }}>
-          <div style={{ padding: '6px 0' }}>
-            <button onClick={() => { router.push('/settings'); setOpen(false) }} style={{
-              width: '100%', padding: '9px 14px', background: 'none',
-              border: 'none', cursor: 'pointer', fontFamily: 'inherit',
-              fontSize: 13, color: T.text, textAlign: 'left',
-            }}>Configuración</button>
-          </div>
-          <div style={{ padding: '6px 8px 10px', borderTop: `.5px solid ${T.hairline}` }}>
-            <button onClick={() => { localStorage.removeItem('nexum_token'); router.push('/login') }} style={{
-              width: '100%', padding: '8px', background: T.redSoft,
-              border: 'none', borderRadius: 8, color: T.red,
-              fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
-            }}>Cerrar sesión</button>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
 function PillGroup({ items, active, onChange }) {
+  const T = useT()
   return (
     <div style={{
       display: 'flex', gap: 2, alignItems: 'center',
@@ -181,6 +137,7 @@ function PillGroup({ items, active, onChange }) {
 }
 
 function VeraInsight({ insight, loading, onOpenChat, onRegenerate }) {
+  const T = useT()
   return (
     <Card padding={18}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
@@ -219,9 +176,13 @@ function VeraInsight({ insight, loading, onOpenChat, onRegenerate }) {
 
       {loading && (
         <div style={{
-          padding: '20px', background: T.sidebar, borderRadius: 10,
-          fontSize: 13, color: T.text4, textAlign: 'center',
-        }}>Vera está analizando tus ventas…</div>
+          padding: 18, background: T.sidebar, borderRadius: 10,
+          display: 'flex', flexDirection: 'column', gap: 8,
+        }}>
+          <Skeleton w="92%" h={13} />
+          <Skeleton w="100%" h={13} />
+          <Skeleton w="74%" h={13} />
+        </div>
       )}
 
       {insight && !loading && (
@@ -253,6 +214,8 @@ function VeraInsight({ insight, loading, onOpenChat, onRegenerate }) {
 // COMPONENTE PRINCIPAL VENTAS
 // ───────────────────────────────────────────────────────────────
 export default function Ventas() {
+  const T = useT()
+  const { theme } = useTheme()
   const router = useRouter()
   const [section, setSection] = useState('pos')
   const [token, setToken] = useState(null)
@@ -510,7 +473,7 @@ export default function Ventas() {
 
   return (
     <div style={{
-      minHeight: '100vh', background: T.bg, display: 'flex',
+      minHeight: '100dvh', background: T.bg, display: 'flex',
       fontFamily: FONT, WebkitFontSmoothing: 'antialiased',
     }}>
       <style>{`
@@ -519,6 +482,11 @@ export default function Ventas() {
         ::-webkit-scrollbar-thumb{background:rgba(0,0,0,.12);border-radius:999px}
         ::-webkit-scrollbar-thumb:hover{background:rgba(0,0,0,.2)}
         input:focus,select:focus{border-color:${T.blue}!important;outline:none}
+        @media (max-width:768px){
+          .ven-pos-row{grid-template-columns:1fr!important}
+          .ven-insight-row{grid-template-columns:1fr!important}
+          .ven-prod-name-row{grid-template-columns:1fr!important}
+        }
       `}</style>
 
       <Sidebar active="/ventas" />
@@ -546,7 +514,7 @@ export default function Ventas() {
                   <div style={{ fontSize: 16, fontWeight: 600, color: T.text, letterSpacing: -0.3 }}>Confirmar venta</div>
                   <div style={{ fontSize: 12, color: T.text4, marginTop: 2 }}>{cart.length} {cart.length === 1 ? 'producto' : 'productos'} · IVA incluido</div>
                 </div>
-                <button onClick={() => setShowPaymentModal(false)} style={{
+                <button onClick={() => setShowPaymentModal(false)} aria-label="Cerrar" style={{
                   width: 30, height: 30, borderRadius: 8, border: 'none',
                   background: T.sidebar, color: T.text3, cursor: 'pointer',
                   fontSize: 18, display: 'grid', placeItems: 'center',
@@ -567,7 +535,7 @@ export default function Ventas() {
 
               {/* Método de pago */}
               <Field label="Método de pago">
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 6 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(90px,1fr))', gap: 6 }}>
                   {[
                     { key: 'card', label: 'Tarjeta' },
                     { key: 'cash', label: 'Efectivo' },
@@ -598,7 +566,7 @@ export default function Ventas() {
                       <div style={{ fontSize: 13, fontWeight: 500, color: T.text }}>{clienteSelected.name}</div>
                       <div style={{ fontSize: 11, color: T.text4 }}>{clienteSelected.tax_id || clienteSelected.email || '—'}</div>
                     </div>
-                    <button onClick={() => { setClienteSelected(null); setClienteQuery('') }} style={{
+                    <button onClick={() => { setClienteSelected(null); setClienteQuery('') }} aria-label="Quitar cliente" style={{
                       background: 'none', border: 'none', color: T.text4, cursor: 'pointer', fontSize: 16,
                     }}>×</button>
                   </div>
@@ -646,7 +614,7 @@ export default function Ventas() {
                     {facturaElectronica ? 'Se generará factura legal (Verifactu)' : 'Solo ticket simple'}
                   </div>
                 </div>
-                <button onClick={() => setFacturaElectronica(!facturaElectronica)} style={{
+                <button onClick={() => setFacturaElectronica(!facturaElectronica)} role="switch" aria-checked={facturaElectronica} aria-label="Facturación electrónica" style={{
                   width: 40, height: 24, borderRadius: 999,
                   background: facturaElectronica ? T.green : T.hairline,
                   border: 'none', cursor: 'pointer', position: 'relative',
@@ -665,8 +633,14 @@ export default function Ventas() {
                   padding: '10px 12px', background: 'rgba(255,149,0,.08)',
                   border: `.5px solid rgba(255,149,0,.25)`,
                   borderRadius: 8, fontSize: 12, color: T.amber, marginBottom: 16,
+                  display: 'flex', alignItems: 'center', gap: 6,
                 }}>
-                  ⚠ Para facturación electrónica necesitas seleccionar un cliente con NIF
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }} aria-hidden="true">
+                    <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                    <line x1="12" y1="9" x2="12" y2="13" />
+                    <line x1="12" y1="17" x2="12.01" y2="17" />
+                  </svg>
+                  Para facturación electrónica necesitas seleccionar un cliente con NIF
                 </div>
               )}
 
@@ -690,7 +664,7 @@ export default function Ventas() {
 
         {/* HEADER */}
         <header style={{
-          height: 64, background: 'rgba(251,251,253,.85)',
+          height: 64, background: theme === 'dark' ? 'rgba(11,11,12,.85)' : 'rgba(251,251,253,.85)',
           backdropFilter: 'saturate(180%) blur(20px)',
           WebkitBackdropFilter: 'saturate(180%) blur(20px)',
           borderBottom: `.5px solid ${T.hairline}`,
@@ -725,34 +699,13 @@ export default function Ventas() {
 
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <PillGroup items={sections} active={section} onChange={setSection} />
-            <button onClick={() => setVeraOpen(true)} style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              padding: '5px 12px', height: 32, borderRadius: 999,
-              background: 'rgba(0,113,227,.06)',
-              border: `.5px solid rgba(0,113,227,.18)`,
-              color: T.blue, fontSize: 12.5, fontWeight: 500,
-              cursor: 'pointer', fontFamily: 'inherit',
-              whiteSpace: 'nowrap',
-            }}>
-              <svg width="11" height="11" viewBox="0 0 16 16" fill="none">
-                <path d="M8 1l1.5 5.5L15 8l-5.5 1.5L8 15l-1.5-5.5L1 8l5.5-1.5L8 1z" fill={T.blue} />
-              </svg>
-              Vera
-            </button>
           </div>
 
-          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <button onClick={() => router.push('/settings')} style={{
-              width: 32, height: 32, borderRadius: 8, border: 'none',
-              background: 'transparent', display: 'grid', placeItems: 'center',
-              cursor: 'pointer', color: T.text3,
-            }}>{I.gear}</button>
-            <ProfileBtn user={user} router={router} />
-          </div>
+          <HeaderActions onVera={() => setVeraOpen(true)} user={user} router={router} />
         </header>
 
         {/* CONTENIDO */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '24px 28px' }}>
+        <div className="fade-in" style={{ flex: 1, overflowY: 'auto', padding: '24px 28px' }}>
 
           {/* ──── PUNTO DE VENTA ──── */}
           {section === 'pos' && (
@@ -780,7 +733,7 @@ export default function Ventas() {
                 ))}
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 14 }}>
+              <div className="ven-pos-row" style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 14 }}>
                 {/* Catálogo */}
                 <Card>
                   <div style={{
@@ -798,15 +751,34 @@ export default function Ventas() {
                     />
                   </div>
                   <div style={{
-                    display: 'grid', gridTemplateColumns: 'repeat(3,1fr)',
+                    display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px,1fr))',
                     gap: 8, maxHeight: 540, overflowY: 'auto',
                   }}>
-                    {filteredProducts.length === 0 && (
-                      <div style={{
-                        gridColumn: 'span 3', padding: 40,
-                        textAlign: 'center', color: T.text4, fontSize: 13,
-                      }}>
-                        {search ? 'Sin resultados' : 'Cargando productos…'}
+                    {filteredProducts.length === 0 && !search && products.length === 0 && (
+                      <>
+                        {Array.from({ length: 6 }).map((_, i) => (
+                          <div key={i} style={{
+                            padding: 12, background: T.sidebar, borderRadius: 10,
+                            border: `.5px solid ${T.hairline}`,
+                            display: 'flex', flexDirection: 'column', gap: 8,
+                          }}>
+                            <Skeleton w="80%" h={13} />
+                            <Skeleton w="50%" h={13} />
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 2 }}>
+                              <Skeleton w={48} h={14} />
+                              <Skeleton w={44} h={14} radius={999} />
+                            </div>
+                          </div>
+                        ))}
+                      </>
+                    )}
+                    {filteredProducts.length === 0 && (search || products.length > 0) && (
+                      <div style={{ gridColumn: '1 / -1' }}>
+                        <EmptyState
+                          icon={<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" /><path d="M3 6h18M16 10a4 4 0 0 1-8 0" /></svg>}
+                          title={search ? 'Sin resultados' : 'Sin productos'}
+                          hint={search ? 'Prueba con otro nombre, código o código de barras.' : 'Añade productos al catálogo para empezar a vender.'}
+                        />
                       </div>
                     )}
                     {filteredProducts.map(p => {
@@ -827,7 +799,7 @@ export default function Ventas() {
                         stockBorder = 'rgba(52,199,89,.2)'
                       }
                       return (
-                        <div key={p.id} onClick={() => stock > 0 && addToCart(p)} style={{
+                        <div key={p.id} className="hover-lift" onClick={() => stock > 0 && addToCart(p)} style={{
                           padding: 12, background: T.sidebar, borderRadius: 10,
                           border: `.5px solid ${T.hairline}`,
                           cursor: stock > 0 ? 'pointer' : 'not-allowed',
@@ -893,9 +865,11 @@ export default function Ventas() {
 
                   <div style={{ maxHeight: 320, overflowY: 'auto', marginBottom: 14 }}>
                     {cart.length === 0 && (
-                      <div style={{ padding: 40, textAlign: 'center', color: T.text4, fontSize: 13 }}>
-                        Carrito vacío
-                      </div>
+                      <EmptyState
+                        icon={<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" /><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" /></svg>}
+                        title="Carrito vacío"
+                        hint="Toca un producto del catálogo para añadirlo."
+                      />
                     )}
                     {cart.map(c => (
                       <div key={c.id} style={{
@@ -912,16 +886,16 @@ export default function Ventas() {
                           </div>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 10 }}>
-                          <button onClick={() => updateQty(c.id, -1)} style={{
+                          <button onClick={() => updateQty(c.id, -1)} aria-label={`Restar una unidad de ${c.name}`} style={{
                             width: 22, height: 22, borderRadius: 6, border: `.5px solid ${T.hairline}`,
                             background: T.card, cursor: 'pointer', color: T.text3, fontSize: 12,
                           }}>−</button>
                           <span style={{ minWidth: 16, textAlign: 'center', fontSize: 12.5, fontWeight: 500 }}>{c.qty}</span>
-                          <button onClick={() => updateQty(c.id, 1)} style={{
+                          <button onClick={() => updateQty(c.id, 1)} aria-label={`Sumar una unidad de ${c.name}`} style={{
                             width: 22, height: 22, borderRadius: 6, border: `.5px solid ${T.hairline}`,
                             background: T.card, cursor: 'pointer', color: T.text3, fontSize: 12,
                           }}>+</button>
-                          <button onClick={() => removeFromCart(c.id)} style={{
+                          <button onClick={() => removeFromCart(c.id)} aria-label={`Quitar ${c.name} del carrito`} style={{
                             marginLeft: 4, background: 'none', border: 'none',
                             color: T.text4, cursor: 'pointer', fontSize: 14,
                           }}>×</button>
@@ -960,7 +934,7 @@ export default function Ventas() {
               </div>
 
               {/* Vera Insight + alertas */}
-              <div style={{ marginTop: 14, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+              <div className="ven-insight-row" style={{ marginTop: 14, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                 <VeraInsight insight={veraInsight} loading={veraInsightLoading}
                   onOpenChat={() => setVeraOpen(true)} onRegenerate={loadVeraInsight} />
 
@@ -1078,8 +1052,12 @@ export default function Ventas() {
                 </thead>
                 <tbody>
                   {historial.length === 0 && (
-                    <tr><td colSpan="7" style={{ padding: 40, textAlign: 'center', color: T.text4, fontSize: 13 }}>
-                      Sin ventas registradas
+                    <tr><td colSpan="7">
+                      <EmptyState
+                        icon={<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" /><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" /></svg>}
+                        title="Sin ventas registradas"
+                        hint="Las ventas que cobres aparecerán aquí."
+                      />
                     </td></tr>
                   )}
                   {historial.slice(0, 50).map((s, i) => (
@@ -1126,7 +1104,7 @@ export default function Ventas() {
                 <Card style={{ marginBottom: 16 }}>
                   <div style={{ fontSize: 14, fontWeight: 600, color: T.text, marginBottom: 14 }}>Nuevo producto</div>
                   <form onSubmit={createProduct}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12 }}>
+                    <div className="ven-prod-name-row" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12 }}>
                       <Field label="Nombre">
                         <Input value={newProduct.name}
                           onChange={e => setNewProduct({ ...newProduct, name: e.target.value })} required />
@@ -1136,7 +1114,7 @@ export default function Ventas() {
                           onChange={e => setNewProduct({ ...newProduct, category: e.target.value })} />
                       </Field>
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px,1fr))', gap: 12 }}>
                       <Field label="Precio venta €">
                         <Input type="number" step="0.01" value={newProduct.sale_price}
                           onChange={e => setNewProduct({ ...newProduct, sale_price: e.target.value })} required />
@@ -1183,6 +1161,15 @@ export default function Ventas() {
                     </tr>
                   </thead>
                   <tbody>
+                    {products.length === 0 && (
+                      <tr><td colSpan="7">
+                        <EmptyState
+                          icon={<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" /><path d="M3 6h18M16 10a4 4 0 0 1-8 0" /></svg>}
+                          title="Sin productos"
+                          hint="Crea tu primer producto con el botón Nuevo producto."
+                        />
+                      </td></tr>
+                    )}
                     {products.map(p => {
                       const margin = p.sale_price && p.cost_price
                         ? ((p.sale_price - p.cost_price) / p.sale_price * 100).toFixed(0)
@@ -1236,9 +1223,11 @@ export default function Ventas() {
                 </div>
               </div>
               {stockAlerts.length === 0 && (
-                <div style={{ padding: 48, textAlign: 'center', color: T.text4, fontSize: 13 }}>
-                  Sin alertas — todo el stock está saludable
-                </div>
+                <EmptyState
+                  icon={<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>}
+                  title="Sin alertas"
+                  hint="Todo el stock está por encima del umbral mínimo."
+                />
               )}
               {stockAlerts.map((p, i) => (
                 <div key={i} style={{

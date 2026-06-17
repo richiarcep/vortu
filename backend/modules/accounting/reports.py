@@ -18,6 +18,7 @@ from io import BytesIO
 import qrcode
 from core.config import get_settings
 import anthropic
+from vera.compat import vera_client
 
 settings = get_settings()
 
@@ -190,7 +191,7 @@ def build_data_table(rows, cw, left_w=0.65):
 
 def get_ai_analysis(data: dict, report_type: str) -> dict:
     """Ask Claude to generate structured analysis for page 2."""
-    client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+    client = vera_client(None, None, module="contabilidad")
 
     prompts = {
         "pl": f"""Analiza este Estado de Resultados y devuelve un JSON con esta estructura exacta:

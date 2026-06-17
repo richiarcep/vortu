@@ -1,169 +1,112 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;450;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=JetBrains+Mono:wght@400;500;600&display=swap");
 @import "tailwindcss";
 
-
+/* ============================================================
+   Vortu — base global styles + theming + accesibilidad
+   Las páginas usan tokens JS (components/ui/tokens.jsx) para
+   los colores; aquí solo va la base, el tema del lienzo y a11y.
+   ============================================================ */
 
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
-html, body { color-scheme: light !important; }
+html { -webkit-text-size-adjust: 100%; }
 
+/* Lienzo (detrás de las páginas) tematizado. Las páginas claras fijan su
+   propio fondo, así que en claro se ve igual; en oscuro el lienzo acompaña. */
 :root {
-  --bg:         #FFFFFF;
-  --surface:    #F7F8FA;
-  --surface-2:  #F0F2F5;
-  --border:     #E5E7EB;
-  --border-2:   #D1D5DB;
-  --navy:       #0B1426;
-  --navy-2:     #1E3A5F;
-  --blue:       #1A56DB;
-  --blue-hover: #1447C0;
-  --green:      #059669;
-  --green-bg:   #ECFDF5;
-  --red:        #DC2626;
-  --red-bg:     #FEF2F2;
-  --amber:      #D97706;
-  --amber-bg:   #FFFBEB;
-  --text-1:     #0B1426;
-  --text-2:     #374151;
-  --text-3:     #6B7280;
-  --text-4:     #9CA3AF;
-  --shadow:     0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
-  --radius:     8px;
-  --radius-lg:  12px;
+  --app-bg: #F7F8FA;
+  --app-ink: #0F172A;
+  --scrollbar: rgba(15,23,42,.18);
+  --scrollbar-hover: rgba(15,23,42,.30);
+  --focus-ring: #0071E3;
+  color-scheme: light;
+
+  /* Fuente de cuerpo (sistema) + display editorial (Norte) para títulos/marca. Mono para cifras. */
+  --font-ui: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', system-ui, sans-serif;
+  --font-display: 'Bricolage Grotesque', var(--font-ui);
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+  /* Sombra en capas */
+  --shadow-card: 0 1px 2px rgba(15,23,42,.04), 0 8px 24px -12px rgba(15,23,42,.12);
+
+  /* Escala tipográfica modular (web-design-guidelines: escala consistente, body ≥12px) */
+  --fs-xs: 12px;   --fs-sm: 13px;  --fs-base: 14px; --fs-md: 15px;
+  --fs-lg: 17px;   --fs-xl: 20px;  --fs-2xl: 24px;  --fs-3xl: 28px;
+
+  /* Tokens de layout (estilo Data-Dense Dashboard de la skill) */
+  --grid-gap: 8px; --card-padding: 12px; --table-row: 36px;
+  --sidebar-w: 248px; --header-h: 56px; --bp-mobile: 768px;
 }
 
-body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  background: #FFFFFF !important;
-  color: #0B1426 !important;
-  font-size: 14px;
+[data-theme="dark"] {
+  --app-bg: #0F141B;
+  --app-ink: #E6EDF3;
+  --scrollbar: rgba(255,255,255,.16);
+  --scrollbar-hover: rgba(255,255,255,.30);
+  --focus-ring: #3B82F6;
+  --shadow-card: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.5);
+  color-scheme: dark;
+}
+
+html, body {
+  background: var(--app-bg);
+  color: var(--app-ink);
+  font-family: var(--font-ui);
+  font-size: var(--fs-base);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
-}
-
-.card {
-  background: #FFFFFF !important;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow);
-}
-
-.btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
-  border-radius: var(--radius);
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  border: none;
-  transition: all 0.15s ease;
-  font-family: 'Inter', sans-serif;
-}
-
-.btn-primary { background: #0B1426 !important; color: white !important; }
-.btn-primary:hover { background: #1E3A5F !important; }
-.btn-secondary { background: var(--surface); color: var(--text-1); border: 1px solid var(--border); }
-.btn-secondary:hover { background: var(--surface-2); }
-
-.input {
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  font-size: 14px;
-  color: #0B1426 !important;
-  background: #FFFFFF !important;
-  outline: none;
-  transition: border-color 0.15s ease;
-  font-family: 'Inter', sans-serif;
-}
-
-.input:focus {
-  border-color: var(--blue);
-  box-shadow: 0 0 0 3px rgba(26,86,219,0.1);
-}
-
-.divider { height: 1px; background: var(--border); border: none; }
-.positive { color: var(--green) !important; }
-.negative { color: var(--red) !important; }
-
-.badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 8px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.badge-green { background: var(--green-bg); color: var(--green); }
-.badge-red   { background: var(--red-bg);   color: var(--red); }
-.badge-amber { background: var(--amber-bg); color: var(--amber); }
-.badge-navy  { background: #EEF2FF;         color: var(--navy); }
-
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 3px; }
-/* ============================================================
-   Vortu — Dashboard styles
-   Paste these blocks into:  app/globals.css
-   (Append at the END of the file. Do NOT delete what you have.)
-   ============================================================ */
-
-/* 1) Google Fonts (or use next/font — see README) */
-
-/* 2) Design tokens */
-:root {
-  --bg: #F7F8FA;
-  --surface: #FFFFFF;
-  --surface-2: #F4F5F8;
-  --surface-3: #ECEEF3;
-  --line: #ECEEF3;
-  --line-2: #E4E7EE;
-  --ink: #0F172A;
-  --ink-2: #334155;
-  --muted: #64748B;
-  --muted-2: #94A3B8;
-  --muted-3: #CBD2DC;
-  --accent: #2563EB;
-  --accent-soft: #EEF3FE;
-  --green: #16A34A;
-  --green-soft: #ECFDF3;
-  --amber: #B45309;
-  --amber-soft: #FEF6E7;
-  --red: #DC2626;
-  --red-soft: #FEF2F2;
-  --r-card: 14px;
-  --r-pill: 999px;
-}
-
-/* 3) Base */
-html, body {
-  background: var(--bg);
-  color: var(--ink);
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  font-feature-settings: 'cv11','ss01','ss03';
-  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 .mono {
-  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-family: var(--font-mono);
   font-feature-settings: 'ss01','zero';
 }
 
-/* 4) Scrollbars */
+/* ── Accesibilidad: foco visible solo en navegación por teclado ───────────── */
+:focus { outline: none; }
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* WCAG 2.2 — 2.4.11 Foco no oscurecido: al tabular, deja que el elemento
+   enfocado quede por debajo de la cabecera sticky (≈64px) y no pegado al borde. */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  scroll-margin-top: 80px;
+  scroll-margin-bottom: 24px;
+}
+
+/* Objetivo táctil/click mínimo 24×24px (WCAG 2.2 — 2.5.8) para botones de solo icono */
+button { min-height: 24px; }
+
+/* Salto al contenido para usuarios de teclado/lector de pantalla */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 2000;
+  padding: 10px 16px;
+  background: var(--focus-ring);
+  color: #fff;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.skip-link:focus { left: 8px; top: 8px; }
+
+/* ── Scrollbars tematizadas ───────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-thumb {
-  background: #DDE1E8;
+  background: var(--scrollbar);
   border-radius: 999px;
-  border: 2px solid var(--bg);
+  border: 2px solid transparent;
+  background-clip: padding-box;
 }
-::-webkit-scrollbar-thumb:hover { background: #C7CCD6; }
+::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-hover); background-clip: padding-box; }
 ::-webkit-scrollbar-track { background: transparent; }
 
-/* 5) Animations */
+/* ── Animaciones ──────────────────────────────────────────────────────────── */
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: none; }
@@ -171,4 +114,24 @@ html, body {
 @keyframes pulse {
   0%, 100% { opacity: 1; }
   50%      { opacity: 0.45; }
+}
+
+/* Tipografía display editorial (Norte) para títulos/marca */
+.display { font-family: var(--font-display); letter-spacing: -0.02em; font-weight: 600; }
+/* Entrada suave del contenido (micro-interacción 2026; respeta reduced-motion abajo) */
+.fade-in { animation: fadeUp .28s ease both; }
+/* Tarjetas/elementos interactivos: leve elevación al pasar el cursor */
+.hover-lift { transition: transform .15s ease, box-shadow .15s ease; }
+.hover-lift:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(0,0,0,.06); }
+/* Pulsación sutil en clic */
+.press:active { transform: scale(.97); }
+
+/* ── Respeta "reducir movimiento" del sistema ─────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }

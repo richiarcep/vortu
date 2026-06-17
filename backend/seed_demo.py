@@ -474,7 +474,7 @@ for t_idx,(month_date,months_ago) in enumerate(months_range(24)):
     try:
         d5  = month_date.replace(day=5)
         d28 = month_date.replace(day=28)
-    except:
+    except ValueError:
         continue
     if d5 > date.today():
         continue
@@ -508,7 +508,7 @@ for t_idx,(month_date,months_ago) in enumerate(months_range(24)):
     sf = season_factor(month_date.month)
     for day in [5,10,15,20,25]:
         try: d = month_date.replace(day=day)
-        except: continue
+        except ValueError: continue
         if d > date.today(): continue
         monthly_rev = sum(LINE_CFG[ln]["base"]*sf*gf for ln in LINE_CFG)
         db.execute(text("""

@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from pydantic import BaseModel
 from typing import Optional
 from core.database import get_db
@@ -10,9 +11,17 @@ from models.document import Document
 from modules.hr.employees import Employee, EmployeeFeedback, analyze_feedback
 from modules.hr.payroll import process_payroll
 from modules.hr.extended import Vacation, Contract, Payslip
+from models.workgroup import WorkGroup, WorkGroupMember, GroupTask, GroupTaskTime
 from datetime import date, datetime, timedelta
 import json
 import os
+
+
+def _parse_date(value):
+    """Acepta 'YYYY-MM-DD' o None y devuelve date|None."""
+    if not value:
+        return None
+    return datetime.fromisoformat(value).date()
 
 router = APIRouter(prefix="/api/hr", tags=["HR & Payroll"])
 
@@ -24,7 +33,62 @@ class EmployeeCreate(BaseModel):
     email: str
     department: Optional[str] = None
     position: Optional[str] = None
-    gross_salary: float
+    gross_salary: float = 0.0
+    employee_type: Optional[str] = "permanente"   # permanente | temporal | voluntario
+    start_date: Optional[str] = None              # ISO date
+    end_date: Optional[str] = None
+    availability: Optional[str] = None
+    skills: Optional[str] = None
+
+
+class WorkGroupCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+    lead_employee_id: Optional[int] = None
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    color: Optional[str] = None
+
+
+class WorkGroupUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    status: Optional[str] = None                  # activo | archivado
+    lead_employee_id: Optional[int] = None
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    color: Optional[str] = None
+
+
+class GroupMemberCreate(BaseModel):
+    employee_id: int
+    role: Optional[str] = None
+
+
+class GroupTaskCreate(BaseModel):
+    title: str
+    description: Optional[str] = None
+    priority: Optional[str] = "media"
+    assigned_to: Optional[int] = None
+    due_date: Optional[str] = None
+    estimated_hours: Optional[float] = 0.0
+
+
+class GroupTaskUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    status: Optional[str] = None
+    priority: Optional[str] = None
+    assigned_to: Optional[int] = None
+    due_date: Optional[str] = None
+    estimated_hours: Optional[float] = None
+
+
+class GroupTaskTimeCreate(BaseModel):
+    employee_id: Optional[int] = None
+    hours: float
+    date: Optional[str] = None                    # ISO date; default hoy
+    description: Optional[str] = None
 
 
 class VacationCreate(BaseModel):
@@ -69,47 +133,79 @@ def create_employee(
     if existing:
         raise HTTPException(status_code=400, detail="Employee email already exists")
 
+    emp_type = (data.employee_type or "permanente").lower()
+    if emp_type not in ("permanente", "temporal", "voluntario"):
+        raise HTTPException(status_code=400, detail="employee_type inválido")
+
+    # Los voluntarios no son remunerados.
+    salary = 0.0 if emp_type == "voluntario" else (data.gross_salary or 0.0)
+
     employee = Employee(
         full_name=data.full_name,
         email=data.email,
         department=data.department,
         position=data.position,
-        gross_salary=data.gross_salary,
+        gross_salary=salary,
+        employee_type=emp_type,
+        start_date=_parse_date(data.start_date),
+        end_date=_parse_date(data.end_date),
+        availability=data.availability,
+        skills=data.skills,
         company_id=current_user.company_id
     )
     db.add(employee)
     db.commit()
     db.refresh(employee)
 
+    return _serialize_employee(employee)
+
+
+def _serialize_employee(e: Employee) -> dict:
     return {
-        "id": employee.id,
-        "full_name": employee.full_name,
-        "email": employee.email,
-        "department": employee.department,
-        "position": employee.position,
-        "gross_salary": employee.gross_salary,
-    }
-
-
-@router.get("/employees")
-def get_employees(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """Returns all employees for the company."""
-    employees = db.query(Employee).filter(
-        Employee.company_id == current_user.company_id,
-        Employee.is_active == True
-    ).all()
-
-    return [{
         "id": e.id,
         "full_name": e.full_name,
         "email": e.email,
         "department": e.department,
         "position": e.position,
         "gross_salary": e.gross_salary,
-    } for e in employees]
+        "employee_type": getattr(e, "employee_type", "permanente") or "permanente",
+        "start_date": e.start_date.isoformat() if getattr(e, "start_date", None) else None,
+        "end_date": e.end_date.isoformat() if getattr(e, "end_date", None) else None,
+        "availability": getattr(e, "availability", None),
+        "skills": getattr(e, "skills", None),
+    }
+
+
+@router.get("/employees")
+def get_employees(
+    type: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Returns all employees for the company. Optional ?type= filter."""
+    q = db.query(Employee).filter(
+        Employee.company_id == current_user.company_id,
+        Employee.is_active == True
+    )
+    if type:
+        q = q.filter(Employee.employee_type == type)
+    employees = q.all()
+
+    # Horas aportadas por empleado (suma de registros en tareas de grupo).
+    hours_rows = db.query(
+        GroupTaskTime.employee_id,
+        func.coalesce(func.sum(GroupTaskTime.hours), 0.0)
+    ).filter(
+        GroupTaskTime.company_id == current_user.company_id
+    ).group_by(GroupTaskTime.employee_id).all()
+    hours_by_emp = {emp_id: float(total) for emp_id, total in hours_rows}
+
+    result = []
+    for e in employees:
+        item = _serialize_employee(e)
+        item["hours_contributed"] = round(hours_by_emp.get(e.id, 0.0), 2)
+        result.append(item)
+    return result
 
 
 @router.delete("/employees/{employee_id}")
@@ -620,3 +716,319 @@ Responde de forma breve, directa y accionable. Usa markdown ligero. Prioriza qu�
         "model_used": result.get('rule_used'),
         "context_used": "hr_dashboard + sql + neo4j + chroma",
     }
+
+
+# ─── GRUPOS DE TRABAJO ──────────────────────────────────────────────────────
+# Patrón espejo de api/projects.py: grupo → miembros + tareas (kanban) + horas.
+
+def _serialize_task(t: GroupTask, emp_names: dict) -> dict:
+    return {
+        "id": t.id,
+        "group_id": t.group_id,
+        "title": t.title,
+        "description": t.description,
+        "status": t.status,
+        "priority": t.priority,
+        "assigned_to": t.assigned_to,
+        "assigned_name": emp_names.get(t.assigned_to),
+        "due_date": t.due_date.isoformat() if t.due_date else None,
+        "estimated_hours": t.estimated_hours or 0.0,
+        "actual_hours": t.actual_hours or 0.0,
+    }
+
+
+def _serialize_group(g: WorkGroup, db: Session, emp_names: dict, detail: bool = False) -> dict:
+    tasks = g.tasks
+    total = len(tasks)
+    completed = len([t for t in tasks if t.status == "completada"])
+    blocked = len([t for t in tasks if t.status == "bloqueada"])
+    completion = round(completed / total * 100, 1) if total else 0.0
+    total_hours = round(sum(t.actual_hours or 0.0 for t in tasks), 2)
+
+    out = {
+        "id": g.id,
+        "name": g.name,
+        "description": g.description,
+        "status": g.status,
+        "color": g.color,
+        "lead_employee_id": g.lead_employee_id,
+        "lead_name": emp_names.get(g.lead_employee_id),
+        "start_date": g.start_date.isoformat() if g.start_date else None,
+        "end_date": g.end_date.isoformat() if g.end_date else None,
+        "member_count": len(g.members),
+        "task_count": total,
+        "completed_tasks": completed,
+        "blocked_tasks": blocked,
+        "completion_percentage": completion,
+        "total_hours": total_hours,
+    }
+    if detail:
+        out["members"] = [{
+            "id": m.id,
+            "employee_id": m.employee_id,
+            "employee_name": emp_names.get(m.employee_id),
+            "role": m.role,
+        } for m in g.members]
+        out["tasks"] = [_serialize_task(t, emp_names) for t in tasks]
+    return out
+
+
+def _company_emp_names(db: Session, company_id: int) -> dict:
+    return {
+        e.id: e.full_name
+        for e in db.query(Employee).filter(Employee.company_id == company_id).all()
+    }
+
+
+def _get_group_or_404(group_id: int, db: Session, company_id: int) -> WorkGroup:
+    g = db.query(WorkGroup).filter(
+        WorkGroup.id == group_id,
+        WorkGroup.company_id == company_id
+    ).first()
+    if not g:
+        raise HTTPException(404, "Grupo no encontrado")
+    return g
+
+
+@router.post("/workgroups", status_code=201)
+def create_workgroup(
+    data: WorkGroupCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Crea un grupo de trabajo."""
+    g = WorkGroup(
+        company_id=current_user.company_id,
+        name=data.name,
+        description=data.description,
+        lead_employee_id=data.lead_employee_id,
+        start_date=_parse_date(data.start_date),
+        end_date=_parse_date(data.end_date),
+        color=data.color,
+        status="activo",
+    )
+    db.add(g)
+    db.commit()
+    db.refresh(g)
+    return _serialize_group(g, db, _company_emp_names(db, current_user.company_id), detail=True)
+
+
+@router.get("/workgroups")
+def list_workgroups(
+    include_archived: bool = False,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Lista los grupos de trabajo (con resumen de tareas/horas)."""
+    q = db.query(WorkGroup).filter(WorkGroup.company_id == current_user.company_id)
+    if not include_archived:
+        q = q.filter(WorkGroup.status != "archivado")
+    groups = q.order_by(WorkGroup.created_at.desc()).all()
+    emp_names = _company_emp_names(db, current_user.company_id)
+    return [_serialize_group(g, db, emp_names) for g in groups]
+
+
+@router.get("/workgroups/{group_id}")
+def get_workgroup(
+    group_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Detalle del grupo: miembros + tareas + horas."""
+    g = _get_group_or_404(group_id, db, current_user.company_id)
+    return _serialize_group(g, db, _company_emp_names(db, current_user.company_id), detail=True)
+
+
+@router.put("/workgroups/{group_id}")
+def update_workgroup(
+    group_id: int,
+    data: WorkGroupUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Actualiza un grupo de trabajo."""
+    g = _get_group_or_404(group_id, db, current_user.company_id)
+    if data.name is not None:             g.name = data.name
+    if data.description is not None:      g.description = data.description
+    if data.status is not None:           g.status = data.status
+    if data.lead_employee_id is not None: g.lead_employee_id = data.lead_employee_id
+    if data.color is not None:            g.color = data.color
+    if data.start_date is not None:       g.start_date = _parse_date(data.start_date)
+    if data.end_date is not None:         g.end_date = _parse_date(data.end_date)
+    db.commit()
+    db.refresh(g)
+    return _serialize_group(g, db, _company_emp_names(db, current_user.company_id), detail=True)
+
+
+@router.delete("/workgroups/{group_id}")
+def archive_workgroup(
+    group_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Archiva un grupo (soft delete)."""
+    g = _get_group_or_404(group_id, db, current_user.company_id)
+    g.status = "archivado"
+    db.commit()
+    return {"id": g.id, "status": "archivado"}
+
+
+# ── Miembros ────────────────────────────────────────────────────────────────
+
+@router.post("/workgroups/{group_id}/members", status_code=201)
+def add_group_member(
+    group_id: int,
+    data: GroupMemberCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Añade un empleado/voluntario al grupo."""
+    _get_group_or_404(group_id, db, current_user.company_id)
+    emp = db.query(Employee).filter(
+        Employee.id == data.employee_id,
+        Employee.company_id == current_user.company_id
+    ).first()
+    if not emp:
+        raise HTTPException(404, "Empleado no encontrado")
+
+    existing = db.query(WorkGroupMember).filter(
+        WorkGroupMember.group_id == group_id,
+        WorkGroupMember.employee_id == data.employee_id
+    ).first()
+    if existing:
+        raise HTTPException(400, "El empleado ya es miembro del grupo")
+
+    m = WorkGroupMember(group_id=group_id, employee_id=data.employee_id, role=data.role)
+    db.add(m)
+    db.commit()
+    db.refresh(m)
+    return {"id": m.id, "employee_id": m.employee_id, "employee_name": emp.full_name, "role": m.role}
+
+
+@router.delete("/workgroups/{group_id}/members/{member_id}")
+def remove_group_member(
+    group_id: int,
+    member_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Quita un miembro del grupo."""
+    _get_group_or_404(group_id, db, current_user.company_id)
+    m = db.query(WorkGroupMember).filter(
+        WorkGroupMember.id == member_id,
+        WorkGroupMember.group_id == group_id
+    ).first()
+    if not m:
+        raise HTTPException(404, "Miembro no encontrado")
+    db.delete(m)
+    db.commit()
+    return {"message": "Miembro eliminado"}
+
+
+# ── Tareas ──────────────────────────────────────────────────────────────────
+
+@router.post("/workgroups/{group_id}/tasks", status_code=201)
+def create_group_task(
+    group_id: int,
+    data: GroupTaskCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Crea una tarea dentro del grupo."""
+    _get_group_or_404(group_id, db, current_user.company_id)
+    t = GroupTask(
+        group_id=group_id,
+        company_id=current_user.company_id,
+        title=data.title,
+        description=data.description,
+        status="pendiente",
+        priority=data.priority or "media",
+        assigned_to=data.assigned_to,
+        due_date=_parse_date(data.due_date),
+        estimated_hours=data.estimated_hours or 0.0,
+    )
+    db.add(t)
+    db.commit()
+    db.refresh(t)
+    return _serialize_task(t, _company_emp_names(db, current_user.company_id))
+
+
+@router.put("/tasks/{task_id}")
+def update_group_task(
+    task_id: int,
+    data: GroupTaskUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Actualiza una tarea de grupo (estado, asignación, prioridad...)."""
+    t = db.query(GroupTask).filter(
+        GroupTask.id == task_id,
+        GroupTask.company_id == current_user.company_id
+    ).first()
+    if not t:
+        raise HTTPException(404, "Tarea no encontrada")
+
+    if data.title is not None:           t.title = data.title
+    if data.description is not None:     t.description = data.description
+    if data.status is not None:          t.status = data.status
+    if data.priority is not None:        t.priority = data.priority
+    if data.assigned_to is not None:     t.assigned_to = data.assigned_to
+    if data.due_date is not None:        t.due_date = _parse_date(data.due_date)
+    if data.estimated_hours is not None: t.estimated_hours = data.estimated_hours
+    db.commit()
+    db.refresh(t)
+    return _serialize_task(t, _company_emp_names(db, current_user.company_id))
+
+
+@router.delete("/tasks/{task_id}")
+def delete_group_task(
+    task_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Elimina una tarea de grupo."""
+    t = db.query(GroupTask).filter(
+        GroupTask.id == task_id,
+        GroupTask.company_id == current_user.company_id
+    ).first()
+    if not t:
+        raise HTTPException(404, "Tarea no encontrada")
+    db.delete(t)
+    db.commit()
+    return {"message": "Tarea eliminada"}
+
+
+@router.post("/tasks/{task_id}/horas", status_code=201)
+def log_task_hours(
+    task_id: int,
+    data: GroupTaskTimeCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Registra horas aportadas a una tarea y recalcula actual_hours."""
+    t = db.query(GroupTask).filter(
+        GroupTask.id == task_id,
+        GroupTask.company_id == current_user.company_id
+    ).first()
+    if not t:
+        raise HTTPException(404, "Tarea no encontrada")
+
+    entry = GroupTaskTime(
+        task_id=task_id,
+        group_id=t.group_id,
+        company_id=current_user.company_id,
+        employee_id=data.employee_id,
+        hours=data.hours,
+        date=_parse_date(data.date) or date.today(),
+        description=data.description,
+    )
+    db.add(entry)
+    db.flush()
+
+    # Recalcular horas reales de la tarea desde los registros.
+    total = db.query(func.coalesce(func.sum(GroupTaskTime.hours), 0.0)).filter(
+        GroupTaskTime.task_id == task_id
+    ).scalar() or 0.0
+    t.actual_hours = round(float(total), 2)
+    db.commit()
+    return {"id": entry.id, "task_id": task_id, "actual_hours": t.actual_hours}

@@ -6,6 +6,7 @@ from typing import Optional
 from datetime import date, datetime
 import os
 import json
+import logging
 
 from core.database import get_db
 from core.security import get_current_user
@@ -326,19 +327,22 @@ def get_libro_mayor(
     cuenta: Optional[str] = None,
     fecha_inicio: Optional[date] = None,
     fecha_fin: Optional[date] = None,
+    max_entries: int = 500,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """
     Retorna el libro mayor completo o de una cuenta específica.
-    Muestra cada transacción con saldo acumulado.
+    Muestra cada transacción con saldo acumulado. `max_entries` limita los
+    asientos devueltos por cuenta (saldos siempre exactos; ver get_general_ledger).
     """
     return get_general_ledger(
         db=db,
         company_id=current_user.company_id,
         account_code=cuenta,
         start_date=fecha_inicio,
-        end_date=fecha_fin
+        end_date=fecha_fin,
+        max_entries_per_account=max(1, min(max_entries, 2000)),
     )
 
 
@@ -445,6 +449,7 @@ def get_snapshot(
     from datetime import date, timedelta
     today = date.today()
 
+    # Periodos NATURALES (correcto para contabilidad/fiscal: cierre mensual, IVA, etc.)
     if period == "month":
         inicio = today.replace(day=1)
         label = f"Mes actual — {today.strftime('%B %Y')}"
@@ -458,19 +463,35 @@ def get_snapshot(
     elif period == "year":
         inicio = today.replace(month=1, day=1)
         label = f"Año {today.year}"
+    # Ventanas rodantes (compat; el dashboard usa estas, contabilidad usa las naturales)
+    elif period == "30d":
+        inicio = today - timedelta(days=30)
+        label = "Últimos 30 días"
+    elif period == "90d":
+        inicio = today - timedelta(days=90)
+        label = "Últimos 90 días"
     else:
         inicio = today.replace(day=1)
-        label = "Mes actual"
+        label = f"Mes actual — {today.strftime('%B %Y')}"
 
-    # Check cache
+    # Check cache — estos periodos están EN CURSO (mes/trimestre/año actual), así que el
+    # caché solo es válido si se generó HOY y cubre hasta hoy. Si es de un día anterior
+    # (o de cuando aún no había datos), se descarta y se recalcula en vivo.
     cached = db.execute(text("""
-        SELECT data_json, generated_at FROM financial_snapshots
+        SELECT data_json, generated_at, fecha_fin FROM financial_snapshots
         WHERE company_id=:cid AND period_label=:label
         ORDER BY id DESC LIMIT 1
     """), {"cid": current_user.company_id, "label": label}).fetchone()
 
     if cached:
-        return {"cached": True, "label": label, "data": _json.loads(cached[0]), "generated_at": cached[1]}
+        _gen = str(cached[1] or "")
+        _fin = str(cached[2] or "")
+        if _fin == str(today) and _gen.startswith(str(today)):
+            return {"cached": True, "label": label, "data": _json.loads(cached[0]), "generated_at": cached[1]}
+        # Caché obsoleto → borrar y recalcular en vivo
+        db.execute(text("DELETE FROM financial_snapshots WHERE company_id=:cid AND period_label=:label"),
+                   {"cid": current_user.company_id, "label": label})
+        db.commit()
 
     # Generate fresh
     try:
@@ -480,7 +501,8 @@ def get_snapshot(
         cf = generate_cash_flow_statement(db, current_user.company_id, inicio, today)
         try:
             health = calculate_health_score(pl, bal, cf)
-        except:
+        except Exception as e:
+            logging.getLogger(__name__).warning("calculate_health_score falló: %s", e)
             health = {"puntaje": 0, "calificacion": "Sin datos", "factores": []}
         report = {
             "estado_de_resultados": pl,
@@ -508,8 +530,8 @@ def clear_snapshot(
     from sqlalchemy import text
     from datetime import date
     today = date.today()
-    labels = {"month":f"Mes actual — {today.strftime('%B %Y')}","quarter":"Trimestre actual","semester":"Semestre actual","year":f"Año {today.year}"}
-    label = labels.get(period, "Mes actual")
+    labels = {"month":f"Mes actual — {today.strftime('%B %Y')}","quarter":"Trimestre actual","semester":"Semestre actual","year":f"Año {today.year}","30d":"Últimos 30 días","90d":"Últimos 90 días"}
+    label = labels.get(period, f"Mes actual — {today.strftime('%B %Y')}")
     db.execute(text("DELETE FROM financial_snapshots WHERE company_id=:cid AND period_label=:label"), {"cid": current_user.company_id, "label": label})
     db.commit()
     return {"deleted": True}

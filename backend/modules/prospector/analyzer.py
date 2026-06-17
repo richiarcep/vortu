@@ -4,10 +4,11 @@ Puntua cada lead del 1-10 y detecta el mejor canal de contacto.
 """
 import json
 import anthropic
+from vera.compat import vera_client
 from core.config import get_settings
 
 settings = get_settings()
-client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+client = vera_client(None, None, module="prospector")
 
 
 def analyze_leads(leads: list, search_prompt: str, batch_size: int = 20) -> list:

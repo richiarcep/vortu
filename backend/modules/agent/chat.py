@@ -2,6 +2,7 @@ import json
 from datetime import date, timedelta
 from sqlalchemy.orm import Session
 from anthropic import Anthropic
+from vera.compat import vera_client
 from core.config import get_settings
 from modules.accounting.journal import get_account_balance
 from modules.core.prompt_loader import get_prompt
@@ -45,7 +46,7 @@ Fecha actual: {today.strftime('%d/%m/%Y')}"""
     messages = conversation_history.copy()
     messages.append({"role": "user", "content": message})
 
-    client = Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+    client = vera_client(None, None, module="agente")
     response = client.messages.create(
         model="claude-opus-4-6",
         max_tokens=1024,

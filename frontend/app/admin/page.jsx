@@ -3,10 +3,52 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import VeraStudio from '@/components/admin/VeraStudio'
 import VeraNexum from '@/components/admin/VeraNexum'
+import { FONT, I, useT, useTheme } from '@/components/ui/tokens'
+
+// Iconos SVG inline (Lucide-style, stroke currentColor) para reemplazar emojis.
+const Svg = ({ children, size = 16, sw = 1.8, style }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
+    style={{ flexShrink: 0, ...style }}>{children}</svg>
+)
+const Ico = {
+  building: (p) => <Svg {...p}><path d="M3 21h18M5 21V5a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v16M9 8h2M9 12h2M9 16h2" /><path d="M16 21V9h3a1 1 0 0 1 1 1v11" /></Svg>,
+  user: (p) => <Svg {...p}><circle cx="12" cy="8" r="4" /><path d="M4 21v-1a6 6 0 0 1 12 0v1" /></Svg>,
+  users: (p) => <Svg {...p}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></Svg>,
+  chart: (p) => <Svg {...p}><path d="M3 3v18h18" /><rect x="7" y="11" width="3" height="6" /><rect x="12" y="7" width="3" height="10" /><rect x="17" y="13" width="3" height="4" /></Svg>,
+  brain: (p) => <Svg {...p}><path d="M9.5 2A2.5 2.5 0 0 0 7 4.5v.5a2.5 2.5 0 0 0-2 4 2.5 2.5 0 0 0 .5 4.5A2.5 2.5 0 0 0 7 18v.5A2.5 2.5 0 0 0 9.5 21 2.5 2.5 0 0 0 12 18.5v-13A2.5 2.5 0 0 0 9.5 2zM14.5 2A2.5 2.5 0 0 1 17 4.5v.5a2.5 2.5 0 0 1 2 4 2.5 2.5 0 0 1-.5 4.5A2.5 2.5 0 0 1 17 18v.5A2.5 2.5 0 0 1 14.5 21 2.5 2.5 0 0 1 12 18.5" /></Svg>,
+  save: (p) => <Svg {...p}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" /><path d="M17 21v-8H7v8M7 3v5h8" /></Svg>,
+  flow: (p) => <Svg {...p}><rect x="3" y="3" width="6" height="6" rx="1" /><rect x="15" y="15" width="6" height="6" rx="1" /><path d="M9 6h6a3 3 0 0 1 3 3v6" /></Svg>,
+  target: (p) => <Svg {...p}><circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="5" /><circle cx="12" cy="12" r="1.5" /></Svg>,
+  card: (p) => <Svg {...p}><rect x="2" y="5" width="20" height="14" rx="2" /><path d="M2 10h20" /></Svg>,
+  robot: (p) => <Svg {...p}><rect x="4" y="8" width="16" height="12" rx="2" /><path d="M12 8V4M9 13h.01M15 13h.01M9 17h6" /><circle cx="12" cy="3" r="1" /></Svg>,
+  sparkles: (p) => <Svg {...p}><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5L18 18M6 18l2.5-2.5M15.5 8.5L18 6" /></Svg>,
+  download: (p) => <Svg {...p}><path d="M12 3v12M7 10l5 5 5-5M5 21h14" /></Svg>,
+  check: (p) => <Svg {...p}><path d="M20 6L9 17l-5-5" /></Svg>,
+  refresh: (p) => <Svg {...p}><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5" /></Svg>,
+  send: (p) => <Svg {...p}><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" /></Svg>,
+  trash: (p) => <Svg {...p}><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M6 6v14a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V6M10 11v6M14 11v6" /></Svg>,
+  edit: (p) => <Svg {...p}><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" /></Svg>,
+  map: (p) => <Svg {...p}><path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14" /></Svg>,
+  pin: (p) => <Svg {...p}><path d="M12 21s-7-6-7-11a7 7 0 0 1 14 0c0 5-7 11-7 11z" /><circle cx="12" cy="10" r="2.5" /></Svg>,
+  phone: (p) => <Svg {...p}><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z" /></Svg>,
+  globe: (p) => <Svg {...p}><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3a15 15 0 0 1 0 18 15 15 0 0 1 0-18z" /></Svg>,
+  camera: (p) => <Svg {...p}><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" /><circle cx="12" cy="13" r="4" /></Svg>,
+  bulb: (p) => <Svg {...p}><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.1v.2h6v-.2c0-.8.4-1.6 1-2.1A7 7 0 0 0 12 2z" /></Svg>,
+  euro: (p) => <Svg {...p}><path d="M18 7a6 6 0 1 0 0 10M5 10h7M5 14h7" /></Svg>,
+  flask: (p) => <Svg {...p}><path d="M9 2h6M10 2v6L5 18a2 2 0 0 0 1.8 3h10.4A2 2 0 0 0 19 18l-5-10V2M7.5 14h9" /></Svg>,
+  trend: (p) => <Svg {...p}><path d="M3 17l6-6 4 4 8-8" /><path d="M14 7h7v7" /></Svg>,
+  inbox: (p) => <Svg {...p}><path d="M22 12h-6l-2 3h-4l-2-3H2" /><path d="M5.5 5h13l3.5 7v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-6z" /></Svg>,
+  message: (p) => <Svg {...p}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></Svg>,
+  clipboard: (p) => <Svg {...p}><rect x="8" y="2" width="8" height="4" rx="1" /><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" /></Svg>,
+  book: (p) => <Svg {...p}><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20M4 4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5z" /></Svg>,
+  star: (p) => <Svg {...p}><path d="M12 2l3 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.9 21l1.2-6.8-5-4.9 6.9-1L12 2z" /></Svg>,
+  warning: (p) => <Svg {...p}><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0zM12 9v4M12 17h.01" /></Svg>,
+}
 
 const API   = 'http://127.0.0.1:8000'
 const NAVY  = '#0B1426'
-const GREEN = '#16a34a'
+const GREEN = '#059669'
 const AMBER = '#d97706'
 const RED   = '#dc2626'
 const BLUE  = '#2563eb'
@@ -31,7 +73,7 @@ function AdminSidebar({ active }) {
     { label: 'Billing',       href: '/admin?tab=billing',    icon: '▤' },
   ]
   return (
-    <div style={{ width: '220px', background: '#0a0f1a', minHeight: '100vh', flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
+    <div style={{ width: '220px', background: '#0a0f1a', minHeight: '100dvh', flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
       <div style={{ padding: '24px 20px 20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
           <div style={{ width: '32px', height: '32px', background: `linear-gradient(135deg, #10b981, #059669)`, borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -62,15 +104,16 @@ function AdminSidebar({ active }) {
 }
 
 // ── Stat Card ──────────────────────────────────────────────────────────────────
-function StatCard({ icon, label, value, sub, color = NAVY, bg = 'white' }) {
+function StatCard({ icon, label, value, sub, color, bg }) {
+  const T = useT()
   return (
-    <div style={{ background: bg, borderRadius: '16px', border: '0.5px solid rgba(0,0,0,0.06)', padding: '20px' }}>
+    <div style={{ background: bg || T.card, borderRadius: '16px', border: `0.5px solid ${T.hairline}`, padding: '20px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
-        <span style={{ fontSize: '20px' }}>{icon}</span>
-        {sub && <span style={{ fontSize: '11px', color: '#9ca3af' }}>{sub}</span>}
+        <span style={{ display: 'inline-flex', color: color || T.text }}>{icon}</span>
+        {sub && <span style={{ fontSize: '11px', color: T.text4 }}>{sub}</span>}
       </div>
-      <div style={{ fontSize: '28px', fontWeight: '800', color, letterSpacing: '-0.8px', marginBottom: '4px' }}>{value}</div>
-      <div style={{ fontSize: '12px', color: '#6b7280', fontWeight: '500' }}>{label}</div>
+      <div style={{ fontSize: '28px', fontWeight: '800', color: color || T.text, letterSpacing: '-0.8px', marginBottom: '4px' }}>{value}</div>
+      <div style={{ fontSize: '12px', color: T.text3, fontWeight: '500' }}>{label}</div>
     </div>
   )
 }
@@ -107,6 +150,7 @@ function StatusBadge({ status }) {
 
 // ── Flowchart ──────────────────────────────────────────────────────────────────
 function DataFlowchart() {
+  const T = useT()
   const nodes = [
     { id: 'user',    x: 380, y: 30,  label: 'Usuario / Empresa',   icon: '👤', color: NAVY,   w: 160 },
     { id: 'sales',   x: 60,  y: 160, label: 'Ventas & Productos',  icon: '🛒', color: BLUE,   w: 150 },
@@ -132,8 +176,8 @@ function DataFlowchart() {
   }
 
   return (
-    <div style={{ background: 'white', borderRadius: '16px', border: '0.5px solid rgba(0,0,0,0.06)', padding: '24px', overflow: 'auto' }}>
-      <div style={{ fontSize: '15px', fontWeight: '700', color: NAVY, marginBottom: '20px' }}>🔀 Flujo de datos — Vortu</div>
+    <div style={{ background: T.card, borderRadius: '16px', border: `0.5px solid ${T.hairline}`, padding: '24px', overflow: 'auto' }}>
+      <div style={{ fontSize: '15px', fontWeight: '700', color: T.text, marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}><Ico.flow size={18} />Flujo de datos — Vortu</div>
       <svg width="980" height="540" style={{ display: 'block', minWidth: '980px' }}>
         <defs>
           <marker id="arrow" markerWidth="8" markerHeight="8" refX="8" refY="3" orient="auto">
@@ -143,13 +187,13 @@ function DataFlowchart() {
         {/* Edges */}
         {edges.map(([from, to], i) => {
           const a = getCenter(from), b = getCenter(to)
-          return <line key={i} x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="#cbd5e1" strokeWidth="1.5" strokeDasharray="4,3" markerEnd="url(#arrow)" />
+          return <line key={i} x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={T.hairline} strokeWidth="1.5" strokeDasharray="4,3" markerEnd="url(#arrow)" />
         })}
         {/* Nodes */}
         {nodes.map(n => (
           <g key={n.id}>
             <rect x={n.x} y={n.y} width={n.w} height={56} rx="10" fill={n.color} opacity="0.1" stroke={n.color} strokeWidth="1.5" />
-            <text x={n.x + 14} y={n.y + 22} fontSize="16">{n.icon}</text>
+            <circle cx={n.x + 20} cy={n.y + 28} r="6" fill={n.color} />
             <text x={n.x + 38} y={n.y + 20} fontSize="11" fontWeight="700" fill={n.color}>{n.label.split('&')[0]}</text>
             {n.label.includes('&') && <text x={n.x + 38} y={n.y + 34} fontSize="10" fill={n.color} opacity="0.7">& {n.label.split('&')[1]}</text>}
           </g>
@@ -172,7 +216,7 @@ function DataFlowchart() {
         ].map(l => (
           <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <div style={{ width: '10px', height: '10px', borderRadius: '3px', background: l.color }} />
-            <span style={{ fontSize: '11px', color: '#6b7280' }}>{l.label}</span>
+            <span style={{ fontSize: '11px', color: T.text3 }}>{l.label}</span>
           </div>
         ))}
       </div>
@@ -182,6 +226,7 @@ function DataFlowchart() {
 
 // ── Main ───────────────────────────────────────────────────────────────────────
 function MemoryTab({ companies, selectedCompany, setSelectedCompany, token, API }) {
+  const T = useT()
   const [entries, setEntries] = useState([])
   const [memEdit, setMemEdit] = useState({ manual_training: '', business_personality: '', business_goals: '' })
   const [loading, setLoading] = useState(false)
@@ -191,7 +236,7 @@ function MemoryTab({ companies, selectedCompany, setSelectedCompany, token, API 
   const [activeTab, setActiveTab] = useState('auto')
   const [stats, setStats] = useState({ total: 0, auto_count: 0, manual_count: 0, last_auto_update: null, context_version: 0 })
 
-  const NAVY = '#0B1426', GREEN = '#16a34a', AMBER = '#d97706', RED = '#dc2626', BLUE = '#2563eb', PURPLE = '#7c3aed', CYAN = '#00B4D8'
+  const NAVY = '#0B1426', GREEN = '#059669', AMBER = '#d97706', RED = '#dc2626', BLUE = '#2563eb', PURPLE = '#7c3aed', CYAN = '#00B4D8'
   const h = () => ({ 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' })
 
   const catColor = c => ({ ventas: BLUE, clientes: GREEN, finanzas: AMBER, proyectos: PURPLE, rrhh: CYAN, general: '#6b7280' }[c] || '#6b7280')
@@ -261,12 +306,12 @@ function MemoryTab({ companies, selectedCompany, setSelectedCompany, token, API 
   return (
     <div style={{ animation: 'fadeUp 0.3s ease' }}>
       {/* Company selector */}
-      <div style={{ ...{background:'white',borderRadius:'14px',border:'1px solid #e5e9f0',padding:'20px',boxShadow:'0 1px 4px rgba(0,0,0,0.04)'}, marginBottom: '16px' }}>
-        <div style={{ fontSize: '13px', fontWeight: '700', color: NAVY, marginBottom: '10px' }}>Selecciona empresa</div>
+      <div style={{ background: T.card, borderRadius: '14px', border: `1px solid ${T.hairline}`, padding: '20px', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', marginBottom: '16px' }}>
+        <div style={{ fontSize: '13px', fontWeight: '700', color: T.text, marginBottom: '10px' }}>Selecciona empresa</div>
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-          {companies.length === 0 && <div style={{ color: '#9ca3af', fontSize: '13px' }}>Carga las empresas primero en la pestaña Empresas</div>}
+          {companies.length === 0 && <div style={{ color: T.text4, fontSize: '13px' }}>Carga las empresas primero en la pestaña Empresas</div>}
           {companies.map(c => (
-            <button key={c.id} onClick={() => selectCompany(c.id)} style={{ padding: '8px 16px', borderRadius: '8px', border: `1.5px solid ${selectedCompany === c.id ? NAVY : '#e5e9f0'}`, background: selectedCompany === c.id ? NAVY : 'white', color: selectedCompany === c.id ? 'white' : NAVY, fontWeight: '600', fontSize: '12px', cursor: 'pointer', fontFamily: 'inherit' }}>
+            <button key={c.id} onClick={() => selectCompany(c.id)} style={{ padding: '8px 16px', borderRadius: '8px', border: `1.5px solid ${selectedCompany === c.id ? NAVY : T.hairline}`, background: selectedCompany === c.id ? NAVY : T.card, color: selectedCompany === c.id ? 'white' : T.text, fontWeight: '600', fontSize: '12px', cursor: 'pointer', fontFamily: 'inherit' }}>
               {c.name}
             </button>
           ))}
@@ -278,26 +323,26 @@ function MemoryTab({ companies, selectedCompany, setSelectedCompany, token, API 
           {/* Header + stats */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
             <div>
-              <div style={{ fontSize: '15px', fontWeight: '800', color: NAVY }}>💾 Memoria IA — {selectedCompanyName}</div>
-              <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '2px' }}>
+              <div style={{ fontSize: '15px', fontWeight: '800', color: T.text, display: 'flex', alignItems: 'center', gap: '7px' }}><Ico.save size={17} />Memoria IA — {selectedCompanyName}</div>
+              <div style={{ fontSize: '12px', color: T.text4, marginTop: '2px' }}>
                 v{stats.context_version} · {stats.auto_count} aprendizajes auto · {stats.manual_count} entradas manuales
                 {stats.last_auto_update && ` · Último auto: ${stats.last_auto_update.substring(0,10)}`}
               </div>
             </div>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-              {msg && <span style={{ fontSize: '12px', fontWeight: '600', color: msg.type === 'ok' ? GREEN : RED, background: msg.type === 'ok' ? '#f0fdf4' : '#fef2f2', padding: '5px 12px', borderRadius: '8px', border: `1px solid ${msg.type === 'ok' ? '#bbf7d0' : '#fecaca'}` }}>{msg.text}</span>}
-              <button onClick={downloadTxt} style={{ padding: '8px 14px', borderRadius: '8px', border: '1px solid #bbf7d0', background: '#f0fdf4', color: GREEN, fontWeight: '700', fontSize: '12px', cursor: 'pointer', fontFamily: 'inherit' }}>⬇ Descargar TXT</button>
-              <button onClick={runAutoUpdate} disabled={autoLoading} style={{ padding: '8px 14px', borderRadius: '8px', border: 'none', background: autoLoading ? '#e5e9f0' : PURPLE, color: autoLoading ? '#9ca3af' : 'white', fontWeight: '700', fontSize: '12px', cursor: autoLoading ? 'default' : 'pointer', fontFamily: 'inherit' }}>
-                {autoLoading ? '⟳ Analizando...' : '🤖 Auto-actualizar IA'}
+              {msg && <span style={{ fontSize: '12px', fontWeight: '600', color: msg.type === 'ok' ? GREEN : RED, background: msg.type === 'ok' ? T.greenSoft : T.redSoft, padding: '5px 12px', borderRadius: '8px', border: `1px solid ${msg.type === 'ok' ? T.greenSoft : T.redSoft}` }}>{msg.text}</span>}
+              <button onClick={downloadTxt} aria-label="Descargar memoria en TXT" style={{ padding: '8px 14px', borderRadius: '8px', border: `1px solid ${T.greenSoft}`, background: T.greenSoft, color: GREEN, fontWeight: '700', fontSize: '12px', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: '6px' }}><Ico.download size={14} /> Descargar TXT</button>
+              <button onClick={runAutoUpdate} disabled={autoLoading} style={{ padding: '8px 14px', borderRadius: '8px', border: 'none', background: autoLoading ? T.soft : PURPLE, color: autoLoading ? T.text4 : 'white', fontWeight: '700', fontSize: '12px', cursor: autoLoading ? 'default' : 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                {autoLoading ? <><Ico.refresh size={14} /> Analizando...</> : <><Ico.robot size={14} /> Auto-actualizar IA</>}
               </button>
             </div>
           </div>
 
           {/* Tabs */}
-          <div style={{ display: 'flex', gap: '4px', marginBottom: '14px', background: '#f1f5f9', padding: '4px', borderRadius: '10px', width: 'fit-content' }}>
-            {[{ id: 'auto', label: `🤖 Aprendizajes IA (${stats.auto_count})` }, { id: 'manual', label: '✏️ Entrenamiento manual' }].map(t => (
-              <button key={t.id} onClick={() => setActiveTab(t.id)} style={{ padding: '7px 16px', borderRadius: '7px', border: 'none', background: activeTab === t.id ? 'white' : 'transparent', color: activeTab === t.id ? NAVY : '#6b7280', fontWeight: activeTab === t.id ? '700' : '400', fontSize: '12px', cursor: 'pointer', fontFamily: 'inherit', boxShadow: activeTab === t.id ? '0 1px 3px rgba(0,0,0,0.08)' : 'none' }}>
-                {t.label}
+          <div style={{ display: 'flex', gap: '4px', marginBottom: '14px', background: T.soft, padding: '4px', borderRadius: '10px', width: 'fit-content' }}>
+            {[{ id: 'auto', icon: <Ico.robot size={13} />, label: `Aprendizajes IA (${stats.auto_count})` }, { id: 'manual', icon: <Ico.edit size={13} />, label: 'Entrenamiento manual' }].map(t => (
+              <button key={t.id} onClick={() => setActiveTab(t.id)} style={{ padding: '7px 16px', borderRadius: '7px', border: 'none', background: activeTab === t.id ? T.card : 'transparent', color: activeTab === t.id ? T.text : T.text3, fontWeight: activeTab === t.id ? '700' : '400', fontSize: '12px', cursor: 'pointer', fontFamily: 'inherit', boxShadow: activeTab === t.id ? '0 1px 3px rgba(0,0,0,0.08)' : 'none', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                {t.icon} {t.label}
               </button>
             ))}
           </div>
@@ -306,26 +351,26 @@ function MemoryTab({ companies, selectedCompany, setSelectedCompany, token, API 
           {activeTab === 'auto' && (
             <div>
               {loading ? (
-                <div style={{ textAlign: 'center', padding: '40px', color: '#9ca3af' }}>Cargando memoria...</div>
+                <div style={{ textAlign: 'center', padding: '40px', color: T.text4 }}>Cargando memoria...</div>
               ) : autoEntries.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '48px', color: '#9ca3af', background: 'white', borderRadius: '16px', border: '0.5px solid rgba(0,0,0,0.06)' }}>
-                  <div style={{ fontSize: '32px', marginBottom: '10px' }}>🤖</div>
+                <div style={{ textAlign: 'center', padding: '48px', color: T.text4, background: T.card, borderRadius: '16px', border: `0.5px solid ${T.hairline}` }}>
+                  <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '10px', color: T.text3 }}><Ico.robot size={32} /></div>
                   <div style={{ fontSize: '14px', marginBottom: '6px' }}>Sin aprendizajes todavía</div>
                   <div style={{ fontSize: '12px' }}>Pulsa "Auto-actualizar IA" para que Claude analice los datos y detecte patrones.</div>
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {autoEntries.map((e, i) => (
-                    <div key={e.id} style={{ background: 'white', borderRadius: '10px', border: '0.5px solid rgba(0,0,0,0.06)', padding: '14px 16px', display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                    <div key={e.id} style={{ background: T.card, borderRadius: '10px', border: `0.5px solid ${T.hairline}`, padding: '14px 16px', display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
                       <div style={{ flexShrink: 0, width: '6px', height: '6px', borderRadius: '50%', background: catColor(e.categoria), marginTop: '6px' }} />
                       <div style={{ flex: 1 }}>
                         <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '6px', flexWrap: 'wrap' }}>
                           <span style={{ fontSize: '10px', fontWeight: '700', color: catColor(e.categoria), background: catColor(e.categoria)+'15', padding: '2px 8px', borderRadius: '20px', textTransform: 'uppercase' }}>{e.categoria}</span>
-                          <span style={{ fontSize: '10px', color: '#9ca3af' }}>confianza: {Math.round((e.confianza || 0) * 100)}%</span>
-                          <span style={{ fontSize: '10px', color: '#9ca3af' }}>{e.created_at?.substring(0, 16).replace('T', ' ')}</span>
-                          {e.snapshot_id && <span style={{ fontSize: '10px', color: '#9ca3af' }}>snapshot #{e.snapshot_id}</span>}
+                          <span style={{ fontSize: '10px', color: T.text4 }}>confianza: {Math.round((e.confianza || 0) * 100)}%</span>
+                          <span style={{ fontSize: '10px', color: T.text4 }}>{e.created_at?.substring(0, 16).replace('T', ' ')}</span>
+                          {e.snapshot_id && <span style={{ fontSize: '10px', color: T.text4 }}>snapshot #{e.snapshot_id}</span>}
                         </div>
-                        <div style={{ fontSize: '13px', color: '#1e293b', lineHeight: '1.6' }}>{e.contenido}</div>
+                        <div style={{ fontSize: '13px', color: T.text2, lineHeight: '1.6' }}>{e.contenido}</div>
                       </div>
                     </div>
                   ))}
@@ -336,43 +381,43 @@ function MemoryTab({ companies, selectedCompany, setSelectedCompany, token, API 
 
           {/* MANUAL TAB */}
           {activeTab === 'manual' && (
-            <div style={{ background: 'white', borderRadius: '16px', border: '0.5px solid rgba(0,0,0,0.06)', padding: '24px' }}>
-              <div style={{ fontSize: '13px', color: '#6b7280', marginBottom: '20px', lineHeight: '1.6' }}>
+            <div style={{ background: T.card, borderRadius: '16px', border: `0.5px solid ${T.hairline}`, padding: '24px' }}>
+              <div style={{ fontSize: '13px', color: T.text3, marginBottom: '20px', lineHeight: '1.6' }}>
                 Escribe aquí lo que quieres que la IA sepa sobre este negocio. Esto se combina con los aprendizajes automáticos en cada consulta.
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+              <div className="adm-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
                 {[
                   { key: 'manual_training', label: 'Contexto del negocio', placeholder: 'Somos una panadería artesanal familiar. No hacemos descuentos en productos frescos. Nuestros clientes valoran la calidad sobre el precio...' },
                   { key: 'business_personality', label: 'Personalidad y valores', placeholder: 'Tono cercano y profesional. Nos diferenciamos por la calidad artesanal. Público objetivo: familias 30-50 años...' },
                 ].map(f => (
                   <div key={f.key}>
-                    <label style={{ fontSize: '11px', fontWeight: '700', color: '#374151', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{f.label}</label>
-                    <textarea value={memEdit[f.key]} onChange={e => setMemEdit(p => ({ ...p, [f.key]: e.target.value }))} rows={8} placeholder={f.placeholder} style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '0.5px solid rgba(0,0,0,0.06)', fontSize: '13px', fontFamily: 'inherit', lineHeight: '1.6', resize: 'vertical', outline: 'none', boxSizing: 'border-box' }} />
+                    <label style={{ fontSize: '11px', fontWeight: '700', color: T.text2, display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{f.label}</label>
+                    <textarea value={memEdit[f.key]} onChange={e => setMemEdit(p => ({ ...p, [f.key]: e.target.value }))} rows={8} placeholder={f.placeholder} style={{ width: '100%', padding: '12px', borderRadius: '8px', border: `0.5px solid ${T.hairline}`, fontSize: '13px', fontFamily: 'inherit', lineHeight: '1.6', resize: 'vertical', outline: 'none', boxSizing: 'border-box', background: T.card, color: T.text }} />
                   </div>
                 ))}
               </div>
               <div style={{ marginBottom: '16px' }}>
-                <label style={{ fontSize: '11px', fontWeight: '700', color: '#374151', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Objetivos del negocio</label>
-                <textarea value={memEdit.business_goals} onChange={e => setMemEdit(p => ({ ...p, business_goals: e.target.value }))} rows={4} placeholder="Queremos abrir una segunda tienda en 2027. Objetivo: llegar a €20k/mes de facturación. Foco actual: fidelizar clientes existentes..." style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '0.5px solid rgba(0,0,0,0.06)', fontSize: '13px', fontFamily: 'inherit', lineHeight: '1.6', resize: 'vertical', outline: 'none', boxSizing: 'border-box' }} />
+                <label style={{ fontSize: '11px', fontWeight: '700', color: T.text2, display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Objetivos del negocio</label>
+                <textarea value={memEdit.business_goals} onChange={e => setMemEdit(p => ({ ...p, business_goals: e.target.value }))} rows={4} placeholder="Queremos abrir una segunda tienda en 2027. Objetivo: llegar a €20k/mes de facturación. Foco actual: fidelizar clientes existentes..." style={{ width: '100%', padding: '12px', borderRadius: '8px', border: `0.5px solid ${T.hairline}`, fontSize: '13px', fontFamily: 'inherit', lineHeight: '1.6', resize: 'vertical', outline: 'none', boxSizing: 'border-box', background: T.card, color: T.text }} />
               </div>
 
               {/* Manual entries history */}
               {manualEntries.length > 0 && (
                 <div style={{ marginBottom: '16px' }}>
-                  <div style={{ fontSize: '11px', fontWeight: '700', color: '#374151', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '8px' }}>Historial de entradas manuales</div>
+                  <div style={{ fontSize: '11px', fontWeight: '700', color: T.text2, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '8px' }}>Historial de entradas manuales</div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '200px', overflowY: 'auto' }}>
                     {manualEntries.map(e => (
-                      <div key={e.id} style={{ background: '#f8fafc', borderRadius: '8px', padding: '10px 12px', border: '0.5px solid rgba(0,0,0,0.06)', fontSize: '11px' }}>
-                        <div style={{ color: '#9ca3af', marginBottom: '3px' }}>{e.created_at?.substring(0,16).replace('T',' ')} · {e.autor}</div>
-                        <div style={{ color: '#374151', lineHeight: '1.5' }}>{e.contenido?.substring(0, 150)}{e.contenido?.length > 150 ? '...' : ''}</div>
+                      <div key={e.id} style={{ background: T.soft, borderRadius: '8px', padding: '10px 12px', border: `0.5px solid ${T.hairline}`, fontSize: '11px' }}>
+                        <div style={{ color: T.text4, marginBottom: '3px' }}>{e.created_at?.substring(0,16).replace('T',' ')} · {e.autor}</div>
+                        <div style={{ color: T.text2, lineHeight: '1.5' }}>{e.contenido?.substring(0, 150)}{e.contenido?.length > 150 ? '...' : ''}</div>
                       </div>
                     ))}
                   </div>
                 </div>
               )}
 
-              <button onClick={saveManual} disabled={saving} style={{ padding: '10px 20px', borderRadius: '10px', border: 'none', background: saving ? '#e5e9f0' : NAVY, color: saving ? '#9ca3af' : 'white', fontWeight: '700', fontSize: '13px', cursor: saving ? 'default' : 'pointer', fontFamily: 'inherit' }}>
-                {saving ? 'Guardando...' : '💾 Guardar entrenamiento manual'}
+              <button onClick={saveManual} disabled={saving} style={{ padding: '10px 20px', borderRadius: '10px', border: 'none', background: saving ? T.soft : NAVY, color: saving ? T.text4 : 'white', fontWeight: '700', fontSize: '13px', cursor: saving ? 'default' : 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: '7px' }}>
+                <Ico.save size={15} /> {saving ? 'Guardando...' : 'Guardar entrenamiento manual'}
               </button>
             </div>
           )}
@@ -383,12 +428,13 @@ function MemoryTab({ companies, selectedCompany, setSelectedCompany, token, API 
 }
 
 function BillingTab({ token, API }) {
+  const T = useT()
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState(null)
   const [msg, setMsg] = useState(null)
 
-  const NAVY = '#0B1426', GREEN = '#16a34a', AMBER = '#d97706', RED = '#dc2626', BLUE = '#2563eb', PURPLE = '#7c3aed'
+  const NAVY = '#0B1426', GREEN = '#059669', AMBER = '#d97706', RED = '#dc2626', BLUE = '#2563eb', PURPLE = '#7c3aed'
   const h = () => ({ 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' })
 
   const faseColor = f => ({ beta: PURPLE, early_adopter: AMBER, paid: GREEN }[f] || '#6b7280')
@@ -424,36 +470,36 @@ function BillingTab({ token, API }) {
     }
   }
 
-  if (loading) return <div style={{ textAlign: 'center', padding: '60px', color: '#9ca3af' }}>Cargando billing...</div>
+  if (loading) return <div style={{ textAlign: 'center', padding: '60px', color: T.text4 }}>Cargando billing...</div>
   if (!data) return null
 
   return (
     <div style={{ animation: 'fadeUp 0.3s ease' }}>
 
       {/* KPI Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: '12px', marginBottom: '20px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px,1fr))', gap: '12px', marginBottom: '20px' }}>
         {[
-          { label: 'MRR estimado', value: `€${data.total_mrr?.toLocaleString('es-ES')}`, color: GREEN, bg: '#f0fdf4' },
-          { label: 'En Beta', value: data.by_fase?.beta || 0, color: PURPLE, bg: '#f5f3ff' },
-          { label: 'Early Adopters', value: data.by_fase?.early_adopter || 0, color: AMBER, bg: '#fffbeb' },
-          { label: 'Pagando', value: data.by_fase?.paid || 0, color: GREEN, bg: '#f0fdf4' },
-          { label: 'Total empresas', value: data.total || 0, color: NAVY, bg: 'white' },
+          { label: 'MRR estimado', value: `€${data.total_mrr?.toLocaleString('es-ES')}`, color: GREEN, bg: T.greenSoft },
+          { label: 'En Beta', value: data.by_fase?.beta || 0, color: PURPLE, bg: T.purpleSoft },
+          { label: 'Early Adopters', value: data.by_fase?.early_adopter || 0, color: AMBER, bg: T.amberSoft },
+          { label: 'Pagando', value: data.by_fase?.paid || 0, color: GREEN, bg: T.greenSoft },
+          { label: 'Total empresas', value: data.total || 0, color: T.text, bg: T.card },
         ].map(k => (
-          <div key={k.label} style={{ background: k.bg, borderRadius: '14px', padding: '14px 16px', border: '0.5px solid rgba(0,0,0,0.06)' }}>
-            <div style={{ fontSize: '10px', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>{k.label}</div>
+          <div key={k.label} style={{ background: k.bg, borderRadius: '14px', padding: '14px 16px', border: `0.5px solid ${T.hairline}` }}>
+            <div style={{ fontSize: '10px', color: T.text4, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>{k.label}</div>
             <div style={{ fontSize: '22px', fontWeight: '800', color: k.color }}>{k.value}</div>
           </div>
         ))}
       </div>
 
       {msg && (
-        <div style={{ marginBottom: '12px', fontSize: '12px', fontWeight: '600', color: msg.type === 'ok' ? GREEN : RED, background: msg.type === 'ok' ? '#f0fdf4' : '#fef2f2', padding: '8px 14px', borderRadius: '8px', border: `1px solid ${msg.type === 'ok' ? '#bbf7d0' : '#fecaca'}` }}>
+        <div style={{ marginBottom: '12px', fontSize: '12px', fontWeight: '600', color: msg.type === 'ok' ? GREEN : RED, background: msg.type === 'ok' ? T.greenSoft : T.redSoft, padding: '8px 14px', borderRadius: '8px', border: `1px solid ${msg.type === 'ok' ? T.greenSoft : T.redSoft}` }}>
           {msg.text}
         </div>
       )}
 
       {/* Companies table */}
-      <div style={{ background: 'white', borderRadius: '16px', border: '0.5px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+      <div style={{ background: T.card, borderRadius: '16px', border: `0.5px solid ${T.hairline}`, overflow: 'hidden' }}>
         {/* Header */}
         <div style={{ background: '#0f1729', padding: '10px 16px', borderRadius: '10px 10px 0 0', display: 'grid', gridTemplateColumns: '2fr 100px 120px 140px 1fr 1fr 180px', gap: '12px', alignItems: 'center' }}>
           {['Empresa', 'Plan', 'Fase', 'Vence', 'Uso IA', 'Docs', 'Cambiar fase'].map(h => (
@@ -463,12 +509,12 @@ function BillingTab({ token, API }) {
 
         {/* Rows */}
         {(data.companies || []).map((c, i) => (
-          <div key={c.company_id} style={{ padding: '12px 16px', borderBottom: i < data.companies.length - 1 ? '1px solid #f0f2f7' : 'none', display: 'grid', gridTemplateColumns: '2fr 100px 120px 140px 1fr 1fr 180px', gap: '12px', alignItems: 'center', background: i % 2 === 0 ? 'white' : '#fafbfc' }}>
+          <div key={c.company_id} style={{ padding: '12px 16px', borderBottom: i < data.companies.length - 1 ? `1px solid ${T.hairline}` : 'none', display: 'grid', gridTemplateColumns: '2fr 100px 120px 140px 1fr 1fr 180px', gap: '12px', alignItems: 'center', background: i % 2 === 0 ? T.card : T.soft }}>
 
             {/* Empresa */}
             <div>
-              <div style={{ fontSize: '13px', fontWeight: '700', color: NAVY }}>{c.company_name}</div>
-              <div style={{ fontSize: '11px', color: '#6b7280' }}>{c.company_email} · {c.users_count} usuario{c.users_count !== 1 ? 's' : ''}</div>
+              <div style={{ fontSize: '13px', fontWeight: '700', color: T.text }}>{c.company_name}</div>
+              <div style={{ fontSize: '11px', color: T.text3 }}>{c.company_email} · {c.users_count} usuario{c.users_count !== 1 ? 's' : ''}</div>
             </div>
 
             {/* Plan */}
@@ -478,9 +524,9 @@ function BillingTab({ token, API }) {
             <div style={{ fontSize: '11px', fontWeight: '700', color: faseColor(c.fase), background: faseBg(c.fase), padding: '3px 10px', borderRadius: '20px', textAlign: 'center' }}>{faseLabel(c.fase)}</div>
 
             {/* Vence */}
-            <div style={{ fontSize: '11px', color: '#6b7280' }}>
+            <div style={{ fontSize: '11px', color: T.text3 }}>
               {c.fase_expiry ? (
-                <span style={{ color: new Date(c.fase_expiry) < new Date() ? RED : '#374151' }}>
+                <span style={{ color: new Date(c.fase_expiry) < new Date() ? RED : T.text2 }}>
                   {new Date(c.fase_expiry).toLocaleDateString('es-ES')}
                 </span>
               ) : c.fase === 'beta' ? '∞ Sin límite' : '—'}
@@ -488,22 +534,22 @@ function BillingTab({ token, API }) {
 
             {/* Uso IA */}
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#374151', marginBottom: '3px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: T.text2, marginBottom: '3px' }}>
                 <span>{c.ai_queries_used}/{c.ai_queries_limit === 999999 ? '∞' : c.ai_queries_limit}</span>
                 <span style={{ color: c.ai_pct >= 80 ? RED : c.ai_pct >= 60 ? AMBER : GREEN }}>{c.ai_pct}%</span>
               </div>
-              <div style={{ height: '4px', background: '#e5e9f0', borderRadius: '2px', overflow: 'hidden' }}>
+              <div style={{ height: '4px', background: T.soft, borderRadius: '2px', overflow: 'hidden' }}>
                 <div style={{ height: '4px', width: `${Math.min(c.ai_pct, 100)}%`, background: c.ai_pct >= 80 ? RED : c.ai_pct >= 60 ? AMBER : GREEN, borderRadius: '2px', transition: 'width 0.5s' }} />
               </div>
             </div>
 
             {/* Docs */}
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#374151', marginBottom: '3px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: T.text2, marginBottom: '3px' }}>
                 <span>{c.documents_used}/{c.documents_limit === 999999 ? '∞' : c.documents_limit}</span>
                 <span style={{ color: c.doc_pct >= 80 ? RED : c.doc_pct >= 60 ? AMBER : GREEN }}>{c.doc_pct}%</span>
               </div>
-              <div style={{ height: '4px', background: '#e5e9f0', borderRadius: '2px', overflow: 'hidden' }}>
+              <div style={{ height: '4px', background: T.soft, borderRadius: '2px', overflow: 'hidden' }}>
                 <div style={{ height: '4px', width: `${Math.min(c.doc_pct, 100)}%`, background: c.doc_pct >= 80 ? RED : c.doc_pct >= 60 ? AMBER : GREEN, borderRadius: '2px', transition: 'width 0.5s' }} />
               </div>
             </div>
@@ -521,8 +567,8 @@ function BillingTab({ token, API }) {
         ))}
 
         {data.companies?.length === 0 && (
-          <div style={{ padding: '48px', textAlign: 'center', color: '#9ca3af' }}>
-            <div style={{ fontSize: '32px', marginBottom: '8px' }}>💳</div>
+          <div style={{ padding: '48px', textAlign: 'center', color: T.text4 }}>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px', color: T.text3 }}><Ico.card size={32} /></div>
             <div>Sin empresas todavía</div>
           </div>
         )}
@@ -532,6 +578,7 @@ function BillingTab({ token, API }) {
 }
 
 function ProspectorTab({ token, API }) {
+  const T = useT()
   const [prompt, setPrompt] = useState('')
   const [location, setLocation] = useState('Madrid')
   const [maxResults, setMaxResults] = useState(50)
@@ -549,7 +596,7 @@ function ProspectorTab({ token, API }) {
   const [showMap, setShowMap] = useState(false)
   const [mapLoaded, setMapLoaded] = useState(false)
 
-  const NAVY = '#0B1426', GREEN = '#16a34a', AMBER = '#d97706', RED = '#dc2626', BLUE = '#2563eb', PURPLE = '#7c3aed', CYAN = '#00B4D8'
+  const NAVY = '#0B1426', GREEN = '#059669', AMBER = '#d97706', RED = '#dc2626', BLUE = '#2563eb', PURPLE = '#7c3aed', CYAN = '#00B4D8'
   const h = () => ({ 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' })
 
   useEffect(() => {
@@ -660,7 +707,7 @@ function ProspectorTab({ token, API }) {
 
       {/* Stats */}
       {stats && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: '10px', marginBottom: '20px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px,1fr))', gap: '10px', marginBottom: '20px' }}>
           {[
             { label: 'Búsquedas', value: stats.total_searches, color: NAVY },
             { label: 'Leads totales', value: stats.total_leads, color: PURPLE },
@@ -668,36 +715,36 @@ function ProspectorTab({ token, API }) {
             { label: 'Enviados', value: stats.leads_enviados, color: BLUE },
             { label: 'Score medio', value: `${stats.avg_score}/10`, color: AMBER },
           ].map(k => (
-            <div key={k.label} style={{ background: 'white', borderRadius: '14px', padding: '14px 16px', border: '0.5px solid rgba(0,0,0,0.06)' }}>
-              <div style={{ fontSize: '10px', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>{k.label}</div>
-              <div style={{ fontSize: '22px', fontWeight: '800', color: k.color }}>{k.value}</div>
+            <div key={k.label} style={{ background: T.card, borderRadius: '14px', padding: '14px 16px', border: `0.5px solid ${T.hairline}` }}>
+              <div style={{ fontSize: '10px', color: T.text4, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>{k.label}</div>
+              <div style={{ fontSize: '22px', fontWeight: '800', color: k.color === NAVY ? T.text : k.color }}>{k.value}</div>
             </div>
           ))}
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '340px 1fr', gap: '16px' }}>
+      <div className="adm-row" style={{ display: 'grid', gridTemplateColumns: '340px 1fr', gap: '16px' }}>
 
         {/* Left panel — Search + History */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
 
           {/* Search form */}
-          <div style={{ background: 'white', borderRadius: '16px', border: '0.5px solid rgba(0,0,0,0.06)', padding: '20px' }}>
-            <div style={{ fontSize: '13px', fontWeight: '800', color: NAVY, marginBottom: '14px' }}>🎯 Nueva búsqueda</div>
+          <div style={{ background: T.card, borderRadius: '16px', border: `0.5px solid ${T.hairline}`, padding: '20px' }}>
+            <div style={{ fontSize: '13px', fontWeight: '800', color: T.text, marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}><Ico.target size={15} />Nueva búsqueda</div>
 
             <div style={{ marginBottom: '10px' }}>
-              <label style={{ fontSize: '11px', fontWeight: '700', color: '#374151', display: 'block', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Qué buscar</label>
-              <input value={prompt} onChange={e => setPrompt(e.target.value)} placeholder='Ej: "restaurantes", "peluquerías", "gimnasios"' style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '0.5px solid rgba(0,0,0,0.06)', fontSize: '13px', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }} onKeyDown={e => e.key === 'Enter' && startSearch()} />
+              <label style={{ fontSize: '11px', fontWeight: '700', color: T.text2, display: 'block', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Qué buscar</label>
+              <input value={prompt} onChange={e => setPrompt(e.target.value)} placeholder='Ej: "restaurantes", "peluquerías", "gimnasios"' style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: `0.5px solid ${T.hairline}`, fontSize: '13px', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', background: T.card, color: T.text }} onKeyDown={e => e.key === 'Enter' && startSearch()} />
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '12px' }}>
               <div>
-                <label style={{ fontSize: '11px', fontWeight: '700', color: '#374151', display: 'block', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Ciudad</label>
-                <input value={location} onChange={e => setLocation(e.target.value)} style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '0.5px solid rgba(0,0,0,0.06)', fontSize: '12px', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }} />
+                <label style={{ fontSize: '11px', fontWeight: '700', color: T.text2, display: 'block', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Ciudad</label>
+                <input value={location} onChange={e => setLocation(e.target.value)} style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: `0.5px solid ${T.hairline}`, fontSize: '12px', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', background: T.card, color: T.text }} />
               </div>
               <div>
-                <label style={{ fontSize: '11px', fontWeight: '700', color: '#374151', display: 'block', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Max leads</label>
-                <select value={maxResults} onChange={e => setMaxResults(Number(e.target.value))} style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '0.5px solid rgba(0,0,0,0.06)', fontSize: '12px', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}>
+                <label style={{ fontSize: '11px', fontWeight: '700', color: T.text2, display: 'block', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Max leads</label>
+                <select value={maxResults} onChange={e => setMaxResults(Number(e.target.value))} style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: `0.5px solid ${T.hairline}`, fontSize: '12px', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', background: T.card, color: T.text }}>
                   <option value={20}>20 leads</option>
                   <option value={50}>50 leads</option>
                   <option value={100}>100 leads</option>
@@ -707,30 +754,30 @@ function ProspectorTab({ token, API }) {
               </div>
             </div>
 
-            <button onClick={startSearch} disabled={searching || !prompt.trim()} style={{ width: '100%', padding: '11px', borderRadius: '9px', border: 'none', background: searching ? '#e5e9f0' : NAVY, color: searching ? '#9ca3af' : 'white', fontWeight: '700', fontSize: '13px', cursor: searching ? 'default' : 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-              {searching ? '⟳ Buscando...' : '🚀 Iniciar búsqueda'}
+            <button onClick={startSearch} disabled={searching || !prompt.trim()} style={{ width: '100%', padding: '11px', borderRadius: '9px', border: 'none', background: searching ? T.soft : NAVY, color: searching ? T.text4 : 'white', fontWeight: '700', fontSize: '13px', cursor: searching ? 'default' : 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+              {searching ? <><Ico.refresh size={15} /> Buscando...</> : <><Ico.send size={15} /> Iniciar búsqueda</>}
             </button>
 
             {msg && (
-              <div style={{ marginTop: '10px', fontSize: '12px', fontWeight: '600', color: msg.type === 'ok' ? GREEN : RED, background: msg.type === 'ok' ? '#f0fdf4' : '#fef2f2', padding: '8px 12px', borderRadius: '8px', border: `1px solid ${msg.type === 'ok' ? '#bbf7d0' : '#fecaca'}` }}>
+              <div style={{ marginTop: '10px', fontSize: '12px', fontWeight: '600', color: msg.type === 'ok' ? GREEN : RED, background: msg.type === 'ok' ? T.greenSoft : T.redSoft, padding: '8px 12px', borderRadius: '8px', border: `1px solid ${msg.type === 'ok' ? T.greenSoft : T.redSoft}` }}>
                 {msg.text}
               </div>
             )}
           </div>
 
           {/* Search history */}
-          <div style={{ background: 'white', borderRadius: '16px', border: '0.5px solid rgba(0,0,0,0.06)', padding: '16px' }}>
-            <div style={{ fontSize: '12px', fontWeight: '700', color: NAVY, marginBottom: '10px' }}>Historial de búsquedas</div>
+          <div style={{ background: T.card, borderRadius: '16px', border: `0.5px solid ${T.hairline}`, padding: '16px' }}>
+            <div style={{ fontSize: '12px', fontWeight: '700', color: T.text, marginBottom: '10px' }}>Historial de búsquedas</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '400px', overflowY: 'auto' }}>
-              {searches.length === 0 && <div style={{ fontSize: '12px', color: '#9ca3af', textAlign: 'center', padding: '20px' }}>Sin búsquedas todavía</div>}
+              {searches.length === 0 && <div style={{ fontSize: '12px', color: T.text4, textAlign: 'center', padding: '20px' }}>Sin búsquedas todavía</div>}
               {searches.map(s => (
-                <div key={s.id} onClick={() => s.status === 'done' && loadLeads(s.id)} style={{ padding: '10px 12px', borderRadius: '8px', border: `1.5px solid ${selectedSearch === s.id ? NAVY : '#e5e9f0'}`, background: selectedSearch === s.id ? '#f8faff' : 'white', cursor: s.status === 'done' ? 'pointer' : 'default', transition: 'all 0.15s' }}>
+                <div key={s.id} onClick={() => s.status === 'done' && loadLeads(s.id)} style={{ padding: '10px 12px', borderRadius: '8px', border: `1.5px solid ${selectedSearch === s.id ? NAVY : T.hairline}`, background: selectedSearch === s.id ? T.soft : T.card, cursor: s.status === 'done' ? 'pointer' : 'default', transition: 'all 0.15s' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3px' }}>
-                    <span style={{ fontSize: '12px', fontWeight: '600', color: NAVY }}>"{s.prompt}"</span>
-                    <span style={{ fontSize: '10px', fontWeight: '700', color: s.status === 'done' ? GREEN : s.status === 'error' ? RED : AMBER, background: s.status === 'done' ? '#f0fdf4' : s.status === 'error' ? '#fef2f2' : '#fffbeb', padding: '1px 7px', borderRadius: '10px' }}>{s.status}</span>
+                    <span style={{ fontSize: '12px', fontWeight: '600', color: T.text }}>"{s.prompt}"</span>
+                    <span style={{ fontSize: '10px', fontWeight: '700', color: s.status === 'done' ? GREEN : s.status === 'error' ? RED : AMBER, background: s.status === 'done' ? T.greenSoft : s.status === 'error' ? T.redSoft : T.amberSoft, padding: '1px 7px', borderRadius: '10px' }}>{s.status}</span>
                   </div>
-                  <div style={{ fontSize: '11px', color: '#6b7280' }}>{s.location} · {s.total_leads} leads · {s.leads_contactar} para contactar</div>
-                  <div style={{ fontSize: '10px', color: '#9ca3af', marginTop: '2px' }}>{s.created_at?.substring(0,16).replace('T',' ')}</div>
+                  <div style={{ fontSize: '11px', color: T.text3 }}>{s.location} · {s.total_leads} leads · {s.leads_contactar} para contactar</div>
+                  <div style={{ fontSize: '10px', color: T.text4, marginTop: '2px' }}>{s.created_at?.substring(0,16).replace('T',' ')}</div>
                 </div>
               ))}
             </div>
@@ -738,30 +785,30 @@ function ProspectorTab({ token, API }) {
         </div>
 
         {/* Right panel — Leads */}
-        <div style={{ background: 'white', borderRadius: '16px', border: '0.5px solid rgba(0,0,0,0.06)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ background: T.card, borderRadius: '16px', border: `0.5px solid ${T.hairline}`, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
           {!selectedSearch ? (
-            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '12px', padding: '60px', color: '#9ca3af' }}>
-              <div style={{ fontSize: '40px', opacity: 0.2 }}>🎯</div>
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '12px', padding: '60px', color: T.text4 }}>
+              <div style={{ opacity: 0.4, color: T.text3 }}><Ico.target size={40} /></div>
               <div style={{ fontSize: '14px' }}>Selecciona una búsqueda del historial para ver los leads</div>
             </div>
           ) : (
             <>
               {/* Leads toolbar */}
-              <div style={{ padding: '14px 16px', borderBottom: '1px solid #e5e9f0', display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-                <span style={{ fontSize: '13px', fontWeight: '700', color: NAVY }}>Leads #{selectedSearch}</span>
-                <button onClick={() => setShowMap(m => !m)} style={{ padding: '5px 12px', borderRadius: '7px', border: '0.5px solid rgba(0,0,0,0.06)', background: showMap ? NAVY : 'white', color: showMap ? 'white' : '#374151', fontSize: '11px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit' }}>
-                  🗺️ {showMap ? 'Ocultar mapa' : 'Ver mapa'}
+              <div style={{ padding: '14px 16px', borderBottom: `1px solid ${T.hairline}`, display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '13px', fontWeight: '700', color: T.text }}>Leads #{selectedSearch}</span>
+                <button onClick={() => setShowMap(m => !m)} aria-label={showMap ? 'Ocultar mapa' : 'Ver mapa'} style={{ padding: '5px 12px', borderRadius: '7px', border: `0.5px solid ${T.hairline}`, background: showMap ? NAVY : T.card, color: showMap ? 'white' : T.text2, fontSize: '11px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <Ico.map size={13} /> {showMap ? 'Ocultar mapa' : 'Ver mapa'}
                 </button>
                 <div style={{ display: 'flex', gap: '4px' }}>
                   {['all','pendiente','aprobado','enviado','descartado'].map(f => (
-                    <button key={f} onClick={() => setFilterEstado(f)} style={{ padding: '4px 10px', borderRadius: '6px', border: 'none', background: filterEstado === f ? NAVY : '#f1f5f9', color: filterEstado === f ? 'white' : '#6b7280', fontSize: '11px', fontWeight: filterEstado === f ? '700' : '400', cursor: 'pointer', fontFamily: 'inherit', textTransform: 'capitalize' }}>
+                    <button key={f} onClick={() => setFilterEstado(f)} style={{ padding: '4px 10px', borderRadius: '6px', border: 'none', background: filterEstado === f ? NAVY : T.soft, color: filterEstado === f ? 'white' : T.text3, fontSize: '11px', fontWeight: filterEstado === f ? '700' : '400', cursor: 'pointer', fontFamily: 'inherit', textTransform: 'capitalize' }}>
                       {f === 'all' ? 'Todos' : f}
                     </button>
                   ))}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginLeft: 'auto' }}>
-                  <span style={{ fontSize: '11px', color: '#6b7280' }}>Score min:</span>
-                  <select value={minScore} onChange={e => { setMinScore(Number(e.target.value)); loadLeads(selectedSearch) }} style={{ padding: '4px 8px', borderRadius: '6px', border: '0.5px solid rgba(0,0,0,0.06)', fontSize: '11px', fontFamily: 'inherit' }}>
+                  <span style={{ fontSize: '11px', color: T.text3 }}>Score min:</span>
+                  <select value={minScore} onChange={e => { setMinScore(Number(e.target.value)); loadLeads(selectedSearch) }} style={{ padding: '4px 8px', borderRadius: '6px', border: `0.5px solid ${T.hairline}`, fontSize: '11px', fontFamily: 'inherit', background: T.card, color: T.text }}>
                     {[0,5,6,7,8,9].map(s => <option key={s} value={s}>{s}+</option>)}
                   </select>
                 </div>
@@ -771,12 +818,12 @@ function ProspectorTab({ token, API }) {
               {showMap && (() => {
                 const leadsWithCoords = filteredLeads.filter(l => l.lat && l.lng)
                 if (leadsWithCoords.length === 0) return (
-                  <div style={{ padding: '20px', textAlign: 'center', color: '#9ca3af', fontSize: '12px', background: '#f8fafc', borderBottom: '1px solid #e5e9f0' }}>
+                  <div style={{ padding: '20px', textAlign: 'center', color: T.text4, fontSize: '12px', background: T.soft, borderBottom: `1px solid ${T.hairline}` }}>
                     Ningún lead tiene coordenadas disponibles
                   </div>
                 )
                 return (
-                  <div style={{ borderBottom: '1px solid #e5e9f0' }}>
+                  <div style={{ borderBottom: `1px solid ${T.hairline}` }}>
                     <iframe
                       key={selectedSearch + filterEstado}
                       style={{ width: '100%', height: '320px', border: 'none' }}
@@ -794,9 +841,9 @@ function ProspectorTab({ token, API }) {
                           })))};
                           const map = L.map('map');
                           L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap'}).addTo(map);
-                          const colors = {'pendiente':'#6b7280','aprobado':'#16a34a','enviado':'#2563eb','descartado':'#dc2626'};
+                          const colors = {'pendiente':'#6b7280','aprobado':'#059669','enviado':'#2563eb','descartado':'#dc2626'};
                           leads.forEach(l => {
-                            const color = l.score >= 8 ? '#16a34a' : l.score >= 6 ? '#d97706' : '#dc2626';
+                            const color = l.score >= 8 ? '#059669' : l.score >= 6 ? '#d97706' : '#dc2626';
                             const marker = L.circleMarker([l.lat, l.lng], {radius:8, fillColor:color, color:'white', weight:2, fillOpacity:0.9}).addTo(map);
                             marker.bindPopup('<b>'+l.nombre+'</b><br/>Score: '+l.score+'/10<br/>'+l.ciudad+(l.rating?'<br/>⭐ '+l.rating:'')+(l.maps_url?'<br/><a href="'+l.maps_url+'" target="_blank">Ver en Maps</a>':''));
                           });
@@ -807,10 +854,10 @@ function ProspectorTab({ token, API }) {
                         </script>
                       </body></html>`}
                     />
-                    <div style={{ padding: '8px 16px', background: '#f8fafc', fontSize: '11px', color: '#6b7280', display: 'flex', gap: '16px' }}>
-                      <span>🟢 Score 8-10</span>
-                      <span>🟡 Score 6-7</span>
-                      <span>🔴 Score 0-5</span>
+                    <div style={{ padding: '8px 16px', background: T.soft, fontSize: '11px', color: T.text3, display: 'flex', gap: '16px', alignItems: 'center' }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: GREEN }} /> Score 8-10</span>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: AMBER }} /> Score 6-7</span>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: RED }} /> Score 0-5</span>
                       <span style={{ marginLeft: 'auto' }}>{leadsWithCoords.length} leads en el mapa · {filteredLeads.length - leadsWithCoords.length} sin coordenadas</span>
                     </div>
                   </div>
@@ -820,39 +867,39 @@ function ProspectorTab({ token, API }) {
               {/* Leads list */}
               <div style={{ flex: 1, overflowY: 'auto', maxHeight: '680px' }}>
                 {leadsLoading ? (
-                  <div style={{ padding: '40px', textAlign: 'center', color: '#9ca3af' }}>Cargando leads...</div>
+                  <div style={{ padding: '40px', textAlign: 'center', color: T.text4 }}>Cargando leads...</div>
                 ) : filteredLeads.length === 0 ? (
-                  <div style={{ padding: '40px', textAlign: 'center', color: '#9ca3af' }}>No hay leads con estos filtros</div>
+                  <div style={{ padding: '40px', textAlign: 'center', color: T.text4 }}>No hay leads con estos filtros</div>
                 ) : filteredLeads.map(lead => (
-                  <div key={lead.id} style={{ padding: '14px 16px', borderBottom: '1px solid #f0f2f7' }}>
+                  <div key={lead.id} style={{ padding: '14px 16px', borderBottom: `1px solid ${T.hairline}` }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
                       <div style={{ flex: 1 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '3px', flexWrap: 'wrap' }}>
-                          <span style={{ fontSize: '13px', fontWeight: '700', color: NAVY }}>{lead.nombre}</span>
+                          <span style={{ fontSize: '13px', fontWeight: '700', color: T.text }}>{lead.nombre}</span>
                           <span style={{ fontSize: '11px', fontWeight: '800', color: scoreColor(lead.score), background: scoreColor(lead.score)+'18', padding: '1px 8px', borderRadius: '20px' }}>{lead.score}/10</span>
-                          <span style={{ fontSize: '10px', color: '#6b7280', background: '#f1f5f9', padding: '1px 7px', borderRadius: '10px' }}>{lead.source}</span>
+                          <span style={{ fontSize: '10px', color: T.text3, background: T.soft, padding: '1px 7px', borderRadius: '10px' }}>{lead.source}</span>
                           <span style={{ fontSize: '10px', fontWeight: '600', color: estadoColor(lead.estado), background: estadoBg(lead.estado), padding: '1px 7px', borderRadius: '10px' }}>{lead.estado}</span>
                         </div>
-                        <div style={{ fontSize: '11px', color: '#6b7280' }}>
-                          {lead.ciudad && `📍 ${lead.ciudad}`}
-                          {lead.rating > 0 && ` · ⭐ ${lead.rating} (${lead.reviews} reseñas)`}
-                          {lead.telefono && ` · 📞 ${lead.telefono}`}
-                          {lead.website && ` · 🌐 web`}
-                          {lead.instagram && ` · 📸 ig`}
+                        <div style={{ fontSize: '11px', color: T.text3, display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
+                          {lead.ciudad && <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}><Ico.pin size={12} /> {lead.ciudad}</span>}
+                          {lead.rating > 0 && <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}><Ico.star size={12} /> {lead.rating} ({lead.reviews} reseñas)</span>}
+                          {lead.telefono && <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}><Ico.phone size={12} /> {lead.telefono}</span>}
+                          {lead.website && <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}><Ico.globe size={12} /> web</span>}
+                          {lead.instagram && <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}><Ico.camera size={12} /> ig</span>}
                         </div>
-                        {lead.pain_point && <div style={{ fontSize: '11px', color: AMBER, marginTop: '3px' }}>💡 {lead.pain_point}</div>}
-                        {lead.razon_score && <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px', fontStyle: 'italic' }}>{lead.razon_score}</div>}
+                        {lead.pain_point && <div style={{ fontSize: '11px', color: AMBER, marginTop: '3px', display: 'flex', alignItems: 'center', gap: '4px' }}><Ico.bulb size={12} /> {lead.pain_point}</div>}
+                        {lead.razon_score && <div style={{ fontSize: '11px', color: T.text3, marginTop: '2px', fontStyle: 'italic' }}>{lead.razon_score}</div>}
                       </div>
                     </div>
 
                     {/* Mensaje */}
                     {lead.mensaje_generado && (
-                      <div style={{ background: '#f8faff', borderRadius: '8px', padding: '10px 12px', marginBottom: '8px', border: '0.5px solid rgba(0,0,0,0.06)' }}>
+                      <div style={{ background: T.soft, borderRadius: '8px', padding: '10px 12px', marginBottom: '8px', border: `0.5px solid ${T.hairline}` }}>
                         <div style={{ fontSize: '10px', fontWeight: '700', color: BLUE, marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Mensaje — {lead.canal_recomendado}</div>
                         {editingMsg === lead.id ? (
-                          <textarea defaultValue={lead.mensaje_generado} id={`msg-${lead.id}`} rows={4} style={{ width: '100%', fontSize: '11px', fontFamily: 'inherit', lineHeight: '1.6', border: '0.5px solid rgba(0,0,0,0.06)', borderRadius: '6px', padding: '8px', resize: 'vertical', outline: 'none', boxSizing: 'border-box' }} />
+                          <textarea defaultValue={lead.mensaje_generado} id={`msg-${lead.id}`} rows={4} style={{ width: '100%', fontSize: '11px', fontFamily: 'inherit', lineHeight: '1.6', border: `0.5px solid ${T.hairline}`, borderRadius: '6px', padding: '8px', resize: 'vertical', outline: 'none', boxSizing: 'border-box', background: T.card, color: T.text }} />
                         ) : (
-                          <div style={{ fontSize: '11px', color: '#374151', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>{lead.mensaje_generado}</div>
+                          <div style={{ fontSize: '11px', color: T.text2, lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>{lead.mensaje_generado}</div>
                         )}
                       </div>
                     )}
@@ -860,27 +907,27 @@ function ProspectorTab({ token, API }) {
                     {/* Actions */}
                     <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                       {lead.estado === 'pendiente' && (
-                        <button onClick={() => updateLead(lead.id, 'aprobado', null)} style={{ padding: '5px 12px', borderRadius: '7px', border: 'none', background: '#f0fdf4', color: GREEN, fontSize: '11px', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit' }}>✅ Aprobar</button>
+                        <button onClick={() => updateLead(lead.id, 'aprobado', null)} style={{ padding: '5px 12px', borderRadius: '7px', border: 'none', background: T.greenSoft, color: GREEN, fontSize: '11px', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: '5px' }}><Ico.check size={13} /> Aprobar</button>
                       )}
                       {lead.estado === 'aprobado' && (
-                        <button onClick={() => updateLead(lead.id, 'enviado', null)} style={{ padding: '5px 12px', borderRadius: '7px', border: 'none', background: '#eff6ff', color: BLUE, fontSize: '11px', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit' }}>📤 Marcar enviado</button>
+                        <button onClick={() => updateLead(lead.id, 'enviado', null)} style={{ padding: '5px 12px', borderRadius: '7px', border: 'none', background: T.soft, color: BLUE, fontSize: '11px', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: '5px' }}><Ico.send size={13} /> Marcar enviado</button>
                       )}
                       {lead.estado !== 'descartado' && (
-                        <button onClick={() => updateLead(lead.id, 'descartado', null)} style={{ padding: '5px 12px', borderRadius: '7px', border: 'none', background: '#fef2f2', color: RED, fontSize: '11px', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit' }}>🗑 Descartar</button>
+                        <button onClick={() => updateLead(lead.id, 'descartado', null)} style={{ padding: '5px 12px', borderRadius: '7px', border: 'none', background: T.redSoft, color: RED, fontSize: '11px', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: '5px' }}><Ico.trash size={13} /> Descartar</button>
                       )}
                       {editingMsg === lead.id ? (
                         <>
-                          <button onClick={() => { const el = document.getElementById(`msg-${lead.id}`); updateLead(lead.id, lead.estado, el.value); setEditingMsg(null) }} style={{ padding: '5px 12px', borderRadius: '7px', border: 'none', background: NAVY, color: 'white', fontSize: '11px', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit' }}>💾 Guardar</button>
-                          <button onClick={() => setEditingMsg(null)} style={{ padding: '5px 12px', borderRadius: '7px', border: '0.5px solid rgba(0,0,0,0.06)', background: 'white', color: '#6b7280', fontSize: '11px', cursor: 'pointer', fontFamily: 'inherit' }}>Cancelar</button>
+                          <button onClick={() => { const el = document.getElementById(`msg-${lead.id}`); updateLead(lead.id, lead.estado, el.value); setEditingMsg(null) }} style={{ padding: '5px 12px', borderRadius: '7px', border: 'none', background: NAVY, color: 'white', fontSize: '11px', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: '5px' }}><Ico.save size={13} /> Guardar</button>
+                          <button onClick={() => setEditingMsg(null)} style={{ padding: '5px 12px', borderRadius: '7px', border: `0.5px solid ${T.hairline}`, background: T.card, color: T.text3, fontSize: '11px', cursor: 'pointer', fontFamily: 'inherit' }}>Cancelar</button>
                         </>
                       ) : (
                         <>
-                          <button onClick={() => setEditingMsg(lead.id)} style={{ padding: '5px 12px', borderRadius: '7px', border: '0.5px solid rgba(0,0,0,0.06)', background: 'white', color: '#374151', fontSize: '11px', cursor: 'pointer', fontFamily: 'inherit' }}>✏️ Editar mensaje</button>
-                          <button onClick={() => regenerateMessage(lead.id)} style={{ padding: '5px 12px', borderRadius: '7px', border: '0.5px solid rgba(0,0,0,0.06)', background: 'white', color: PURPLE, fontSize: '11px', cursor: 'pointer', fontFamily: 'inherit' }}>🔄 Regenerar</button>
+                          <button onClick={() => setEditingMsg(lead.id)} style={{ padding: '5px 12px', borderRadius: '7px', border: `0.5px solid ${T.hairline}`, background: T.card, color: T.text2, fontSize: '11px', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: '5px' }}><Ico.edit size={13} /> Editar mensaje</button>
+                          <button onClick={() => regenerateMessage(lead.id)} style={{ padding: '5px 12px', borderRadius: '7px', border: `0.5px solid ${T.hairline}`, background: T.card, color: PURPLE, fontSize: '11px', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: '5px' }}><Ico.refresh size={13} /> Regenerar</button>
                         </>
                       )}
-                      {lead.website && <a href={lead.website} target="_blank" rel="noreferrer" style={{ padding: '5px 12px', borderRadius: '7px', border: '0.5px solid rgba(0,0,0,0.06)', background: 'white', color: '#374151', fontSize: '11px', textDecoration: 'none' }}>🌐 Web</a>}
-                      {lead.instagram && <a href={lead.instagram} target="_blank" rel="noreferrer" style={{ padding: '5px 12px', borderRadius: '7px', border: '0.5px solid rgba(0,0,0,0.06)', background: 'white', color: '#374151', fontSize: '11px', textDecoration: 'none' }}>📸 IG</a>}
+                      {lead.website && <a href={lead.website} target="_blank" rel="noreferrer" aria-label="Abrir sitio web del lead" style={{ padding: '5px 12px', borderRadius: '7px', border: `0.5px solid ${T.hairline}`, background: T.card, color: T.text2, fontSize: '11px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '5px' }}><Ico.globe size={13} /> Web</a>}
+                      {lead.instagram && <a href={lead.instagram} target="_blank" rel="noreferrer" aria-label="Abrir Instagram del lead" style={{ padding: '5px 12px', borderRadius: '7px', border: `0.5px solid ${T.hairline}`, background: T.card, color: T.text2, fontSize: '11px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '5px' }}><Ico.camera size={13} /> IG</a>}
                     </div>
                   </div>
                 ))}
@@ -894,11 +941,12 @@ function ProspectorTab({ token, API }) {
 }
 
 function AIInsights({ token }) {
+  const T = useT()
   const [analysis, setAnalysis] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const API = 'http://127.0.0.1:8000'
-  const NAVY = '#0B1426', GREEN = '#16a34a', AMBER = '#d97706', RED = '#dc2626', BLUE = '#2563eb'
+  const NAVY = '#0B1426', GREEN = '#059669', AMBER = '#d97706', RED = '#dc2626', BLUE = '#2563eb'
 
   async function analyze() {
     setLoading(true)
@@ -923,33 +971,33 @@ function AIInsights({ token }) {
   const urgColor = v => v === 'alta' ? RED : v === 'media' ? AMBER : GREEN
 
   return (
-    <div style={{ background: 'white', borderRadius: '16px', border: '0.5px solid rgba(0,0,0,0.06)', padding: '20px', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+    <div style={{ background: T.card, borderRadius: '16px', border: `0.5px solid ${T.hairline}`, padding: '20px', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
         <div>
-          <div style={{ fontSize: '14px', fontWeight: '800', color: NAVY }}>🧠 Análisis IA de la plataforma</div>
-          <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '2px' }}>Claude analiza los datos reales y detecta oportunidades</div>
+          <div style={{ fontSize: '14px', fontWeight: '800', color: T.text, display: 'flex', alignItems: 'center', gap: '7px' }}><Ico.brain size={17} />Análisis IA de la plataforma</div>
+          <div style={{ fontSize: '12px', color: T.text4, marginTop: '2px' }}>Claude analiza los datos reales y detecta oportunidades</div>
         </div>
-        <button onClick={analyze} disabled={loading} style={{ padding: '9px 18px', borderRadius: '10px', border: 'none', background: loading ? '#e5e9f0' : NAVY, color: loading ? '#9ca3af' : 'white', fontWeight: '700', fontSize: '13px', cursor: loading ? 'default' : 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: '6px' }}>
-          {loading ? '⟳ Analizando...' : '✨ Analizar ahora'}
+        <button onClick={analyze} disabled={loading} style={{ padding: '9px 18px', borderRadius: '10px', border: 'none', background: loading ? T.soft : NAVY, color: loading ? T.text4 : 'white', fontWeight: '700', fontSize: '13px', cursor: loading ? 'default' : 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          {loading ? <><Ico.refresh size={15} /> Analizando...</> : <><Ico.sparkles size={15} /> Analizar ahora</>}
         </button>
       </div>
 
       {!analysis && !loading && !error && (
-        <div style={{ textAlign: 'center', padding: '32px', color: '#9ca3af', background: '#f8fafc', borderRadius: '10px', border: '1px dashed #e5e9f0' }}>
-          <div style={{ fontSize: '28px', marginBottom: '8px' }}>🤖</div>
+        <div style={{ textAlign: 'center', padding: '32px', color: T.text4, background: T.soft, borderRadius: '10px', border: `1px dashed ${T.hairline}` }}>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px', color: T.text3 }}><Ico.robot size={28} /></div>
           <div style={{ fontSize: '13px' }}>Pulsa "Analizar ahora" para que Claude analice los datos de Nexum y detecte oportunidades de negocio.</div>
         </div>
       )}
 
       {loading && (
-        <div style={{ textAlign: 'center', padding: '32px', color: '#9ca3af' }}>
+        <div style={{ textAlign: 'center', padding: '32px', color: T.text4 }}>
           <div style={{ fontSize: '13px', marginBottom: '6px' }}>Claude está analizando los datos de la plataforma...</div>
           <div style={{ fontSize: '11px' }}>Esto puede tardar unos segundos</div>
         </div>
       )}
 
       {error && (
-        <div style={{ color: RED, fontSize: '13px', padding: '12px', background: '#fef2f2', borderRadius: '8px' }}>❌ {error}</div>
+        <div style={{ color: RED, fontSize: '13px', padding: '12px', background: T.redSoft, borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}><Ico.warning size={15} /> {error}</div>
       )}
 
       {analysis && (
@@ -959,9 +1007,9 @@ function AIInsights({ token }) {
             <div style={{ fontSize: '13px', color: '#1e3a5f', lineHeight: '1.6' }}>{analysis.resumen}</div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '16px' }}>
+          <div className="adm-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '16px' }}>
             <div>
-              <div style={{ fontSize: '10px', fontWeight: '700', color: GREEN, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px' }}>✅ Oportunidades</div>
+              <div style={{ fontSize: '10px', fontWeight: '700', color: GREEN, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '5px' }}><Ico.check size={13} /> Oportunidades</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {(analysis.oportunidades || []).map((o, i) => (
                   <div key={i} style={{ background: '#f0fdf4', borderRadius: '8px', padding: '12px', border: '1px solid #bbf7d0' }}>
@@ -977,7 +1025,7 @@ function AIInsights({ token }) {
             </div>
 
             <div>
-              <div style={{ fontSize: '10px', fontWeight: '700', color: RED, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px' }}>⚠️ Riesgos</div>
+              <div style={{ fontSize: '10px', fontWeight: '700', color: RED, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '5px' }}><Ico.warning size={13} /> Riesgos</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {(analysis.riesgos || []).map((r, i) => (
                   <div key={i} style={{ background: '#fef2f2', borderRadius: '8px', padding: '12px', border: '1px solid #fecaca' }}>
@@ -992,9 +1040,9 @@ function AIInsights({ token }) {
             </div>
           </div>
 
-          <div style={{ background: `${NAVY}08`, borderRadius: '10px', padding: '14px 16px', borderLeft: `3px solid ${NAVY}` }}>
-            <div style={{ fontSize: '10px', fontWeight: '700', color: NAVY, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>⭐ Recomendación principal</div>
-            <div style={{ fontSize: '13px', color: NAVY, fontWeight: '600', lineHeight: '1.6' }}>{analysis.recomendacion_principal}</div>
+          <div style={{ background: T.soft, borderRadius: '10px', padding: '14px 16px', borderLeft: `3px solid ${T.blue}` }}>
+            <div style={{ fontSize: '10px', fontWeight: '700', color: T.text, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '5px' }}><Ico.star size={13} /> Recomendación principal</div>
+            <div style={{ fontSize: '13px', color: T.text, fontWeight: '600', lineHeight: '1.6' }}>{analysis.recomendacion_principal}</div>
           </div>
         </div>
       )}
@@ -1003,6 +1051,8 @@ function AIInsights({ token }) {
 }
 
 export default function AdminPage() {
+  const T = useT()
+  const { theme } = useTheme()
   const router = useRouter()
   const [token, setToken] = useState(null)
   const [tab, setTab] = useState('overview')
@@ -1168,21 +1218,9 @@ export default function AdminPage() {
     try { await fetch(`${API}/api/admin/memory/${companyId}/auto-update`, { method: 'POST', headers: h() }) } catch {}
   }
 
-  const card = { background: 'white', borderRadius: '16px', border: '0.5px solid rgba(0,0,0,0.06)' }
-  const input = { width: '100%', padding: '9px 12px', borderRadius: '9px', border: '1.5px solid #e5e9f0', fontSize: '13px', fontFamily: "'DM Sans', system-ui", outline: 'none', color: NAVY }
+  const card = { background: T.card, borderRadius: '16px', border: `0.5px solid ${T.hairline}` }
+  const input = { width: '100%', padding: '9px 12px', borderRadius: '9px', border: `1.5px solid ${T.hairline}`, fontSize: '13px', fontFamily: "'DM Sans', system-ui", outline: 'none', color: T.text, background: T.card }
   const btn = { padding: '9px 18px', borderRadius: '9px', border: 'none', background: NAVY, color: 'white', fontWeight: '700', fontSize: '13px', cursor: 'pointer', fontFamily: "'DM Sans', system-ui" }
-
-  const TABS = [
-    { id: 'overview',   label: '◈ Overview'     },
-    { id: 'companies',  label: '🏢 Empresas'     },
-    { id: 'users',      label: '👤 Usuarios'     },
-    { id: 'snapshots',  label: '📊 Snapshots'    },
-    { id: 'prompts',    label: '🧠 Prompts IA'   },
-    { id: 'memory',     label: '💾 Memoria IA'   },
-    { id: 'flowchart',  label: '🔀 Flujo datos'  },
-    { id: 'prospector', label: '🎯 Prospector'   },
-    { id: 'billing',    label: '💳 Billing'      },
-  ]
 
   const filteredCompanies = companies.filter(c =>
     !searchQ || c.name?.toLowerCase().includes(searchQ.toLowerCase()) || c.email?.toLowerCase().includes(searchQ.toLowerCase())
@@ -1192,19 +1230,19 @@ export default function AdminPage() {
   )
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: '#f4f6fb', fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+    <div style={{ display: 'flex', minHeight: '100dvh', background: T.bg, fontFamily: "'DM Sans', system-ui, sans-serif" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap');
         @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
         @keyframes spin{to{transform:rotate(360deg)}}
-        *{box-sizing:border-box;} input:focus,select:focus,textarea:focus{border-color:#0B1426!important;outline:none;}
-        ::-webkit-scrollbar{width:5px;} ::-webkit-scrollbar-thumb{background:#d1d5db;border-radius:3px;}
-        tr:hover td{background:#fafafa!important;}
+        *{box-sizing:border-box;} input:focus,select:focus,textarea:focus{border-color:${T.blue}!important;outline:none;}
+        ::-webkit-scrollbar{width:5px;} ::-webkit-scrollbar-thumb{background:${T.hairline};border-radius:3px;}
+        @media (max-width:768px){ .adm-row{grid-template-columns:1fr!important} .adm-3col{grid-template-columns:1fr!important} }
       `}</style>
 
       <AdminSidebar active={`/admin${tab !== 'overview' ? `?tab=${tab}` : ''}`} />
 
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: '100vh', overflow: 'hidden' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: '100dvh', overflow: 'hidden' }}>
 
         {/* CONTENT */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '28px 32px' }}>
@@ -1212,30 +1250,30 @@ export default function AdminPage() {
           {/* ── OVERVIEW ── */}
           {tab === 'overview' && (
             <div style={{ animation: 'fadeUp 0.3s ease' }}>
-              {loading ? <div style={{ textAlign: 'center', padding: '60px', color: '#9ca3af' }}>Cargando...</div> : overview && (
+              {loading ? <div style={{ textAlign: 'center', padding: '60px', color: T.text4 }}>Cargando...</div> : overview && (
                 <>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '14px', marginBottom: '20px' }}>
-                    <StatCard icon="🏢" label="Empresas registradas"  value={overview.total_companies}    color={NAVY}  />
-                    <StatCard icon="👤" label="Usuarios activos"      value={overview.active_users}       color={GREEN} bg="#f0fdf4" />
-                    <StatCard icon="💳" label="Suscripciones activas" value={overview.active_subscriptions} color={BLUE} bg="#eff6ff" />
-                    <StatCard icon="💶" label="MRR estimado"          value={`€${overview.mrr_estimated?.toLocaleString('es-ES')}`} color={GREEN} bg="#f0fdf4" />
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px,1fr))', gap: '14px', marginBottom: '20px' }}>
+                    <StatCard icon={<Ico.building size={20} color={NAVY} />} label="Empresas registradas"  value={overview.total_companies}    color={NAVY}  />
+                    <StatCard icon={<Ico.user size={20} color={GREEN} />} label="Usuarios activos"      value={overview.active_users}       color={GREEN} bg={T.greenSoft} />
+                    <StatCard icon={<Ico.card size={20} color={BLUE} />} label="Suscripciones activas" value={overview.active_subscriptions} color={BLUE} bg={theme === 'dark' ? T.soft : '#eff6ff'} />
+                    <StatCard icon={<Ico.euro size={20} color={GREEN} />} label="MRR estimado"          value={`€${overview.mrr_estimated?.toLocaleString('es-ES')}`} color={GREEN} bg={T.greenSoft} />
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '14px', marginBottom: '24px' }}>
-                    <StatCard icon="🧪" label="En trial"       value={overview.trial_subscriptions} color={AMBER} bg="#fffbeb" />
-                    <StatCard icon="👥" label="Total usuarios" value={overview.total_users}          color={NAVY}  />
-                    <StatCard icon="📈" label="Total empresas" value={overview.total_companies}      color={CYAN}  bg="#ecfeff" />
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px,1fr))', gap: '14px', marginBottom: '24px' }}>
+                    <StatCard icon={<Ico.flask size={20} color={AMBER} />} label="En trial"       value={overview.trial_subscriptions} color={AMBER} bg={T.amberSoft} />
+                    <StatCard icon={<Ico.users size={20} color={NAVY} />} label="Total usuarios" value={overview.total_users}          color={NAVY}  />
+                    <StatCard icon={<Ico.trend size={20} color={CYAN} />} label="Total empresas" value={overview.total_companies}      color={CYAN}  bg={theme === 'dark' ? T.soft : '#ecfeff'} />
                   </div>
 
                   {/* Plans breakdown */}
                   <div style={{ ...card, padding: '20px', marginBottom: '20px' }}>
-                    <div style={{ fontSize: '14px', fontWeight: '700', color: NAVY, marginBottom: '16px' }}>Distribución de planes</div>
+                    <div style={{ fontSize: '14px', fontWeight: '700', color: T.text, marginBottom: '16px' }}>Distribución de planes</div>
                     {Object.keys(overview.subscriptions_by_plan || {}).length === 0 ? (
-                      <div style={{ color: '#9ca3af', fontSize: '13px', padding: '12px 0' }}>Aún no hay suscripciones activas.</div>
+                      <div style={{ color: T.text4, fontSize: '13px', padding: '12px 0' }}>Aún no hay suscripciones activas.</div>
                     ) : (
                       <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
                         {Object.entries(overview.subscriptions_by_plan || {}).map(([plan, count]) => (
-                          <div key={plan} style={{ background: '#f8faff', borderRadius: '10px', padding: '14px 20px', textAlign: 'center', border: '0.5px solid rgba(0,0,0,0.06)', minWidth: '100px' }}>
-                            <div style={{ fontSize: '24px', fontWeight: '800', color: NAVY, marginBottom: '4px' }}>{count}</div>
+                          <div key={plan} style={{ background: T.soft, borderRadius: '10px', padding: '14px 20px', textAlign: 'center', border: `0.5px solid ${T.hairline}`, minWidth: '100px' }}>
+                            <div style={{ fontSize: '24px', fontWeight: '800', color: T.text, marginBottom: '4px' }}>{count}</div>
                             <PlanBadge plan={plan} />
                           </div>
                         ))}
@@ -1255,30 +1293,30 @@ export default function AdminPage() {
             <div style={{ animation: 'fadeUp 0.3s ease' }}>
               <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', alignItems: 'center' }}>
                 <input value={searchQ} onChange={e => setSearchQ(e.target.value)} placeholder="Buscar empresa..." style={{ ...input, maxWidth: '300px' }} />
-                <span style={{ fontSize: '13px', color: '#6b7280' }}>{filteredCompanies.length} empresa{filteredCompanies.length !== 1 ? 's' : ''}</span>
+                <span style={{ fontSize: '13px', color: T.text3 }}>{filteredCompanies.length} empresa{filteredCompanies.length !== 1 ? 's' : ''}</span>
               </div>
 
               {selectedCompany && companyDetail ? (
                 <div>
-                  <button onClick={() => { setSelectedCompany(null); setCompanyDetail(null) }} style={{ ...btn, background: '#f4f6fb', color: NAVY, border: '0.5px solid rgba(0,0,0,0.06)', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}>← Volver</button>
+                  <button onClick={() => { setSelectedCompany(null); setCompanyDetail(null) }} style={{ ...btn, background: T.soft, color: T.text, border: `0.5px solid ${T.hairline}`, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}>← Volver</button>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                  <div className="adm-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
                     <div style={{ ...card, padding: '20px' }}>
-                      <div style={{ fontSize: '15px', fontWeight: '800', color: NAVY, marginBottom: '4px' }}>{companyDetail.company?.name}</div>
-                      <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '16px' }}>{companyDetail.company?.email}</div>
+                      <div style={{ fontSize: '15px', fontWeight: '800', color: T.text, marginBottom: '4px' }}>{companyDetail.company?.name}</div>
+                      <div style={{ fontSize: '12px', color: T.text3, marginBottom: '16px' }}>{companyDetail.company?.email}</div>
                       {[{label:'Contactos',value:companyDetail.stats?.contacts},{label:'Productos',value:companyDetail.stats?.products},{label:'Proyectos',value:companyDetail.stats?.projects}].map(s=>(
-                        <div key={s.label} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #f0f2f7' }}>
-                          <span style={{ fontSize: '13px', color: '#6b7280' }}>{s.label}</span>
-                          <span style={{ fontSize: '13px', fontWeight: '700', color: NAVY }}>{s.value}</span>
+                        <div key={s.label} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: `1px solid ${T.hairline}` }}>
+                          <span style={{ fontSize: '13px', color: T.text3 }}>{s.label}</span>
+                          <span style={{ fontSize: '13px', fontWeight: '700', color: T.text }}>{s.value}</span>
                         </div>
                       ))}
                     </div>
                     <div style={{ ...card, padding: '20px' }}>
-                      <div style={{ fontSize: '13px', fontWeight: '700', color: NAVY, marginBottom: '12px' }}>Historial de snapshots</div>
+                      <div style={{ fontSize: '13px', fontWeight: '700', color: T.text, marginBottom: '12px' }}>Historial de snapshots</div>
                       <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
                         {(companyDetail.snapshots || []).map((s, i) => (
-                          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f8f9fc', fontSize: '12px' }}>
-                            <span style={{ color: '#6b7280' }}>{s.date}</span>
+                          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: `1px solid ${T.hairline}`, fontSize: '12px' }}>
+                            <span style={{ color: T.text3 }}>{s.date}</span>
                             <span style={{ fontWeight: '600', color: GREEN }}>€{s.ingresos?.toLocaleString('es-ES')}</span>
                             <StatusBadge status={s.tendencia === 'creciendo' ? 'active' : s.tendencia === 'bajando' ? 'past_due' : 'trialing'} />
                           </div>
@@ -1289,18 +1327,18 @@ export default function AdminPage() {
 
                   {/* Memory edit */}
                   <div style={{ ...card, padding: '20px' }}>
-                    <div style={{ fontSize: '14px', fontWeight: '700', color: NAVY, marginBottom: '14px' }}>💾 Memoria IA de esta empresa</div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '14px' }}>
+                    <div style={{ fontSize: '14px', fontWeight: '700', color: T.text, marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '7px' }}><Ico.save size={16} />Memoria IA de esta empresa</div>
+                    <div className="adm-3col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '14px' }}>
                       {[{key:'manual_training',label:'Entrenamiento manual'},{key:'business_personality',label:'Personalidad del negocio'},{key:'business_goals',label:'Objetivos'}].map(f=>(
                         <div key={f.key}>
-                          <label style={{ fontSize: '11px', fontWeight: '700', color: '#374151', display: 'block', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{f.label}</label>
+                          <label style={{ fontSize: '11px', fontWeight: '700', color: T.text2, display: 'block', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{f.label}</label>
                           <textarea value={memoryEdit[f.key]} onChange={e => setMemoryEdit(p => ({ ...p, [f.key]: e.target.value }))} rows={5} style={{ ...input, resize: 'vertical' }} />
                         </div>
                       ))}
                     </div>
                     <div style={{ display: 'flex', gap: '10px' }}>
-                      <button onClick={() => saveMemory(selectedCompany)} disabled={savingMemory} style={{ ...btn }}>{savingMemory ? 'Guardando...' : '💾 Guardar memoria'}</button>
-                      <button onClick={() => autoUpdateMemory(selectedCompany)} style={{ ...btn, background: PURPLE }}>🤖 Auto-actualizar con IA</button>
+                      <button onClick={() => saveMemory(selectedCompany)} disabled={savingMemory} style={{ ...btn, display: 'flex', alignItems: 'center', gap: '7px' }}><Ico.save size={15} /> {savingMemory ? 'Guardando...' : 'Guardar memoria'}</button>
+                      <button onClick={() => autoUpdateMemory(selectedCompany)} style={{ ...btn, background: PURPLE, display: 'flex', alignItems: 'center', gap: '7px' }}><Ico.robot size={15} /> Auto-actualizar con IA</button>
                     </div>
                   </div>
                 </div>
@@ -1311,12 +1349,12 @@ export default function AdminPage() {
                       <div key={h} style={{ fontSize: '11px', fontWeight: '700', color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{h}</div>
                     ))}
                   </div>
-                  {loading ? <div style={{ padding: '40px', textAlign: 'center', color: '#9ca3af' }}>Cargando empresas...</div>
+                  {loading ? <div style={{ padding: '40px', textAlign: 'center', color: T.text4 }}>Cargando empresas...</div>
                   : filteredCompanies.map((c, i) => (
-                    <div key={c.id} style={{ padding: '14px 18px', borderBottom: i < filteredCompanies.length - 1 ? '1px solid #f0f2f7' : 'none', display: 'grid', gridTemplateColumns: '1.8fr 0.8fr 0.9fr 0.8fr 0.9fr 0.9fr auto', gap: '12px', alignItems: 'center', background: i % 2 === 0 ? 'white' : '#fafbfc' }}>
+                    <div key={c.id} style={{ padding: '14px 18px', borderBottom: i < filteredCompanies.length - 1 ? `1px solid ${T.hairline}` : 'none', display: 'grid', gridTemplateColumns: '1.8fr 0.8fr 0.9fr 0.8fr 0.9fr 0.9fr auto', gap: '12px', alignItems: 'center', background: i % 2 === 0 ? T.card : T.soft }}>
                       <div>
-                        <div style={{ fontSize: '13px', fontWeight: '700', color: NAVY }}>{c.name}</div>
-                        <div style={{ fontSize: '11px', color: '#9ca3af' }}>{c.email} · {c.users_count} usuario{c.users_count !== 1 ? 's' : ''}</div>
+                        <div style={{ fontSize: '13px', fontWeight: '700', color: T.text }}>{c.name}</div>
+                        <div style={{ fontSize: '11px', color: T.text4 }}>{c.email} · {c.users_count} usuario{c.users_count !== 1 ? 's' : ''}</div>
                       </div>
                       <PlanBadge plan={c.plan} />
                         <button
@@ -1326,8 +1364,8 @@ export default function AdminPage() {
                             padding: '4px 10px', borderRadius: '999px',
                             border: 'none', cursor: 'pointer', fontFamily: 'inherit',
                             fontSize: '10px', fontWeight: '700', letterSpacing: '0.04em',
-                            background: c.vera_plan === 'plus' ? GOLD : '#f4f6fb',
-                            color: c.vera_plan === 'plus' ? '#fff' : '#6b7280',
+                            background: c.vera_plan === 'plus' ? GOLD : T.soft,
+                            color: c.vera_plan === 'plus' ? '#fff' : T.text3,
                             boxShadow: c.vera_plan === 'plus' ? '0 2px 6px rgba(184,134,11,.25)' : 'none',
                             transition: 'all .15s',
                           }}
@@ -1336,11 +1374,11 @@ export default function AdminPage() {
                         </button>
                       <StatusBadge status={c.plan_status} />
                       <span style={{ fontSize: '13px', fontWeight: '700', color: GREEN }}>€{c.monthly_revenue?.toLocaleString('es-ES') || 0}</span>
-                      <span style={{ fontSize: '12px', color: '#6b7280' }}>{c.snapshot ? `${c.snapshot.date?.substring(0,7)} · ${c.snapshot.tendencia}` : '—'}</span>
+                      <span style={{ fontSize: '12px', color: T.text3 }}>{c.snapshot ? `${c.snapshot.date?.substring(0,7)} · ${c.snapshot.tendencia}` : '—'}</span>
                       <div style={{ display: 'flex', gap: '6px' }}>
-                        <button onClick={() => { setSelectedCompany(c.id); loadCompanyDetail(c.id) }} style={{ padding: '5px 10px', borderRadius: '6px', border: '0.5px solid rgba(0,0,0,0.06)', background: 'white', color: NAVY, fontSize: '11px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit' }}>Ver</button>
-                        <button onClick={() => { setPlanModal(c.id); setNewPlan(c.plan || 'pro') }} style={{ padding: '5px 10px', borderRadius: '6px', border: '0.5px solid rgba(0,0,0,0.06)', background: '#eff6ff', color: BLUE, fontSize: '11px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit' }}>Plan</button>
-                        <button onClick={() => generateSnapshot(c.id)} style={{ padding: '5px 10px', borderRadius: '6px', border: '0.5px solid rgba(0,0,0,0.06)', background: '#f5f3ff', color: PURPLE, fontSize: '11px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit' }}>📊</button>
+                        <button onClick={() => { setSelectedCompany(c.id); loadCompanyDetail(c.id) }} style={{ padding: '5px 10px', borderRadius: '6px', border: `0.5px solid ${T.hairline}`, background: T.card, color: T.text, fontSize: '11px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit' }}>Ver</button>
+                        <button onClick={() => { setPlanModal(c.id); setNewPlan(c.plan || 'pro') }} style={{ padding: '5px 10px', borderRadius: '6px', border: `0.5px solid ${T.hairline}`, background: theme === 'dark' ? T.soft : '#eff6ff', color: BLUE, fontSize: '11px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit' }}>Plan</button>
+                        <button onClick={() => generateSnapshot(c.id)} aria-label="Generar snapshot" title="Generar snapshot" style={{ padding: '5px 10px', borderRadius: '6px', border: `0.5px solid ${T.hairline}`, background: theme === 'dark' ? T.soft : '#f5f3ff', color: PURPLE, fontSize: '11px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center' }}><Ico.chart size={14} /></button>
                       </div>
                     </div>
                   ))}
@@ -1350,14 +1388,14 @@ export default function AdminPage() {
               {/* Plan change modal */}
               {planModal && (
                 <div style={{ position: 'fixed', inset: 0, background: 'rgba(11,20,38,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => setPlanModal(null)}>
-                  <div style={{ background: 'white', borderRadius: '16px', padding: '28px', width: '360px', boxShadow: '0 24px 64px rgba(0,0,0,0.2)' }} onClick={e => e.stopPropagation()}>
-                    <div style={{ fontSize: '16px', fontWeight: '800', color: NAVY, marginBottom: '16px' }}>Cambiar plan de empresa</div>
+                  <div style={{ background: T.card, borderRadius: '16px', padding: '28px', width: '360px', boxShadow: '0 24px 64px rgba(0,0,0,0.2)' }} onClick={e => e.stopPropagation()}>
+                    <div style={{ fontSize: '16px', fontWeight: '800', color: T.text, marginBottom: '16px' }}>Cambiar plan de empresa</div>
                     <select value={newPlan} onChange={e => setNewPlan(e.target.value)} style={{ ...input, marginBottom: '16px' }}>
                       {['starter','pro','business','enterprise','trial'].map(p => <option key={p} value={p}>{p}</option>)}
                     </select>
                     <div style={{ display: 'flex', gap: '10px' }}>
                       <button onClick={updatePlan} disabled={saving} style={{ ...btn, flex: 1 }}>{saving ? 'Guardando...' : 'Confirmar cambio'}</button>
-                      <button onClick={() => setPlanModal(null)} style={{ ...btn, background: '#f4f6fb', color: NAVY, border: '0.5px solid rgba(0,0,0,0.06)' }}>Cancelar</button>
+                      <button onClick={() => setPlanModal(null)} style={{ ...btn, background: T.soft, color: T.text, border: `0.5px solid ${T.hairline}` }}>Cancelar</button>
                     </div>
                   </div>
                 </div>
@@ -1370,7 +1408,7 @@ export default function AdminPage() {
             <div style={{ animation: 'fadeUp 0.3s ease' }}>
               <div style={{ marginBottom: '16px', display: 'flex', gap: '12px', alignItems: 'center' }}>
                 <input value={searchQ} onChange={e => setSearchQ(e.target.value)} placeholder="Buscar usuario..." style={{ ...input, maxWidth: '300px' }} />
-                <span style={{ fontSize: '13px', color: '#6b7280' }}>{users.length} usuarios</span>
+                <span style={{ fontSize: '13px', color: T.text3 }}>{users.length} usuarios</span>
               </div>
               <div style={{ ...card, overflow: 'hidden' }}>
                 <div style={{ background: '#0f1729', padding: '12px 18px', borderRadius: '10px 10px 0 0', display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr auto', gap: '12px' }}>
@@ -1378,17 +1416,17 @@ export default function AdminPage() {
                     <div key={h} style={{ fontSize: '11px', fontWeight: '700', color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{h}</div>
                   ))}
                 </div>
-                {loading ? <div style={{ padding: '40px', textAlign: 'center', color: '#9ca3af' }}>Cargando usuarios...</div>
+                {loading ? <div style={{ padding: '40px', textAlign: 'center', color: T.text4 }}>Cargando usuarios...</div>
                 : users.filter(u => !searchQ || u.email?.includes(searchQ) || u.full_name?.includes(searchQ)).map((u, i) => (
-                  <div key={u.id} style={{ padding: '12px 18px', borderBottom: '1px solid #f0f2f7', display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr auto', gap: '12px', alignItems: 'center', background: i % 2 === 0 ? 'white' : '#fafbfc' }}>
+                  <div key={u.id} style={{ padding: '12px 18px', borderBottom: `1px solid ${T.hairline}`, display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr auto', gap: '12px', alignItems: 'center', background: i % 2 === 0 ? T.card : T.soft }}>
                     <div>
-                      <div style={{ fontSize: '13px', fontWeight: '600', color: NAVY }}>{u.full_name || u.email}</div>
-                      <div style={{ fontSize: '11px', color: '#9ca3af' }}>{u.email}</div>
+                      <div style={{ fontSize: '13px', fontWeight: '600', color: T.text }}>{u.full_name || u.email}</div>
+                      <div style={{ fontSize: '11px', color: T.text4 }}>{u.email}</div>
                     </div>
-                    <span style={{ fontSize: '12px', color: '#6b7280' }}>ID: {u.company_id || '—'}</span>
-                    <span style={{ fontSize: '11px', fontWeight: '700', color: u.is_admin ? PURPLE : BLUE, background: u.is_admin ? '#f5f3ff' : '#eff6ff', padding: '2px 8px', borderRadius: '6px' }}>{u.is_admin ? 'Admin' : 'Usuario'}</span>
+                    <span style={{ fontSize: '12px', color: T.text3 }}>ID: {u.company_id || '—'}</span>
+                    <span style={{ fontSize: '11px', fontWeight: '700', color: u.is_admin ? PURPLE : BLUE, background: u.is_admin ? (theme === 'dark' ? T.purpleSoft : '#f5f3ff') : (theme === 'dark' ? T.soft : '#eff6ff'), padding: '2px 8px', borderRadius: '6px' }}>{u.is_admin ? 'Admin' : 'Usuario'}</span>
                     <StatusBadge status={u.is_active ? 'active' : 'canceled'} />
-                    <button onClick={() => toggleUser(u.id, !u.is_active)} style={{ padding: '5px 12px', borderRadius: '6px', border: '1px solid', borderColor: u.is_active ? '#fecaca' : '#bbf7d0', background: u.is_active ? '#fef2f2' : '#f0fdf4', color: u.is_active ? RED : GREEN, fontSize: '11px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
+                    <button onClick={() => toggleUser(u.id, !u.is_active)} style={{ padding: '5px 12px', borderRadius: '6px', border: '1px solid', borderColor: u.is_active ? T.redSoft : T.greenSoft, background: u.is_active ? T.redSoft : T.greenSoft, color: u.is_active ? RED : GREEN, fontSize: '11px', fontWeight: '600', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
                       {u.is_active ? 'Desactivar' : 'Activar'}
                     </button>
                   </div>
@@ -1404,8 +1442,8 @@ export default function AdminPage() {
               {/* ── Toolbar ── */}
               <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <div style={{ fontSize: '15px', fontWeight: '800', color: NAVY }}>📊 Base de datos — Business Snapshots</div>
-                  <span style={{ fontSize: '12px', color: '#6b7280', background: '#f1f5f9', padding: '3px 10px', borderRadius: '20px' }}>{snapshots.length} registros</span>
+                  <div style={{ fontSize: '15px', fontWeight: '800', color: T.text, display: 'flex', alignItems: 'center', gap: '8px' }}><Ico.chart size={18} />Base de datos — Business Snapshots</div>
+                  <span style={{ fontSize: '12px', color: T.text3, background: T.soft, padding: '3px 10px', borderRadius: '20px' }}>{snapshots.length} registros</span>
                 </div>
                 <button onClick={() => {
                   if (!snapshots.length) return
@@ -1419,8 +1457,8 @@ export default function AdminPage() {
                   const url = URL.createObjectURL(blob)
                   const a = document.createElement('a'); a.href = url; a.download = `nexum_snapshots_${new Date().toISOString().substring(0,10)}.csv`; a.click()
                   URL.revokeObjectURL(url)
-                }} style={{ ...btn, background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}>
-                  ⬇ Exportar CSV
+                }} aria-label="Exportar snapshots a CSV" style={{ ...btn, background: T.greenSoft, color: GREEN, border: `1px solid ${T.greenSoft}`, display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}>
+                  <Ico.download size={14} /> Exportar CSV
                 </button>
               </div>
 
@@ -1436,13 +1474,13 @@ export default function AdminPage() {
 
                   {/* Rows */}
                   {loading
-                    ? <div style={{ padding: '40px', textAlign: 'center', color: '#9ca3af' }}>Cargando base de datos...</div>
+                    ? <div style={{ padding: '40px', textAlign: 'center', color: T.text4 }}>Cargando base de datos...</div>
                     : snapshots.length === 0
                     ? (
                       <div style={{ padding: '60px', textAlign: 'center' }}>
-                        <div style={{ fontSize: '40px', marginBottom: '12px', opacity: 0.2 }}>📊</div>
-                        <div style={{ fontSize: '14px', color: '#9ca3af' }}>La base de datos está vacía — aún no hay registros.</div>
-                        <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '8px' }}>Los registros se crearán automáticamente cuando las empresas usen la plataforma.</div>
+                        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px', opacity: 0.4, color: T.text3 }}><Ico.chart size={40} /></div>
+                        <div style={{ fontSize: '14px', color: T.text4 }}>La base de datos está vacía — aún no hay registros.</div>
+                        <div style={{ fontSize: '12px', color: T.text4, marginTop: '8px' }}>Los registros se crearán automáticamente cuando las empresas usen la plataforma.</div>
                       </div>
                     )
                     : snapshots.map((s, i) => {
@@ -1453,24 +1491,24 @@ export default function AdminPage() {
                           <span style={{ fontSize: '10px', fontWeight: '700', color: color || '#6b7280', background: (color||'#6b7280')+'18', padding: '2px 7px', borderRadius: '20px' }}>{val || '—'}</span>
                         )
                         return (
-                          <div key={s.id} style={{ padding: '8px 16px', borderBottom: i < snapshots.length - 1 ? '1px solid #f0f2f7' : 'none', display: 'grid', gridTemplateColumns: '50px 70px 80px 90px 80px 70px 100px 100px 100px 75px 75px 70px 75px 75px 80px 70px 75px 75px 80px 110px 110px 100px', gap: '8px', alignItems: 'center', background: i % 2 === 0 ? 'white' : '#fafbfc', fontSize: '11px', minWidth: '1700px' }}>
-                            <span style={{ color: '#9ca3af', fontSize: '10px' }}>#{s.id}</span>
-                            <span style={{ fontWeight: '700', color: NAVY }}>#{s.company_id}</span>
-                            <span style={{ color: '#6b7280' }}>{s.date?.substring(0,7) || '—'}</span>
-                            <span style={{ color: '#374151' }}>{s.sector || '—'}</span>
-                            <span style={{ color: '#374151' }}>{s.empresa_size || '—'}</span>
-                            <span style={{ color: '#374151' }}>{s.num_empleados ?? 0}</span>
+                          <div key={s.id} style={{ padding: '8px 16px', borderBottom: i < snapshots.length - 1 ? `1px solid ${T.hairline}` : 'none', display: 'grid', gridTemplateColumns: '50px 70px 80px 90px 80px 70px 100px 100px 100px 75px 75px 70px 75px 75px 80px 70px 75px 75px 80px 110px 110px 100px', gap: '8px', alignItems: 'center', background: i % 2 === 0 ? T.card : T.soft, fontSize: '11px', minWidth: '1700px' }}>
+                            <span style={{ color: T.text4, fontSize: '10px' }}>#{s.id}</span>
+                            <span style={{ fontWeight: '700', color: T.text }}>#{s.company_id}</span>
+                            <span style={{ color: T.text3 }}>{s.date?.substring(0,7) || '—'}</span>
+                            <span style={{ color: T.text2 }}>{s.sector || '—'}</span>
+                            <span style={{ color: T.text2 }}>{s.empresa_size || '—'}</span>
+                            <span style={{ color: T.text2 }}>{s.num_empleados ?? 0}</span>
                             <span style={{ fontWeight: '700', color: GREEN }}>€{(s.ingresos_mes||0).toLocaleString('es-ES')}</span>
-                            <span style={{ color: '#374151' }}>€{(s.gastos_mes||0).toLocaleString('es-ES')}</span>
+                            <span style={{ color: T.text2 }}>€{(s.gastos_mes||0).toLocaleString('es-ES')}</span>
                             <span style={{ fontWeight: '700', color: (s.resultado_neto||0) >= 0 ? GREEN : RED }}>€{(s.resultado_neto||0).toLocaleString('es-ES')}</span>
-                            <span style={{ color: '#374151' }}>{(s.margen_neto_pct||0).toFixed(1)}%</span>
+                            <span style={{ color: T.text2 }}>{(s.margen_neto_pct||0).toFixed(1)}%</span>
                             <span style={{ color: (s.crecimiento_pct||0) >= 0 ? GREEN : RED, fontWeight: '600' }}>{(s.crecimiento_pct||0).toFixed(1)}%</span>
-                            <span style={{ color: '#374151' }}>{s.num_ventas||0}</span>
-                            <span style={{ color: '#374151' }}>€{(s.ticket_medio||0).toFixed(0)}</span>
-                            <span style={{ color: '#374151' }}>{s.total_contactos||0}</span>
+                            <span style={{ color: T.text2 }}>{s.num_ventas||0}</span>
+                            <span style={{ color: T.text2 }}>€{(s.ticket_medio||0).toFixed(0)}</span>
+                            <span style={{ color: T.text2 }}>{s.total_contactos||0}</span>
                             <span style={{ color: (s.sentiment_avg||5) >= 7 ? GREEN : (s.sentiment_avg||5) >= 5 ? AMBER : RED, fontWeight: '600' }}>{(s.sentiment_avg||0).toFixed(1)}</span>
-                            <span style={{ color: '#374151' }}>{s.clientes_riesgo||0}</span>
-                            <span style={{ color: '#374151' }}>{s.proyectos_activos||0}</span>
+                            <span style={{ color: T.text2 }}>{s.clientes_riesgo||0}</span>
+                            <span style={{ color: T.text2 }}>{s.proyectos_activos||0}</span>
                             <span style={{ color: (s.health_score_avg||0) >= 7 ? GREEN : (s.health_score_avg||0) >= 5 ? AMBER : RED, fontWeight: '600' }}>{(s.health_score_avg||0).toFixed(1)}</span>
                             <span style={{ color: (s.ai_health_score||0) >= 7 ? GREEN : (s.ai_health_score||0) >= 5 ? AMBER : RED, fontWeight: '600' }}>{s.ai_health_score ? s.ai_health_score.toFixed(1) : '—'}</span>
                             {badge(s.tendencia, tendColor)}
@@ -1483,7 +1521,7 @@ export default function AdminPage() {
                 </div>
 
                 {/* Footer */}
-                <div style={{ padding: '10px 16px', background: '#f8fafc', borderTop: '1px solid #e5e9f0', fontSize: '11px', color: '#6b7280', display: 'flex', justifyContent: 'space-between' }}>
+                <div style={{ padding: '10px 16px', background: T.soft, borderTop: `1px solid ${T.hairline}`, fontSize: '11px', color: T.text3, display: 'flex', justifyContent: 'space-between' }}>
                   <span>{snapshots.length} registros en la base de datos</span>
                   <span>Actualizado: {new Date().toLocaleTimeString('es-ES')}</span>
                 </div>
@@ -1496,48 +1534,48 @@ export default function AdminPage() {
             <div style={{ animation: 'fadeUp 0.3s ease' }}>
               {selectedPrompt ? (
                 <div>
-                  <button onClick={() => setSelectedPrompt(null)} style={{ ...btn, background: '#f4f6fb', color: NAVY, border: '0.5px solid rgba(0,0,0,0.06)', marginBottom: '16px', fontSize: '13px' }}>← Volver</button>
+                  <button onClick={() => setSelectedPrompt(null)} style={{ ...btn, background: T.soft, color: T.text, border: `0.5px solid ${T.hairline}`, marginBottom: '16px', fontSize: '13px' }}>← Volver</button>
                   <div style={{ ...card, padding: '24px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
                       <div>
-                        <div style={{ fontSize: '16px', fontWeight: '800', color: NAVY, marginBottom: '4px' }}>{selectedPrompt.name}</div>
-                        <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '8px' }}>{selectedPrompt.description}</div>
+                        <div style={{ fontSize: '16px', fontWeight: '800', color: T.text, marginBottom: '4px' }}>{selectedPrompt.name}</div>
+                        <div style={{ fontSize: '12px', color: T.text3, marginBottom: '8px' }}>{selectedPrompt.description}</div>
                         <div style={{ display: 'flex', gap: '8px' }}>
-                          <span style={{ fontSize: '11px', fontWeight: '700', color: PURPLE, background: '#f5f3ff', padding: '2px 8px', borderRadius: '6px' }}>{selectedPrompt.module}</span>
+                          <span style={{ fontSize: '11px', fontWeight: '700', color: PURPLE, background: theme === 'dark' ? T.purpleSoft : '#f5f3ff', padding: '2px 8px', borderRadius: '6px' }}>{selectedPrompt.module}</span>
                           {parseVars(selectedPrompt.variables).map(v => (
-                            <span key={v} style={{ fontSize: '11px', color: '#6b7280', background: '#f1f5f9', padding: '2px 8px', borderRadius: '6px' }}>{`{${v}}`}</span>
+                            <span key={v} style={{ fontSize: '11px', color: T.text3, background: T.soft, padding: '2px 8px', borderRadius: '6px' }}>{`{${v}}`}</span>
                           ))}
                         </div>
                       </div>
-                      {selectedPrompt.last_modified && <span style={{ fontSize: '11px', color: '#9ca3af' }}>Modificado: {selectedPrompt.last_modified?.substring(0,10)}</span>}
+                      {selectedPrompt.last_modified && <span style={{ fontSize: '11px', color: T.text4 }}>Modificado: {selectedPrompt.last_modified?.substring(0,10)}</span>}
                     </div>
-                    <div style={{ fontSize: '11px', fontWeight: '700', color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>Contenido del prompt</div>
+                    <div style={{ fontSize: '11px', fontWeight: '700', color: T.text2, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>Contenido del prompt</div>
                     <textarea value={editingPrompt} onChange={e => setEditingPrompt(e.target.value)} rows={14} style={{ ...input, fontFamily: 'monospace', fontSize: '12px', lineHeight: '1.6', resize: 'vertical', background: '#0f172a', color: '#e2e8f0', border: '1px solid #1e293b', borderRadius: '10px', padding: '16px' }} />
                     <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
-                      <button onClick={savePrompt} disabled={saving} style={{ ...btn }}>{saving ? 'Guardando...' : '💾 Guardar prompt'}</button>
-                      <button onClick={() => setEditingPrompt(selectedPrompt.content)} style={{ ...btn, background: '#f4f6fb', color: NAVY, border: '0.5px solid rgba(0,0,0,0.06)' }}>↩ Restaurar original</button>
+                      <button onClick={savePrompt} disabled={saving} style={{ ...btn, display: 'flex', alignItems: 'center', gap: '7px' }}><Ico.save size={15} /> {saving ? 'Guardando...' : 'Guardar prompt'}</button>
+                      <button onClick={() => setEditingPrompt(selectedPrompt.content)} style={{ ...btn, background: T.soft, color: T.text, border: `0.5px solid ${T.hairline}`, display: 'flex', alignItems: 'center', gap: '7px' }}><Ico.refresh size={15} /> Restaurar original</button>
                     </div>
                   </div>
                 </div>
               ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '14px' }}>
-                  {loading ? <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '60px', color: '#9ca3af' }}>Cargando prompts...</div>
+                  {loading ? <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '60px', color: T.text4 }}>Cargando prompts...</div>
                   : prompts.map(p => (
                     <div key={p.key} style={{ ...card, padding: '20px', cursor: 'pointer', transition: 'all 0.15s' }}
                       onMouseEnter={e => e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.07)'}
                       onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}
                       onClick={() => { setSelectedPrompt(p); setEditingPrompt(p.content) }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
-                        <span style={{ fontSize: '11px', fontWeight: '700', color: PURPLE, background: '#f5f3ff', padding: '2px 8px', borderRadius: '6px' }}>{p.module}</span>
-                        {p.last_modified && <span style={{ fontSize: '10px', color: AMBER }}>✏ Modificado</span>}
+                        <span style={{ fontSize: '11px', fontWeight: '700', color: PURPLE, background: theme === 'dark' ? T.purpleSoft : '#f5f3ff', padding: '2px 8px', borderRadius: '6px' }}>{p.module}</span>
+                        {p.last_modified && <span style={{ fontSize: '10px', color: AMBER, display: 'inline-flex', alignItems: 'center', gap: '4px' }}><Ico.edit size={11} /> Modificado</span>}
                       </div>
-                      <div style={{ fontSize: '14px', fontWeight: '700', color: NAVY, marginBottom: '4px' }}>{p.name}</div>
-                      <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '12px', lineHeight: '1.5' }}>{p.description}</div>
+                      <div style={{ fontSize: '14px', fontWeight: '700', color: T.text, marginBottom: '4px' }}>{p.name}</div>
+                      <div style={{ fontSize: '12px', color: T.text3, marginBottom: '12px', lineHeight: '1.5' }}>{p.description}</div>
                       <div style={{ background: '#0f172a', borderRadius: '8px', padding: '10px 12px', fontSize: '11px', fontFamily: 'monospace', color: '#94a3b8', overflow: 'hidden', maxHeight: '60px', lineHeight: '1.5' }}>
                         {p.content?.substring(0, 120)}...
                       </div>
                       <div style={{ marginTop: '10px', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                        {parseVars(p.variables).map(v => <span key={v} style={{ fontSize: '10px', color: '#6b7280', background: '#f1f5f9', padding: '1px 6px', borderRadius: '4px' }}>{`{${v}}`}</span>)}
+                        {parseVars(p.variables).map(v => <span key={v} style={{ fontSize: '10px', color: T.text3, background: T.soft, padding: '1px 6px', borderRadius: '4px' }}>{`{${v}}`}</span>)}
                       </div>
                     </div>
                   ))}
@@ -1577,16 +1615,16 @@ export default function AdminPage() {
           {tab === 'flowchart' && (
             <div style={{ animation: 'fadeUp 0.3s ease' }}>
               <DataFlowchart />
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '14px', marginTop: '20px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px,1fr))', gap: '14px', marginTop: '20px' }}>
                 {[
-                  { title: 'Módulos de captura', icon: '📥', desc: 'Ventas, Clientes, Proyectos, RRHH, Contabilidad capturan datos en tiempo real de cada empresa.', color: BLUE },
-                  { title: 'Business Snapshot', icon: '📊', desc: 'Cada día/semana/mes se agrega toda la información en una fila del snapshot con KPIs, ratios y labels para ML.', color: CYAN },
-                  { title: 'Claude AI + Memoria', icon: '🧠', desc: 'Claude analiza los snapshots, extrae patrones y los guarda en la memoria de IA de cada empresa. El usuario puede entrenarla manualmente.', color: PURPLE },
+                  { title: 'Módulos de captura', icon: <Ico.inbox size={22} />, desc: 'Ventas, Clientes, Proyectos, RRHH, Contabilidad capturan datos en tiempo real de cada empresa.', color: BLUE },
+                  { title: 'Business Snapshot', icon: <Ico.chart size={22} />, desc: 'Cada día/semana/mes se agrega toda la información en una fila del snapshot con KPIs, ratios y labels para ML.', color: CYAN },
+                  { title: 'Claude AI + Memoria', icon: <Ico.brain size={22} />, desc: 'Claude analiza los snapshots, extrae patrones y los guarda en la memoria de IA de cada empresa. El usuario puede entrenarla manualmente.', color: PURPLE },
                 ].map(c => (
                   <div key={c.title} style={{ ...card, padding: '20px', borderTop: `3px solid ${c.color}` }}>
-                    <div style={{ fontSize: '22px', marginBottom: '8px' }}>{c.icon}</div>
-                    <div style={{ fontSize: '14px', fontWeight: '700', color: NAVY, marginBottom: '6px' }}>{c.title}</div>
-                    <div style={{ fontSize: '13px', color: '#6b7280', lineHeight: '1.6' }}>{c.desc}</div>
+                    <div style={{ marginBottom: '8px', color: c.color }}>{c.icon}</div>
+                    <div style={{ fontSize: '14px', fontWeight: '700', color: T.text, marginBottom: '6px' }}>{c.title}</div>
+                    <div style={{ fontSize: '13px', color: T.text3, lineHeight: '1.6' }}>{c.desc}</div>
                   </div>
                 ))}
               </div>

@@ -1,25 +1,101 @@
 'use client'
+import { createContext, useContext, useEffect, useState, useCallback } from 'react'
 
-export const T = {
-  bg: '#FBFBFD',
+// ── Paleta CLARA (la de siempre — NO cambia; mantiene el diseño actual) ──────
+export const T_LIGHT = {
+  bg: '#F7F8FA',
   card: '#FFFFFF',
-  sidebar: '#F5F5F7',
-  hairline: 'rgba(0,0,0,0.08)',
-  soft: 'rgba(0,0,0,0.05)',
-  text: '#1D1D1F',
-  text2: '#424245',
-  text3: '#6E6E73',
-  text4: '#86868B',
+  sidebar: '#FBFCFD',
+  hairline: 'rgba(15,23,42,0.08)',
+  soft: 'rgba(15,23,42,0.05)',
+  text: '#0F172A',
+  text2: '#334155',
+  text3: '#64748B',
+  text4: '#778598', // a11y: subido de #94A3B8 (2.7:1) → ~3.3:1 sobre blanco, sigue siendo el tono más tenue
   blue: '#0071E3',
   cyan: '#00B4D8',
-  green: '#34C759',
-  greenSoft: 'rgba(52,199,89,.1)',
-  amber: '#FF9500',
-  amberSoft: 'rgba(255,149,0,.1)',
-  red: '#FF3B30',
-  redSoft: 'rgba(255,59,48,.08)',
+  green: '#059669',
+  greenSoft: 'rgba(5,150,105,.10)',
+  amber: '#D97706',
+  amberSoft: 'rgba(217,119,6,.12)',
+  red: '#DC2626',
+  redSoft: 'rgba(220,38,38,.10)',
   purple: '#6366F1',
   purpleSoft: 'rgba(99,102,241,.1)',
+}
+
+// ── Paleta OSCURA (mismas claves; tonos Apple-dark, contraste WCAG AA) ───────
+export const T_DARK = {
+  bg: '#0F141B',
+  card: '#161B22',
+  sidebar: '#11161D',
+  hairline: 'rgba(255,255,255,0.10)',
+  soft: 'rgba(255,255,255,0.05)',
+  text: '#E6EDF3',
+  text2: '#C9D1D9',
+  text3: '#8B949E',
+  text4: '#7C8593', // a11y: subido de #6E7681 → ~4.5:1 sobre el fondo oscuro
+  blue: '#3B82F6',
+  cyan: '#40C8E0',
+  green: '#3FB950',
+  greenSoft: 'rgba(63,185,80,.16)',
+  amber: '#D29922',
+  amberSoft: 'rgba(210,153,34,.16)',
+  red: '#F85149',
+  redSoft: 'rgba(248,81,73,.16)',
+  purple: '#7D7DFF',
+  purpleSoft: 'rgba(125,125,255,.20)',
+}
+
+// Compat: `T` estático = paleta clara. Las páginas no migradas lo siguen usando
+// tal cual (quedan idénticas). Las páginas migradas usan `useT()` (reactivo).
+export const T = T_LIGHT
+
+// ── Theme context / hooks ────────────────────────────────────────────────────
+const ThemeContext = createContext({ theme: 'light', setTheme: () => {}, toggle: () => {} })
+
+function applyTheme(theme) {
+  if (typeof document === 'undefined') return
+  document.documentElement.setAttribute('data-theme', theme)
+  document.documentElement.style.colorScheme = theme
+}
+
+export function ThemeProvider({ children }) {
+  const [theme, setThemeState] = useState('light')
+
+  useEffect(() => {
+    let initial = 'light'
+    try {
+      const saved = localStorage.getItem('vortu_theme')
+      if (saved === 'light' || saved === 'dark') initial = saved
+      else if (window.matchMedia?.('(prefers-color-scheme: dark)').matches) initial = 'dark'
+    } catch {}
+    setThemeState(initial)
+    applyTheme(initial)
+  }, [])
+
+  const setTheme = useCallback((t) => {
+    setThemeState(t)
+    applyTheme(t)
+    try { localStorage.setItem('vortu_theme', t) } catch {}
+  }, [])
+
+  const toggle = useCallback(() => setTheme(theme === 'dark' ? 'light' : 'dark'), [theme, setTheme])
+
+  return (
+    <ThemeContext.Provider value={{ theme, setTheme, toggle }}>
+      {children}
+    </ThemeContext.Provider>
+  )
+}
+
+export function useTheme() { return useContext(ThemeContext) }
+
+// Devuelve la paleta (objeto de hex, válido para inline-style Y atributos SVG)
+// según el tema activo. Las páginas migradas hacen: `const T = useT()`.
+export function useT() {
+  const { theme } = useContext(ThemeContext)
+  return theme === 'dark' ? T_DARK : T_LIGHT
 }
 
 export const FONT = "-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',system-ui,sans-serif"

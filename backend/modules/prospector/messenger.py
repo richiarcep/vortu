@@ -4,10 +4,11 @@ Claude genera el mensaje perfecto para cada lead segun su canal.
 """
 import json
 import anthropic
+from vera.compat import vera_client
 from core.config import get_settings
 
 settings = get_settings()
-client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+client = vera_client(None, None, module="prospector")
 
 TEMPLATES = {
     "google_maps": {

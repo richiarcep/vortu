@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
-import { T, FONT } from '@/components/ui/tokens'
+import { FONT, useT, useTheme } from '@/components/ui/tokens'
 
 import { API_BASE as API } from '@/lib/api'
 const VERA_BLUE = '#0071E3'
@@ -11,8 +11,8 @@ const VERA_BLUE = '#0071E3'
 // CONFIGS
 // ─────────────────────────────────────────────
 const DOC_TYPES = [
-  { k: 'all',         label: 'Todos',        icon: 'folder', color: T.text3 },
-  { k: 'factura',     label: 'Facturas',     icon: 'invoice', color: '#16a34a' },
+  { k: 'all',         label: 'Todos',        icon: 'folder', color: null },
+  { k: 'factura',     label: 'Facturas',     icon: 'invoice', color: '#059669' },
   { k: 'contrato',    label: 'Contratos',    icon: 'contract', color: '#7c3aed' },
   { k: 'nomina',      label: 'Nóminas',      icon: 'people', color: '#0EA5E9' },
   { k: 'legal',       label: 'Legal',        icon: 'shield', color: '#dc2626' },
@@ -30,7 +30,7 @@ const TYPE_LABELS = {
 }
 
 const TYPE_COLORS = {
-  factura: '#16a34a', contrato: '#7c3aed', nomina: '#0EA5E9',
+  factura: '#059669', contrato: '#7c3aed', nomina: '#0EA5E9',
   legal: '#dc2626', reporte: '#d97706', presupuesto: '#0EA5E9',
   recibo: '#6b7280', certificado: '#7c3aed', otro: '#6b7280',
 }
@@ -94,9 +94,9 @@ function TypeIcon({ kind, size = 14, color = 'currentColor' }) {
 function FileIcon({ ext, size = 32 }) {
   const map = {
     pdf: { color: '#dc2626', label: 'PDF' },
-    csv: { color: '#16a34a', label: 'CSV' },
-    xlsx: { color: '#16a34a', label: 'XLS' },
-    xls: { color: '#16a34a', label: 'XLS' },
+    csv: { color: '#059669', label: 'CSV' },
+    xlsx: { color: '#059669', label: 'XLS' },
+    xls: { color: '#059669', label: 'XLS' },
     docx: { color: '#0071E3', label: 'DOC' },
     txt: { color: '#6b7280', label: 'TXT' },
     jpg: { color: '#7c3aed', label: 'IMG' },
@@ -119,6 +119,7 @@ function FileIcon({ ext, size = 32 }) {
 // MODAL APROBACIÓN VERA v2
 // ─────────────────────────────────────────────
 function ApprovalModal({ analysis, onApprove, onReject, onClose }) {
+  const T = useT()
   const [notes, setNotes] = useState('')
   const [overrideType, setOverrideType] = useState(analysis.document_type)
   const [saveToSql, setSaveToSql] = useState(analysis.sql_action?.should_create !== false)
@@ -137,7 +138,7 @@ function ApprovalModal({ analysis, onApprove, onReject, onClose }) {
   const hasWarnings = analysis.warnings?.length > 0
   const isDuplicate = analysis.warnings?.some(w => w.toLowerCase().includes('duplicado'))
   const conf = analysis.confidence || 0
-  const confColor = conf >= 0.8 ? '#16a34a' : conf >= 0.5 ? '#d97706' : '#dc2626'
+  const confColor = conf >= 0.8 ? '#059669' : conf >= 0.5 ? '#d97706' : '#dc2626'
   const sqlAction = analysis.sql_action || {}
   const canCreateSql = sqlAction.should_create && sqlAction.table
   const journalEntry = analysis.journal_entry || {}
@@ -163,12 +164,12 @@ function ApprovalModal({ analysis, onApprove, onReject, onClose }) {
     }} onClick={onClose}>
       <div onClick={e => e.stopPropagation()} style={{
         width: '100%', maxWidth: 720, maxHeight: '92vh',
-        background: '#fff', borderRadius: 16,
+        background: T.card, borderRadius: 16,
         overflow: 'hidden', display: 'flex', flexDirection: 'column',
         animation: 'modalIn .2s ease',
         boxShadow: '0 30px 80px rgba(0,0,0,.25)',
       }}>
-        <style>{`@keyframes modalIn{from{transform:scale(.96);opacity:0}to{transform:scale(1);opacity:1}}`}</style>
+        <style>{`@keyframes modalIn{from{transform:scale(.96);opacity:0}to{transform:scale(1);opacity:1}}@media(max-width:600px){.doc-modal-grid{grid-template-columns:1fr!important}}`}</style>
 
         {/* HEADER pulido con icono Vera */}
         <div style={{
@@ -193,7 +194,7 @@ function ApprovalModal({ analysis, onApprove, onReject, onClose }) {
               <div style={{ fontSize: 11.5, color: T.text4, marginTop: 3 }}>Revisa antes de añadir a memoria semántica</div>
             </div>
           </div>
-          <button onClick={onClose} style={{
+          <button onClick={onClose} aria-label="Cerrar" style={{
             background: 'transparent', border: 'none', cursor: 'pointer', padding: 6, color: T.text4,
             borderRadius: 6,
           }}
@@ -285,7 +286,7 @@ function ApprovalModal({ analysis, onApprove, onReject, onClose }) {
           )}
 
           {/* CLASIFICACIÓN + RESUMEN en grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: 16, marginBottom: 18 }}>
+          <div className="doc-modal-grid" style={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: 16, marginBottom: 18 }}>
             <div>
               <div style={{ fontSize: 10.5, color: T.text4, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
                 Tipo
@@ -293,7 +294,7 @@ function ApprovalModal({ analysis, onApprove, onReject, onClose }) {
               <select value={overrideType} onChange={e => setOverrideType(e.target.value)} style={{
                 width: '100%', padding: '10px 12px',
                 borderRadius: 10, border: `.5px solid ${T.hairline}`,
-                fontSize: 12.5, color: T.text, background: '#fff',
+                fontSize: 12.5, color: T.text, background: T.card,
                 fontFamily: 'inherit', cursor: 'pointer',
                 fontWeight: 500,
               }}>
@@ -347,7 +348,7 @@ function ApprovalModal({ analysis, onApprove, onReject, onClose }) {
                   <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>Memoria semántica</div>
                   <span style={{
                     fontSize: 10, padding: '2px 8px', borderRadius: 999,
-                    background: 'rgba(22,163,74,.1)', color: '#16a34a',
+                    background: 'rgba(5,150,105,.1)', color: '#059669',
                     fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.4,
                   }}>Siempre</span>
                 </div>
@@ -371,15 +372,15 @@ function ApprovalModal({ analysis, onApprove, onReject, onClose }) {
             {/* DESTINO 2: SQL estructurado (toggle) */}
             {canCreateSql ? (
               <div style={{
-                border: saveToSql ? `.5px solid rgba(22,163,74,.3)` : `.5px solid ${T.hairline}`,
+                border: saveToSql ? `.5px solid rgba(5,150,105,.3)` : `.5px solid ${T.hairline}`,
                 borderRadius: 12, padding: 14,
-                background: saveToSql ? 'rgba(22,163,74,.03)' : '#fff',
+                background: saveToSql ? 'rgba(5,150,105,.03)' : T.card,
                 display: 'flex', alignItems: 'flex-start', gap: 12,
                 transition: 'all .15s',
               }}>
                 <div style={{
                   width: 32, height: 32, borderRadius: 8,
-                  background: saveToSql ? '#16a34a' : T.sidebar,
+                  background: saveToSql ? '#059669' : T.sidebar,
                   color: saveToSql ? '#fff' : T.text4,
                   display: 'grid', placeItems: 'center', flexShrink: 0,
                   transition: 'all .15s',
@@ -394,7 +395,7 @@ function ApprovalModal({ analysis, onApprove, onReject, onClose }) {
                     {/* Toggle */}
                     <button onClick={() => setSaveToSql(!saveToSql)} style={{
                       width: 38, height: 22, borderRadius: 999,
-                      background: saveToSql ? '#16a34a' : '#d1d5db',
+                      background: saveToSql ? '#059669' : '#d1d5db',
                       border: 'none', cursor: 'pointer', position: 'relative',
                       transition: 'background .2s',
                     }}>
@@ -415,7 +416,7 @@ function ApprovalModal({ analysis, onApprove, onReject, onClose }) {
                   {/* Preview del registro SQL */}
                   {saveToSql && sqlAction.preview_record && Object.keys(sqlAction.preview_record).length > 0 && (
                     <div style={{
-                      background: '#fff', border: `.5px solid ${T.hairline}`,
+                      background: T.card, border: `.5px solid ${T.hairline}`,
                       borderRadius: 8, padding: 10, marginTop: 4,
                     }}>
                       <div style={{ fontSize: 9.5, color: T.text4, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>
@@ -488,8 +489,9 @@ function ApprovalModal({ analysis, onApprove, onReject, onClose }) {
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <div style={{ fontSize: 10, color: T.text4, fontWeight: 600 }}>{journalEntry.date}</div>
-                    <div style={{ fontSize: 9.5, color: '#16a34a', fontWeight: 600, marginTop: 2 }}>
-                      ✓ {journalEntry.balance_check || 'Asiento cuadrado'}
+                    <div style={{ fontSize: 9.5, color: '#059669', fontWeight: 600, marginTop: 2, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                      <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+                      {journalEntry.balance_check || 'Asiento cuadrado'}
                     </div>
                   </div>
                 </div>
@@ -619,13 +621,14 @@ function ApprovalModal({ analysis, onApprove, onReject, onClose }) {
 // LOADING MODAL (mientras Vera analiza)
 // ─────────────────────────────────────────────
 function AnalyzingModal({ filename }) {
+  const T = useT()
   return (
     <div style={{
       position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)',
       display: 'grid', placeItems: 'center', zIndex: 110,
     }}>
       <div style={{
-        background: '#fff', borderRadius: 14,
+        background: T.card, borderRadius: 14,
         padding: '40px 50px', textAlign: 'center', minWidth: 380,
         boxShadow: '0 20px 60px rgba(0,0,0,.2)',
       }}>
@@ -662,6 +665,7 @@ function AnalyzingModal({ filename }) {
 // PREVIEW DOC SELECCIONADO
 // ─────────────────────────────────────────────
 function DocPreview({ doc, token, onClose, onDelete }) {
+  const T = useT()
   const [detail, setDetail] = useState(null)
   const [loading, setLoading] = useState(true)
   const [deleting, setDeleting] = useState(false)
@@ -691,8 +695,8 @@ function DocPreview({ doc, token, onClose, onDelete }) {
   const typeColor = TYPE_COLORS[d.document_type] || '#6b7280'
 
   return (
-    <div style={{
-      background: '#fff', borderLeft: `.5px solid ${T.hairline}`,
+    <div className="doc-preview" style={{
+      background: T.card, borderLeft: `.5px solid ${T.hairline}`,
       width: 420, height: '100%', overflow: 'hidden',
       display: 'flex', flexDirection: 'column',
     }}>
@@ -719,7 +723,7 @@ function DocPreview({ doc, token, onClose, onDelete }) {
               </div>
             </div>
           </div>
-          <button onClick={onClose} style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 4, color: T.text4 }}>
+          <button onClick={onClose} aria-label="Cerrar" style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 4, color: T.text4 }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
@@ -832,6 +836,8 @@ function DocPreview({ doc, token, onClose, onDelete }) {
 // PÁGINA PRINCIPAL
 // ─────────────────────────────────────────────
 export default function DocumentosPage() {
+  const T = useT()
+  const { theme } = useTheme()
   const router = useRouter()
   const [token, setToken] = useState(null)
   const [docs, setDocs] = useState([])
@@ -941,26 +947,27 @@ export default function DocumentosPage() {
 
   return (
     <div style={{
-      minHeight: '100vh', background: T.bg, display: 'flex',
+      minHeight: '100dvh', background: T.bg, display: 'flex',
       fontFamily: FONT, WebkitFontSmoothing: 'antialiased',
     }}>
-      <style>{`*{box-sizing:border-box}::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-thumb{background:rgba(0,0,0,.12);border-radius:999px}input:focus,select:focus{outline:none}`}</style>
+      <style>{`*{box-sizing:border-box}::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-thumb{background:${T.hairline};border-radius:999px}input:focus,select:focus{border-color:${T.blue}!important;outline:none}@media(max-width:760px){.doc-layout{flex-direction:column!important}.doc-preview{width:100%!important;height:auto!important;border-left:none!important;border-top:.5px solid ${T.hairline}!important}}`}</style>
 
       <Sidebar active="/documentos" />
 
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', height: '100vh' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', height: '100dvh', minWidth: 0 }}>
         {/* HEADER */}
         <header style={{
           padding: '20px 32px',
-          background: 'rgba(251,251,253,.85)',
+          background: theme === 'dark' ? 'rgba(11,11,12,.85)' : 'rgba(251,251,253,.85)',
           backdropFilter: 'saturate(180%) blur(20px)',
+          WebkitBackdropFilter: 'saturate(180%) blur(20px)',
           borderBottom: `.5px solid ${T.hairline}`,
         }}>
           <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
                 <h1 style={{ fontSize: 22, fontWeight: 600, color: T.text, margin: 0, letterSpacing: -0.3 }}>Documentos</h1>
-                <span style={{ width: 6, height: 6, borderRadius: 999, background: '#16a34a' }} />
+                <span style={{ width: 6, height: 6, borderRadius: 999, background: '#059669' }} />
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: T.text4 }}>
                 <FlagES size={11} />
@@ -993,7 +1000,7 @@ export default function DocumentosPage() {
         {/* TIPOS COMO TABS HORIZONTALES + BUSCADOR */}
         <div style={{
           padding: '14px 32px',
-          background: '#fff',
+          background: T.card,
           borderBottom: `.5px solid ${T.hairline}`,
           display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap',
         }}>
@@ -1012,7 +1019,7 @@ export default function DocumentosPage() {
                   fontSize: 12, fontWeight: isActive ? 600 : 500,
                   transition: 'all .12s',
                 }}>
-                  <TypeIcon kind={dt.icon} size={12} color={isActive ? '#fff' : (count > 0 ? dt.color : T.text4)} />
+                  <TypeIcon kind={dt.icon} size={12} color={isActive ? '#fff' : (count > 0 ? (dt.color || T.text3) : T.text4)} />
                   <span>{dt.label}</span>
                   {count > 0 && (
                     <span style={{
@@ -1033,7 +1040,7 @@ export default function DocumentosPage() {
               <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
             </svg>
             <input value={search} onChange={e => setSearch(e.target.value)}
-              placeholder="Buscar..."
+              placeholder="Buscar..." aria-label="Buscar documentos"
               style={{
                 width: '100%', padding: '7px 12px 7px 32px',
                 borderRadius: 999, border: `.5px solid ${T.hairline}`,
@@ -1044,7 +1051,7 @@ export default function DocumentosPage() {
         </div>
 
         {/* LAYOUT 2 COLUMNAS: lista + preview */}
-        <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+        <div className="doc-layout" style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
 
           {/* LISTA DOCUMENTOS */}
           <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
@@ -1080,7 +1087,7 @@ export default function DocumentosPage() {
                 </div>
               ) : (
                 <div style={{
-                  background: '#fff', borderRadius: 12,
+                  background: T.card, borderRadius: 12,
                   border: `.5px solid ${T.hairline}`,
                   overflow: 'hidden',
                 }}>
@@ -1113,12 +1120,12 @@ export default function DocumentosPage() {
                     return (
                       <div key={d.id} onClick={() => setSelected(d)}
                         onMouseEnter={e => !isSelected && (e.currentTarget.style.background = T.sidebar)}
-                        onMouseLeave={e => !isSelected && (e.currentTarget.style.background = '#fff')}
+                        onMouseLeave={e => !isSelected && (e.currentTarget.style.background = T.card)}
                         style={{
                           display: 'grid',
                           gridTemplateColumns: '40px 1fr 140px 130px 80px 90px',
                           gap: 16, padding: '12px 16px',
-                          background: isSelected ? 'rgba(0,113,227,.05)' : '#fff',
+                          background: isSelected ? 'rgba(0,113,227,.05)' : T.card,
                           borderBottom: `.5px solid ${T.hairline}`,
                           borderLeft: isSelected ? `2px solid ${VERA_BLUE}` : '2px solid transparent',
                           cursor: 'pointer',

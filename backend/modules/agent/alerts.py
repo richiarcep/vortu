@@ -2,6 +2,7 @@ import json
 from datetime import date, timedelta
 from sqlalchemy.orm import Session
 from anthropic import Anthropic
+from vera.compat import vera_client
 from core.config import get_settings
 from modules.accounting.journal import (
     get_account_balance, JournalEntry, Account
@@ -153,7 +154,7 @@ def get_ai_alert_analysis(alerts: list, company_id: int) -> str:
             "El negocio opera dentro de parámetros normales."
         )
 
-    client = Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+    client = vera_client(None, None, module="agente")
 
     alerts_text = json.dumps(alerts, ensure_ascii=False, indent=2)
 

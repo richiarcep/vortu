@@ -4,7 +4,8 @@ import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
 import VeraPanel from '@/components/ui/VeraPanel'
 import { useApi } from '@/components/ui/useApi'
-import { T, FONT, I } from '@/components/ui/tokens'
+import { FONT, useT, useTheme } from '@/components/ui/tokens'
+import { Skeleton, EmptyState, Sparkline, HeaderActions } from '@/components/ui/primitives'
 import VeraDrawer from '@/components/ui/VeraDrawer'
 import { openVeraDrawer } from '@/components/ui/useVeraStore'
 import KpiAskButton from '@/components/ui/KpiAskButton'
@@ -15,11 +16,12 @@ import { API_BASE as API } from '@/lib/api'
 // PRIMITIVOS LOCALES
 // ───────────────────────────────────────────────────────────────
 function Card({ children, style = {}, padding = 20 }) {
+  const T = useT()
   return (
     <div style={{
-      background: T.card, borderRadius: 14,
+      background: T.card, borderRadius: 18,
       border: `.5px solid ${T.hairline}`,
-      boxShadow: '0 1px 2px rgba(0,0,0,.02)',
+      boxShadow: 'var(--shadow-card)',
       padding, ...style,
     }}>{children}</div>
   )
@@ -36,61 +38,8 @@ function FlagES({ size = 14 }) {
   )
 }
 
-function ProfileBtn({ user, router }) {
-  const [open, setOpen] = useState(false)
-  const ref = useRef()
-  useEffect(() => {
-    function h(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
-    document.addEventListener('mousedown', h)
-    return () => document.removeEventListener('mousedown', h)
-  }, [])
-  const initials = user?.name
-    ? user.name.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase()
-    : 'US'
-  return (
-    <div ref={ref} style={{ position: 'relative' }}>
-      <div onClick={() => setOpen(o => !o)} style={{
-        display: 'flex', alignItems: 'center', gap: 8,
-        padding: '3px 4px 3px 3px', borderRadius: 999, cursor: 'pointer',
-      }}>
-        <div style={{
-          width: 28, height: 28, borderRadius: 999,
-          background: 'linear-gradient(135deg,#0071E3,#00B4D8)',
-          color: '#fff', display: 'grid', placeItems: 'center',
-          fontWeight: 600, fontSize: 11,
-        }}>{initials}</div>
-        <span style={{ fontSize: 13, fontWeight: 500, color: T.text }}>
-          {user?.name?.split(' ')[0] || 'Usuario'}
-        </span>
-      </div>
-      {open && (
-        <div style={{
-          position: 'absolute', top: 44, right: 0, width: 180,
-          background: T.card, borderRadius: 12,
-          border: `.5px solid ${T.hairline}`,
-          boxShadow: '0 8px 32px rgba(0,0,0,.12)', zIndex: 200, overflow: 'hidden',
-        }}>
-          <div style={{ padding: '6px 0' }}>
-            <button onClick={() => { router.push('/settings'); setOpen(false) }} style={{
-              width: '100%', padding: '9px 14px', background: 'none',
-              border: 'none', cursor: 'pointer', fontFamily: 'inherit',
-              fontSize: 13, color: T.text, textAlign: 'left',
-            }}>Configuración</button>
-          </div>
-          <div style={{ padding: '6px 8px 10px', borderTop: `.5px solid ${T.hairline}` }}>
-            <button onClick={() => { localStorage.removeItem('nexum_token'); router.push('/login') }} style={{
-              width: '100%', padding: '8px', background: T.redSoft,
-              border: 'none', borderRadius: 8, color: T.red,
-              fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
-            }}>Cerrar sesión</button>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
 function PillGroup({ items, active, onChange }) {
+  const T = useT()
   return (
     <div style={{
       display: 'flex', gap: 2, alignItems: 'center',
@@ -118,6 +67,7 @@ function PillGroup({ items, active, onChange }) {
 // VERA HÍBRIDO — insight corto + preguntas + input + abrir chat
 // ───────────────────────────────────────────────────────────────
 function VeraHybrid({ token, onOpenChat }) {
+  const T = useT()
   const [insight, setInsight] = useState(null)
   const [insightLoading, setInsightLoading] = useState(false)
   const [question, setQuestion] = useState('')
@@ -128,11 +78,6 @@ function VeraHybrid({ token, onOpenChat }) {
     '¿Cuánto gasté en nóminas?',
   ]
 
-  useEffect(() => {
-    if (!token) return
-    loadInsight()
-  }, [token])
-
   async function loadInsight() {
     setInsightLoading(true)
     try {
@@ -141,11 +86,20 @@ function VeraHybrid({ token, onOpenChat }) {
       })
       if (res.ok) {
         const d = await res.json()
-        setInsight(d.insight)
+        // La API devuelve {insights:[{label,text,tone}]}; este banner espera un string.
+        const txt = Array.isArray(d.insights)
+          ? d.insights.map(i => (i.label ? `${i.label}: ${i.text}` : i.text)).filter(Boolean).join('\n')
+          : (typeof d.insight === 'string' ? d.insight : '')
+        setInsight(txt || null)
       }
     } catch { }
     setInsightLoading(false)
   }
+
+  useEffect(() => {
+    if (!token) return
+    loadInsight()
+  }, [token])
 
   function handleAsk(text) {
     const q = text || question
@@ -236,7 +190,7 @@ function VeraHybrid({ token, onOpenChat }) {
             fontSize: 12.5, color: T.text, fontFamily: 'inherit', outline: 'none',
           }}
         />
-        <button onClick={() => handleAsk()} disabled={!question.trim()} style={{
+        <button onClick={() => handleAsk()} disabled={!question.trim()} aria-label="Enviar pregunta a Vera" style={{
           width: 32, height: 32, borderRadius: 8,
           border: 'none',
           background: question.trim() ? T.blue : T.sidebar,
@@ -269,10 +223,15 @@ function VeraHybrid({ token, onOpenChat }) {
 // BAR CHART — gráfico de ingresos 14 días
 // ───────────────────────────────────────────────────────────────
 function BarChart({ data = [] }) {
+  const T = useT()
   const [hover, setHover] = useState(null)
   if (!data.length) return (
-    <Card style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 260, color: T.text4, fontSize: 13 }}>
-      Sin datos de ventas
+    <Card style={{ minHeight: 260, display: 'grid', placeItems: 'center' }}>
+      <EmptyState
+        icon={<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 3v18h18" /><path d="M7 15l4-4 3 3 5-6" /></svg>}
+        title="Sin datos de ventas"
+        hint="Cuando registres ventas en este periodo, verás aquí la evolución diaria de ingresos."
+      />
     </Card>
   )
   const W = 760, H = 220, padL = 48, padR = 16, padT = 12, padB = 32
@@ -286,7 +245,7 @@ function BarChart({ data = [] }) {
     <Card>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
         <div>
-          <div style={{ fontSize: 14, fontWeight: 600, color: T.text, letterSpacing: -0.2 }}>Ingresos · últimos 14 días</div>
+          <div className="display" style={{ fontSize: 15, fontWeight: 600, color: T.text, letterSpacing: -0.2 }}>Ingresos · últimos 14 días</div>
           <div style={{ fontSize: 11, color: T.text4, marginTop: 2 }}>Ventas diarias · hover para detalle</div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: T.text3 }}>
@@ -300,7 +259,7 @@ function BarChart({ data = [] }) {
           return (
             <g key={idx}>
               <line x1={padL} x2={W - padR} y1={y} y2={y}
-                stroke="rgba(0,0,0,.06)" strokeWidth="1" strokeDasharray={idx === 0 ? 'none' : '0'} />
+                stroke={T.hairline} strokeWidth="1" strokeDasharray={idx === 0 ? 'none' : '0'} />
               <text x={padL - 8} y={y + 4} textAnchor="end" fontSize="10" fill={T.text4} fontFamily={FONT}>
                 {v === 0 ? '0' : `${(v / 1000).toFixed(0)}k`}
               </text>
@@ -343,6 +302,8 @@ function BarChart({ data = [] }) {
 // COMPONENTE PRINCIPAL
 // ───────────────────────────────────────────────────────────────
 export default function Dashboard() {
+  const T = useT()
+  const { theme } = useTheme()
   const router = useRouter()
   const [token, setToken] = useState(null)
   const [user, setUser] = useState(null)
@@ -405,13 +366,14 @@ export default function Dashboard() {
   ]
 
   return (
-    <div style={{ minHeight: '100vh', background: T.bg, display: 'flex', fontFamily: FONT, WebkitFontSmoothing: 'antialiased' }}>
+    <div style={{ minHeight: '100dvh', background: T.bg, display: 'flex', fontFamily: FONT, WebkitFontSmoothing: 'antialiased' }}>
       <style>{`
         *{box-sizing:border-box}
-        ::-webkit-scrollbar{width:5px;height:5px}
-        ::-webkit-scrollbar-thumb{background:rgba(0,0,0,.12);border-radius:999px}
-        ::-webkit-scrollbar-thumb:hover{background:rgba(0,0,0,.2)}
         input:focus,select:focus{border-color:${T.blue}!important;outline:none}
+        @media (max-width:768px){
+          .dash-row-main{grid-template-columns:1fr!important}
+          .dash-row-2{grid-template-columns:1fr!important}
+        }
       `}</style>
 
       <Sidebar active="/dashboard" />
@@ -421,18 +383,19 @@ export default function Dashboard() {
 
         {/* HEADER */}
         <header style={{
-          height: 64, background: 'rgba(251,251,253,.85)',
+          minHeight: 64, background: theme === 'dark' ? 'rgba(11,11,12,.85)' : 'rgba(251,251,253,.85)',
           backdropFilter: 'saturate(180%) blur(20px)',
           WebkitBackdropFilter: 'saturate(180%) blur(20px)',
           borderBottom: `.5px solid ${T.hairline}`,
-          display: 'flex', alignItems: 'center', padding: '0 28px',
+          display: 'flex', alignItems: 'center', padding: '8px 28px',
           flexShrink: 0, position: 'sticky', top: 0, zIndex: 10, gap: 20,
+          flexWrap: 'wrap', rowGap: 8,
         }}>
           <div>
-            <div style={{
-              fontSize: 16, fontWeight: 600, color: T.text,
-              letterSpacing: -0.3, lineHeight: 1.1,
-            }}>{greeting}</div>
+            <div className="display" style={{
+              fontSize: 20, color: T.text,
+              letterSpacing: -0.4, lineHeight: 1.05,
+            }}>{greeting}{user?.name ? `, ${user.name.split(' ')[0]}` : ''}</div>
             <div style={{
               fontSize: 11, color: T.text4, marginTop: 3,
               display: 'flex', alignItems: 'center', gap: 6,
@@ -445,43 +408,24 @@ export default function Dashboard() {
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <PillGroup items={periodos} active={periodo}
               onChange={v => { setPeriodo(v); localStorage.setItem('vortu_dashboard_periodo', v) }} />
-            <button onClick={() => openVeraDrawer({ modulo: 'dashboard' })} style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              padding: '5px 12px', height: 32, borderRadius: 999,
-              background: 'rgba(0,113,227,.06)',
-              border: `.5px solid rgba(0,113,227,.18)`,
-              color: T.blue, fontSize: 12.5, fontWeight: 500,
-              cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
-            }}>
-              <svg width="11" height="11" viewBox="0 0 16 16" fill="none">
-                <path d="M8 1l1.5 5.5L15 8l-5.5 1.5L8 15l-1.5-5.5L1 8l5.5-1.5L8 1z" fill={T.blue} />
-              </svg>
-              Vera
-            </button>
           </div>
 
-          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <HeaderActions onVera={() => openVeraDrawer({ modulo: 'dashboard' })} user={user} router={router}>
             <button onClick={refetchAll} style={{
               padding: '6px 14px', borderRadius: 999,
               border: `.5px solid ${T.hairline}`, background: T.card,
               color: T.text2, fontSize: 12, fontWeight: 500,
               cursor: 'pointer', fontFamily: 'inherit',
             }}>Actualizar</button>
-            <button onClick={() => router.push('/settings')} style={{
-              width: 32, height: 32, borderRadius: 8, border: 'none',
-              background: 'transparent', display: 'grid', placeItems: 'center',
-              cursor: 'pointer', color: T.text3,
-            }}>{I.gear}</button>
-            <ProfileBtn user={user} router={router} />
-          </div>
+          </HeaderActions>
         </header>
 
         {/* CONTENIDO */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '24px 28px' }}>
+        <div className="fade-in" style={{ flex: 1, overflowY: 'auto', padding: '24px 28px' }}>
 
           {/* ──── KPIs GRANDES con iconos + estado ──── */}
           <div style={{
-            display: 'grid', gridTemplateColumns: 'repeat(4,1fr)',
+            display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
             gap: 12, marginBottom: 14,
           }}>
             {(() => {
@@ -544,29 +488,40 @@ export default function Dashboard() {
                 },
               ]
             })().map((k, i) => {
-              // Convertir T.green/blue/amber/red a rgba para el fondo suave
-              const colorToRgba = (color, alpha) => {
-                const map = {
-                  [T.green]: `rgba(52,199,89,${alpha})`,
-                  [T.amber]: `rgba(255,149,0,${alpha})`,
-                  [T.red]: `rgba(255,59,48,${alpha})`,
-                  [T.blue]: `rgba(0,113,227,${alpha})`,
-                  [T.purple]: `rgba(99,102,241,${alpha})`,
-                  [T.cyan]: `rgba(0,180,216,${alpha})`,
-                }
-                return map[color] || `rgba(0,0,0,${alpha})`
+              // Tinte translúcido a partir de cualquier hex del tema (la paleta es cálida ahora)
+              const colorToRgba = (hex, alpha) => {
+                const h = (hex || '#000').replace('#', '')
+                const f = h.length === 3 ? h.split('').map(c => c + c).join('') : h
+                const n = parseInt(f, 16)
+                return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${alpha})`
               }
+              // Sparkline con la serie diaria REAL (14 días) de cada KPI.
+              // Color según si la tendencia es BUENA: ingresos/neto subiendo = verde; gastos bajando = verde.
+              const _serie = resumen?.series_14d || []
+              const sparkByLabel = {
+                'Ingresos': _serie.map(s => s.ingresos),
+                'Gastos': _serie.map(s => s.gastos),
+                'Resultado neto': _serie.map(s => (s.ingresos || 0) - (s.gastos || 0)),
+                'Ventas hoy': _serie.map(s => s.ventas || 0),
+              }
+              const spark = sparkByLabel[k.label] || []
+              const _rising = spark.length > 1 ? spark[spark.length - 1] >= spark[0] : true
+              const sparkGood = k.label === 'Gastos' ? !_rising : _rising
+              // "Ventas hoy" sin ninguna venta (hoy ni en la serie) → CTA primera venta
+              const noVentas = k.label === 'Ventas hoy'
+                && (ventas?.today?.total_sales || 0) === 0
+                && spark.reduce((a, b) => a + (b || 0), 0) === 0
               return (
                 <KpiAskButton
                   key={i}
                   kpi={{ label: k.label, value: k.value, hint: k.sub }}
                   modulo="dashboard"
                 >
-                  <div style={{
+                  <div className="hover-lift" style={{
                     background: T.card,
-                    borderRadius: 14,
+                    borderRadius: 18,
                     border: `.5px solid ${T.hairline}`,
-                    boxShadow: '0 1px 2px rgba(0,0,0,.02)',
+                    boxShadow: 'var(--shadow-card)',
                     padding: 20,
                   }}>
                   <div style={{
@@ -575,32 +530,62 @@ export default function Dashboard() {
                   }}>
                     <div style={{
                       width: 30, height: 30, borderRadius: 8,
-                      background: colorToRgba(k.color, 0.08),
+                      background: colorToRgba(k.color, 0.1),
                       color: k.color,
                       display: 'grid', placeItems: 'center',
                     }}>{k.icon}</div>
                     <div style={{ fontSize: 12, color: T.text3, fontWeight: 400 }}>{k.label}</div>
                   </div>
-                  <div style={{
-                    fontSize: 28, fontWeight: 500, letterSpacing: -0.7,
-                    color: T.text, fontVariantNumeric: 'tabular-nums', lineHeight: 1,
-                  }}>{loading ? '—' : k.value}</div>
-                  <div style={{
-                    fontSize: 11.5, color: T.text4, marginTop: 10,
-                    display: 'flex', alignItems: 'center', gap: 4,
-                  }}>
-                    {k.trend === 'up' && (
-                      <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke={T.green} strokeWidth="2.5" strokeLinecap="round">
-                        <path d="M7 14l5-5 5 5" />
-                      </svg>
-                    )}
-                    {k.trend === 'down' && (
-                      <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke={T.red} strokeWidth="2.5" strokeLinecap="round">
-                        <path d="M7 10l5 5 5-5" />
-                      </svg>
-                    )}
-                    {k.sub}
-                  </div>
+                  {(!loading && noVentas) ? (
+                    /* Sin ninguna venta todavía → CTA para registrar la primera */
+                    <>
+                      <div style={{
+                        fontSize: 15, fontWeight: 500, color: T.text, lineHeight: 1.3,
+                      }}>Aún no hay ventas</div>
+                      <div
+                        role="link"
+                        tabIndex={0}
+                        onClick={(e) => { e.stopPropagation(); router.push('/ventas') }}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); router.push('/ventas') } }}
+                        style={{
+                          marginTop: 12, display: 'inline-flex', alignItems: 'center', gap: 6,
+                          fontSize: 12.5, fontWeight: 600, color: T.blue, cursor: 'pointer',
+                        }}>
+                        Haz tu primera venta
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={T.blue} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M5 12h14M13 6l6 6-6 6" />
+                        </svg>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div style={{
+                        fontSize: 28, fontWeight: 500, letterSpacing: -0.7,
+                        color: T.text, fontVariantNumeric: 'tabular-nums', lineHeight: 1,
+                      }}>{loading ? <Skeleton w={96} h={26} /> : k.value}</div>
+                      <div style={{
+                        fontSize: 11.5, color: T.text4, marginTop: 10,
+                        display: 'flex', alignItems: 'center', gap: 4,
+                      }}>
+                        {k.trend === 'up' && (
+                          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke={T.green} strokeWidth="2.5" strokeLinecap="round">
+                            <path d="M7 14l5-5 5 5" />
+                          </svg>
+                        )}
+                        {k.trend === 'down' && (
+                          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke={T.red} strokeWidth="2.5" strokeLinecap="round">
+                            <path d="M7 10l5 5 5-5" />
+                          </svg>
+                        )}
+                        {k.sub}
+                      </div>
+                      {!loading && spark.length > 1 && (
+                        <div style={{ marginTop: 10 }}>
+                          <Sparkline data={spark} up={sparkGood} height={22} />
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
               </KpiAskButton>
               )
@@ -608,7 +593,7 @@ export default function Dashboard() {
           </div>
 
           {/* ──── BAR CHART + VERA HÍBRIDO ──── */}
-          <div style={{
+          <div className="dash-row-main" style={{
             display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 360px',
             gap: 14, marginBottom: 14,
           }}>
@@ -617,7 +602,7 @@ export default function Dashboard() {
           </div>
 
           {/* ──── ESTADO + MÁS VENDIDOS ──── */}
-          <div style={{
+          <div className="dash-row-2" style={{
             display: 'grid', gridTemplateColumns: '1fr 1fr',
             gap: 14, marginBottom: 14,
           }}>
@@ -639,7 +624,7 @@ export default function Dashboard() {
                     </svg>
                   </div>
                   <div>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: T.text, letterSpacing: -0.2 }}>
+                    <div className="display" style={{ fontSize: 15, fontWeight: 600, color: T.text, letterSpacing: -0.2 }}>
                       Estado del negocio
                     </div>
                     <div style={{ fontSize: 11, color: T.text4, marginTop: 2 }}>
@@ -721,7 +706,7 @@ export default function Dashboard() {
                     </svg>
                   </div>
                   <div>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: T.text, letterSpacing: -0.2 }}>
+                    <div className="display" style={{ fontSize: 15, fontWeight: 600, color: T.text, letterSpacing: -0.2 }}>
                       Más vendidos
                     </div>
                     <div style={{ fontSize: 11, color: T.text4, marginTop: 2 }}>
@@ -735,9 +720,11 @@ export default function Dashboard() {
                 }}>Ver todo</button>
               </div>
               {(ventas?.best_sellers || []).length === 0 ? (
-                <div style={{ textAlign: 'center', padding: 24, color: T.text4, fontSize: 13 }}>
-                  Sin ventas aún
-                </div>
+                <EmptyState
+                  icon={<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" /><path d="M3 6h18M16 10a4 4 0 0 1-8 0" /></svg>}
+                  title="Sin ventas aún"
+                  hint="Tus productos más vendidos aparecerán aquí."
+                />
               ) : (
                 (ventas?.best_sellers || []).slice(0, 5).map((p, i) => (
                   <div key={p.product_id} style={{
@@ -782,11 +769,11 @@ export default function Dashboard() {
                   <rect x="3" y="14" width="7" height="7" />
                 </svg>
               </div>
-              <div style={{ fontSize: 14, fontWeight: 600, color: T.text, letterSpacing: -0.2 }}>
+              <div className="display" style={{ fontSize: 15, fontWeight: 600, color: T.text, letterSpacing: -0.2 }}>
                 Acceso rápido
               </div>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
               {modules.map((m, idx) => {
                 const moduleIcons = {
                   'Contabilidad': {

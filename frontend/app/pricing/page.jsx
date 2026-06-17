@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 const NAVY  = '#0B1426'
 const CYAN  = '#00B4D8'
 const BLUE  = '#2563eb'
-const GREEN = '#16a34a'
+const GREEN = '#059669'
 const AMBER = '#d97706'
 const RED   = '#dc2626'
 

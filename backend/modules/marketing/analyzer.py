@@ -5,11 +5,12 @@ and produces a full marketing intelligence report via Claude.
 """
 import json
 import anthropic
+from vera.compat import vera_client
 from sqlalchemy.orm import Session
 
 from core.config import get_settings
 settings = get_settings()
-client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+client = vera_client(None, None, module="marketing")
 
 
 async def analyze_company(

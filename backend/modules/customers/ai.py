@@ -2,6 +2,7 @@ import json
 from datetime import date, datetime
 from sqlalchemy.orm import Session
 from anthropic import Anthropic
+from vera.compat import vera_client
 from core.config import get_settings
 from models.customer import Contact, Message, KnowledgeBase, SentimentReport
 
@@ -44,7 +45,7 @@ def analyze_message(
     - ai_confidence 0-1
     - draft response in Spanish
     """
-    client = Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+    client = vera_client(None, None, module="clientes")
     kb_context = get_knowledge_base_context(db, company_id)
 
     history_text = ""
@@ -184,7 +185,7 @@ def generate_sentiment_report(db: Session, company_id: int) -> dict:
     Called every Monday by the scheduler.
     """
     today = date.today()
-    client = Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+    client = vera_client(None, None, module="clientes")
 
     contacts = db.query(Contact).filter(
         Contact.company_id == company_id
@@ -292,7 +293,7 @@ def extract_knowledge_from_document(content: str, title: str, kb_type: str) -> d
     When a document is uploaded to the knowledge base,
     Claude extracts a clean summary for use in responses.
     """
-    client = Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+    client = vera_client(None, None, module="clientes")
 
     prompt = f"""Extrae la información más útil de este documento para responder preguntas de clientes.
 

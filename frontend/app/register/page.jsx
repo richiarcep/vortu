@@ -1,11 +1,14 @@
 'use client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useT, useTheme } from '@/components/ui/tokens'
 
 import { API_BASE as API } from '@/lib/api'
 
 export default function RegisterPage() {
   const router = useRouter()
+  const T = useT()
+  const { theme } = useTheme()
   const [fullName, setFullName]         = useState('')
   const [email, setEmail]               = useState('')
   const [password, setPassword]         = useState('')
@@ -76,9 +79,9 @@ export default function RegisterPage() {
         body { font-family: 'DM Sans', system-ui, sans-serif; }
 
         .register-root {
-          min-height: 100vh;
+          min-height: 100dvh;
           display: flex;
-          background: #f4f6fb;
+          background: ${theme === 'dark' ? T.bg : '#f4f6fb'};
           font-family: 'DM Sans', system-ui, sans-serif;
         }
 
@@ -172,60 +175,60 @@ export default function RegisterPage() {
         }
         .form-header { margin-bottom: 32px; }
         .form-eyebrow {
-          font-size: 11px; font-weight: 700; color: #00B4D8;
+          font-size: 11px; font-weight: 700; color: ${T.cyan};
           text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 10px;
         }
         .form-title {
-          font-size: 28px; font-weight: 800; color: #0B1426;
+          font-size: 28px; font-weight: 800; color: ${T.text};
           letter-spacing: -0.7px; line-height: 1.1; margin-bottom: 8px;
         }
-        .form-subtitle { font-size: 14px; color: #6b7280; line-height: 1.6; }
+        .form-subtitle { font-size: 14px; color: ${T.text3}; line-height: 1.6; }
 
         .field { margin-bottom: 18px; }
         .field label {
-          display: block; font-size: 12px; font-weight: 700; color: #374151;
+          display: block; font-size: 12px; font-weight: 700; color: ${T.text2};
           margin-bottom: 7px; letter-spacing: 0.03em; text-transform: uppercase;
         }
         .field-input {
           width: 100%; padding: 12px 14px; border-radius: 10px;
-          border: 1.5px solid #e5e9f0; background: white;
-          font-size: 14px; color: #0B1426; font-family: 'DM Sans', system-ui;
+          border: 1.5px solid ${theme === 'dark' ? T.hairline : '#e5e9f0'}; background: ${theme === 'dark' ? T.card : 'white'};
+          font-size: 14px; color: ${T.text}; font-family: 'DM Sans', system-ui;
           outline: none; transition: border-color 0.15s, box-shadow 0.15s;
         }
-        .field-input:focus { border-color: #0B1426; box-shadow: 0 0 0 3px rgba(11,20,38,0.06); }
-        .field-input::placeholder { color: #9ca3af; }
+        .field-input:focus { border-color: ${theme === 'dark' ? T.blue : '#0B1426'}; box-shadow: 0 0 0 3px ${theme === 'dark' ? 'rgba(10,132,255,0.18)' : 'rgba(11,20,38,0.06)'}; }
+        .field-input::placeholder { color: ${T.text4}; }
 
         .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 
         .input-wrap { position: relative; }
         .pw-toggle {
           position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
-          background: none; border: none; cursor: pointer; color: #9ca3af;
+          background: none; border: none; cursor: pointer; color: ${T.text4};
           display: flex; align-items: center; padding: 4px; transition: color 0.15s;
         }
-        .pw-toggle:hover { color: #0B1426; }
+        .pw-toggle:hover { color: ${T.text}; }
 
         .divider {
           display: flex; align-items: center; gap: 10px;
-          margin: 6px 0 18px; font-size: 11px; color: #9ca3af;
+          margin: 6px 0 18px; font-size: 11px; color: ${T.text4};
         }
-        .divider-line { flex: 1; height: 1px; background: #e5e9f0; }
+        .divider-line { flex: 1; height: 1px; background: ${theme === 'dark' ? T.hairline : '#e5e9f0'}; }
 
         .error-box {
           display: flex; align-items: flex-start; gap: 10px;
-          padding: 12px 14px; background: #fef2f2; border: 1px solid #fecaca;
-          border-radius: 10px; color: #dc2626; font-size: 13px;
+          padding: 12px 14px; background: ${theme === 'dark' ? T.redSoft : '#fef2f2'}; border: 1px solid ${theme === 'dark' ? T.red : '#fecaca'};
+          border-radius: 10px; color: ${theme === 'dark' ? T.red : '#dc2626'}; font-size: 13px;
           margin-bottom: 18px; animation: fadeUp 0.2s ease;
         }
         .submit-btn {
           width: 100%; padding: 13px; border-radius: 10px; border: none;
-          background: #0B1426; color: white; font-size: 14px; font-weight: 700;
+          background: ${theme === 'dark' ? T.blue : '#0B1426'}; color: white; font-size: 14px; font-weight: 700;
           cursor: pointer; font-family: 'DM Sans', system-ui; letter-spacing: -0.2px;
           display: flex; align-items: center; justify-content: center; gap: 8px;
           transition: all 0.2s; margin-bottom: 16px;
         }
         .submit-btn:hover:not(:disabled) {
-          background: #162038; transform: translateY(-1px);
+          background: ${theme === 'dark' ? '#3395FF' : '#162038'}; transform: translateY(-1px);
           box-shadow: 0 8px 24px rgba(11,20,38,0.25);
         }
         .submit-btn:disabled { opacity: 0.6; cursor: not-allowed; }
@@ -236,18 +239,18 @@ export default function RegisterPage() {
         }
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        .login-row { text-align: center; font-size: 13px; color: #6b7280; }
+        .login-row { text-align: center; font-size: 13px; color: ${T.text3}; }
         .login-row a {
-          color: #0B1426; font-weight: 700; text-decoration: none;
-          border-bottom: 1px solid #0B1426; padding-bottom: 1px; transition: opacity 0.15s;
+          color: ${theme === 'dark' ? T.text : '#0B1426'}; font-weight: 700; text-decoration: none;
+          border-bottom: 1px solid ${theme === 'dark' ? T.text : '#0B1426'}; padding-bottom: 1px; transition: opacity 0.15s;
         }
         .login-row a:hover { opacity: 0.6; }
 
         .form-footer {
-          margin-top: 32px; padding-top: 20px; border-top: 1px solid #f0f2f7;
-          text-align: center; font-size: 11px; color: #9ca3af;
+          margin-top: 32px; padding-top: 20px; border-top: 1px solid ${theme === 'dark' ? T.hairline : '#f0f2f7'};
+          text-align: center; font-size: 11px; color: ${T.text4};
         }
-        .terms { font-size: 11px; color: #9ca3af; text-align: center; margin-bottom: 16px; line-height: 1.6; }
+        .terms { font-size: 11px; color: ${T.text4}; text-align: center; margin-bottom: 16px; line-height: 1.6; }
 
         @media (max-width: 860px) {
           .left-panel { display: none; }
@@ -333,20 +336,20 @@ export default function RegisterPage() {
 
               <div className="field-row">
                 <div className="field">
-                  <label>Nombre completo</label>
-                  <input className="field-input" type="text" placeholder="Juan García"
+                  <label htmlFor="reg-fullname">Nombre completo</label>
+                  <input id="reg-fullname" className="field-input" type="text" placeholder="Juan García"
                     value={fullName} onChange={e => setFullName(e.target.value)} required autoComplete="name"/>
                 </div>
                 <div className="field">
-                  <label>Empresa</label>
-                  <input className="field-input" type="text" placeholder="Mi Empresa SL"
+                  <label htmlFor="reg-company">Empresa</label>
+                  <input id="reg-company" className="field-input" type="text" placeholder="Mi Empresa SL"
                     value={companyName} onChange={e => setCompanyName(e.target.value)} required autoComplete="organization"/>
                 </div>
               </div>
 
               <div className="field">
-                <label>Correo electrónico</label>
-                <input className="field-input" type="email" placeholder="tu@empresa.com"
+                <label htmlFor="reg-email">Correo electrónico</label>
+                <input id="reg-email" className="field-input" type="email" placeholder="tu@empresa.com"
                   value={email} onChange={e => setEmail(e.target.value)} required autoComplete="email"/>
               </div>
 
@@ -358,14 +361,15 @@ export default function RegisterPage() {
 
               <div className="field-row">
                 <div className="field">
-                  <label>Contraseña</label>
+                  <label htmlFor="reg-password">Contraseña</label>
                   <div className="input-wrap">
-                    <input className="field-input"
+                    <input id="reg-password" className="field-input"
                       type={showPassword ? 'text' : 'password'}
                       placeholder="Mín. 8 caracteres"
                       value={password} onChange={e => setPassword(e.target.value)}
                       required autoComplete="new-password" style={{paddingRight:'44px'}}/>
                     <button type="button" className="pw-toggle"
+                      aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                       onClick={() => setShowPassword(s => !s)} tabIndex={-1}>
                       {showPassword ? (
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -383,8 +387,8 @@ export default function RegisterPage() {
                   </div>
                 </div>
                 <div className="field">
-                  <label>Confirmar</label>
-                  <input className="field-input"
+                  <label htmlFor="reg-confirm">Confirmar</label>
+                  <input id="reg-confirm" className="field-input"
                     type={showPassword ? 'text' : 'password'}
                     placeholder="Repite la contraseña"
                     value={confirmPassword} onChange={e => setConfirm(e.target.value)}
@@ -402,7 +406,7 @@ export default function RegisterPage() {
               )}
 
               <p className="terms">
-                Al registrarte aceptas los <a href="#" style={{color:'#0B1426',fontWeight:600}}>Términos de servicio</a> y la <a href="#" style={{color:'#0B1426',fontWeight:600}}>Política de privacidad</a> de Vortu.
+                Al registrarte aceptas los <a href="#" style={{color:theme==='dark'?T.text:'#0B1426',fontWeight:600}}>Términos de servicio</a> y la <a href="#" style={{color:theme==='dark'?T.text:'#0B1426',fontWeight:600}}>Política de privacidad</a> de Vortu.
               </p>
 
               <button className="submit-btn" type="submit" disabled={loading}>

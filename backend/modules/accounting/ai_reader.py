@@ -1,5 +1,6 @@
 import json
 import anthropic
+from vera.compat import vera_client
 import base64
 from pathlib import Path
 from datetime import date
@@ -42,7 +43,7 @@ def read_register_pdf(
     categorias_gasto = [k for k in CATEGORIAS_GASTO.keys()]
 
     # Step 3 — Send to Claude with vision
-    client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+    client = vera_client(None, company_id, module="documentos")
 
     message = client.messages.create(
         model="claude-opus-4-6",

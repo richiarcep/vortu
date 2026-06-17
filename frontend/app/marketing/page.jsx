@@ -2,8 +2,9 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
-import { T, FONT } from '@/components/ui/tokens'
+import { FONT, useT, useTheme } from '@/components/ui/tokens'
 import VeraDrawer from '@/components/ui/VeraDrawer'
+import { HeaderActions } from '@/components/ui/primitives'
 
 import { API_BASE as API } from '@/lib/api'
 const VERA_BLUE = '#0071E3'
@@ -13,7 +14,7 @@ const ANALYSIS_CACHE_KEY = 'vortu_marketing_analysis'
 // CONFIGS
 // ─────────────────────────────────────────────────────────
 const STATUS_CFG = {
-  active:    { label: 'Activa',    color: '#16a34a', bg: 'rgba(22,163,74,.1)', dot: '#16a34a' },
+  active:    { label: 'Activa',    color: '#059669', bg: 'rgba(5,150,105,.1)', dot: '#059669' },
   draft:     { label: 'Borrador',  color: '#6b7280', bg: 'rgba(107,114,128,.1)', dot: '#9CA3AF' },
   paused:    { label: 'Pausada',   color: '#d97706', bg: 'rgba(217,119,6,.1)', dot: '#F59E0B' },
   completed: { label: 'Finalizada', color: '#0EA5E9', bg: 'rgba(14,165,233,.1)', dot: '#0EA5E9' },
@@ -23,13 +24,13 @@ const PLATFORM_CFG = {
   google: { label: 'Google', color: '#0071E3', bg: 'rgba(0,113,227,.1)' },
   meta:   { label: 'Meta',   color: '#7c3aed', bg: 'rgba(124,58,237,.1)' },
   tiktok: { label: 'TikTok', color: '#1d1d1f', bg: 'rgba(0,0,0,.06)' },
-  email:  { label: 'Email',  color: '#16a34a', bg: 'rgba(22,163,74,.1)' },
+  email:  { label: 'Email',  color: '#059669', bg: 'rgba(5,150,105,.1)' },
 }
 
 const IMPACT_CFG = {
   alto:  { label: 'Impacto alto',  color: '#dc2626' },
   medio: { label: 'Impacto medio', color: '#d97706' },
-  bajo:  { label: 'Impacto bajo',  color: '#16a34a' },
+  bajo:  { label: 'Impacto bajo',  color: '#059669' },
 }
 
 // ─────────────────────────────────────────────────────────
@@ -69,10 +70,11 @@ function Pill({ label, color, bg, dot }) {
 }
 
 function Tab({ active, onClick, label, badge }) {
+  const T = useT()
   return (
     <button onClick={onClick} style={{
       padding: '7px 14px', borderRadius: 8,
-      background: active ? '#fff' : 'transparent',
+      background: active ? T.card : 'transparent',
       color: active ? T.text : T.text3, border: 'none',
       boxShadow: active ? '0 1px 2px rgba(0,0,0,.06)' : 'none',
       fontSize: 12.5, fontWeight: 500, cursor: 'pointer',
@@ -91,15 +93,17 @@ function Tab({ active, onClick, label, badge }) {
   )
 }
 
-function KpiCard({ label, value, color = T.text }) {
+function KpiCard({ label, value, color }) {
+  const T = useT()
+  const resolvedColor = color || T.text
   return (
     <div style={{
-      background: '#fff', borderRadius: 12,
+      background: T.card, borderRadius: 12,
       border: `.5px solid ${T.hairline}`,
       padding: 16, flex: 1,
     }}>
       <div style={{ fontSize: 11, color: T.text4, fontWeight: 500, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>{label}</div>
-      <div style={{ fontSize: 24, fontWeight: 600, color, fontVariantNumeric: 'tabular-nums' }}>{value}</div>
+      <div style={{ fontSize: 24, fontWeight: 600, color: resolvedColor, fontVariantNumeric: 'tabular-nums' }}>{value}</div>
     </div>
   )
 }
@@ -108,22 +112,11 @@ function KpiCard({ label, value, color = T.text }) {
 // TAB 1: ESTRATEGIA (Análisis IA)
 // ─────────────────────────────────────────────────────────
 function EstrategiaTab({ token, onCreateCampaign }) {
+  const T = useT()
   const [analysis, setAnalysis] = useState(null)
   const [loading, setLoading] = useState(false)
   const [regenerating, setRegenerating] = useState(false)
   const [showFullAnalysis, setShowFullAnalysis] = useState(false)
-
-  useEffect(() => {
-    const cached = typeof window !== 'undefined' ? localStorage.getItem(ANALYSIS_CACHE_KEY) : null
-    if (cached) {
-      const parsed = safeParse(cached)
-      if (parsed) {
-        setAnalysis(parsed)
-        return
-      }
-    }
-    loadAnalysis()
-  }, [])
 
   async function loadAnalysis() {
     setLoading(true)
@@ -159,6 +152,18 @@ function EstrategiaTab({ token, onCreateCampaign }) {
     setRegenerating(false)
   }
 
+  useEffect(() => {
+    const cached = typeof window !== 'undefined' ? localStorage.getItem(ANALYSIS_CACHE_KEY) : null
+    if (cached) {
+      const parsed = safeParse(cached)
+      if (parsed) {
+        setAnalysis(parsed)
+        return
+      }
+    }
+    loadAnalysis()
+  }, [])
+
   if (loading && !analysis) {
     return <div style={{ padding: 60, textAlign: 'center', color: T.text4, fontSize: 13 }}>Cargando análisis...</div>
   }
@@ -166,7 +171,7 @@ function EstrategiaTab({ token, onCreateCampaign }) {
   if (!analysis) {
     return (
       <div style={{
-        background: '#fff', borderRadius: 12,
+        background: T.card, borderRadius: 12,
         border: `.5px solid ${T.hairline}`,
         padding: 60, textAlign: 'center',
       }}>
@@ -325,14 +330,14 @@ function EstrategiaTab({ token, onCreateCampaign }) {
       {/* ═══════════════════════════════════════════════════════════════
           2 COLUMNAS: Info (izquierda) + Acciones (derecha)
           ═══════════════════════════════════════════════════════════════ */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+      <div className="mkt-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
 
         {/* COLUMNA IZQUIERDA: INFO */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
 
           {/* Público objetivo */}
           <div style={{
-            background: '#fff', borderRadius: 12,
+            background: T.card, borderRadius: 12,
             border: `.5px solid ${T.hairline}`, padding: 18,
           }}>
             <div style={{ fontSize: 11, color: T.text4, fontWeight: 500, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 12 }}>
@@ -385,7 +390,7 @@ function EstrategiaTab({ token, onCreateCampaign }) {
           {/* Tono de voz */}
           {analysis.tone_of_voice && (
             <div style={{
-              background: '#fff', borderRadius: 12,
+              background: T.card, borderRadius: 12,
               border: `.5px solid ${T.hairline}`, padding: 18,
             }}>
               <div style={{ fontSize: 11, color: T.text4, fontWeight: 500, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 }}>
@@ -398,7 +403,7 @@ function EstrategiaTab({ token, onCreateCampaign }) {
           {/* Mensajes clave */}
           {keyMessages.length > 0 && (
             <div style={{
-              background: '#fff', borderRadius: 12,
+              background: T.card, borderRadius: 12,
               border: `.5px solid ${T.hairline}`, padding: 18,
             }}>
               <div style={{ fontSize: 11, color: T.text4, fontWeight: 500, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 }}>
@@ -423,7 +428,7 @@ function EstrategiaTab({ token, onCreateCampaign }) {
 
           {/* OPORTUNIDADES (las accionables) */}
           <div style={{
-            background: '#fff', borderRadius: 12,
+            background: T.card, borderRadius: 12,
             border: `.5px solid ${T.hairline}`, padding: 18,
           }}>
             <div style={{
@@ -489,17 +494,17 @@ function EstrategiaTab({ token, onCreateCampaign }) {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               {strengths.length > 0 && (
                 <div style={{
-                  background: '#fff', borderRadius: 12,
+                  background: T.card, borderRadius: 12,
                   border: `.5px solid ${T.hairline}`, padding: 14,
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-                    <span style={{ width: 6, height: 6, borderRadius: 999, background: '#16a34a' }} />
-                    <span style={{ fontSize: 10.5, fontWeight: 600, color: '#16a34a', textTransform: 'uppercase', letterSpacing: 0.5 }}>Fortalezas</span>
+                    <span style={{ width: 6, height: 6, borderRadius: 999, background: '#059669' }} />
+                    <span style={{ fontSize: 10.5, fontWeight: 600, color: '#059669', textTransform: 'uppercase', letterSpacing: 0.5 }}>Fortalezas</span>
                   </div>
                   <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
                     {strengths.slice(0, 4).map((s, i) => (
                       <li key={i} style={{ fontSize: 11.5, color: T.text2, lineHeight: 1.45, paddingLeft: 10, position: 'relative' }}>
-                        <span style={{ position: 'absolute', left: 0, color: '#16a34a' }}>+</span>{s}
+                        <span style={{ position: 'absolute', left: 0, color: '#059669' }}>+</span>{s}
                       </li>
                     ))}
                   </ul>
@@ -507,7 +512,7 @@ function EstrategiaTab({ token, onCreateCampaign }) {
               )}
               {weaknesses.length > 0 && (
                 <div style={{
-                  background: '#fff', borderRadius: 12,
+                  background: T.card, borderRadius: 12,
                   border: `.5px solid ${T.hairline}`, padding: 14,
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
@@ -553,12 +558,11 @@ function EstrategiaTab({ token, onCreateCampaign }) {
 // TAB 2: CAMPAÑAS
 // ─────────────────────────────────────────────────────────
 function CampanasTab({ token }) {
+  const T = useT()
   const [campaigns, setCampaigns] = useState([])
   const [filter, setFilter] = useState('all')
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState(null)
-
-  useEffect(() => { load() }, [])
 
   async function load() {
     setLoading(true)
@@ -584,6 +588,8 @@ function CampanasTab({ token }) {
     } catch {}
   }
 
+  useEffect(() => { load() }, [])
+
   const stats = {
     total:     campaigns.length,
     active:    campaigns.filter(c => c.status === 'active').length,
@@ -599,7 +605,7 @@ function CampanasTab({ token }) {
       {/* KPI cards */}
       <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
         <KpiCard label="Total" value={stats.total} />
-        <KpiCard label="Activas" value={stats.active} color="#16a34a" />
+        <KpiCard label="Activas" value={stats.active} color="#059669" />
         <KpiCard label="Borradores" value={stats.draft} color="#6b7280" />
         <KpiCard label="Pausadas" value={stats.paused} color="#d97706" />
       </div>
@@ -639,7 +645,7 @@ function CampanasTab({ token }) {
                 onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,.08)' }}
                 onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 1px 2px rgba(0,0,0,.03)' }}
                 style={{
-                  background: '#fff', borderRadius: 14,
+                  background: T.card, borderRadius: 14,
                   border: `.5px solid ${T.hairline}`,
                   padding: 0, transition: 'all .2s ease',
                   overflow: 'hidden', position: 'relative',
@@ -679,7 +685,7 @@ function CampanasTab({ token }) {
                         const cfg = pl === 'google' ? { label: 'Google', bg: 'linear-gradient(135deg, #4285F4, #1a73e8)', color: '#fff' } :
                                     pl === 'meta' ? { label: 'Meta', bg: 'linear-gradient(135deg, #0866FF, #1877F2)', color: '#fff' } :
                                     pl === 'tiktok' ? { label: 'TikTok', bg: 'linear-gradient(135deg, #FF0050, #25F4EE)', color: '#fff' } :
-                                    pl === 'email' ? { label: 'Email', bg: 'linear-gradient(135deg, #16a34a, #15803d)', color: '#fff' } :
+                                    pl === 'email' ? { label: 'Email', bg: 'linear-gradient(135deg, #059669, #047857)', color: '#fff' } :
                                     { label: p, bg: '#6b7280', color: '#fff' }
                         return (
                           <span key={p} style={{
@@ -745,16 +751,16 @@ function CampanasTab({ token }) {
                     {(isActive || isPaused) && (
                       <button onClick={() => toggleStatus(c)} style={{
                         flex: 1, padding: '9px', borderRadius: 8,
-                        background: isActive ? 'rgba(217,119,6,.1)' : 'rgba(22,163,74,.1)',
-                        color: isActive ? '#d97706' : '#16a34a',
+                        background: isActive ? 'rgba(217,119,6,.1)' : 'rgba(5,150,105,.1)',
+                        color: isActive ? '#d97706' : '#059669',
                         border: 'none',
                         fontSize: 12.5, fontWeight: 600, cursor: 'pointer',
                         fontFamily: 'inherit',
                         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                         transition: 'all .12s',
                       }}
-                        onMouseEnter={e => { e.currentTarget.style.background = isActive ? 'rgba(217,119,6,.15)' : 'rgba(22,163,74,.15)' }}
-                        onMouseLeave={e => { e.currentTarget.style.background = isActive ? 'rgba(217,119,6,.1)' : 'rgba(22,163,74,.1)' }}
+                        onMouseEnter={e => { e.currentTarget.style.background = isActive ? 'rgba(217,119,6,.15)' : 'rgba(5,150,105,.15)' }}
+                        onMouseLeave={e => { e.currentTarget.style.background = isActive ? 'rgba(217,119,6,.1)' : 'rgba(5,150,105,.1)' }}
                       >
                         {isActive ? (
                           <><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg> Pausar</>
@@ -801,6 +807,7 @@ function CampanasTab({ token }) {
 // DRAWER DETALLE CAMPAÑA
 // ─────────────────────────────────────────────────────────
 function CampaignDrawer({ campaign, onClose, token, onUpdate }) {
+  const T = useT()
   const [detail, setDetail] = useState(null)
   const [metrics, setMetrics] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -830,7 +837,7 @@ function CampaignDrawer({ campaign, onClose, token, onUpdate }) {
       display: 'flex', justifyContent: 'flex-end', zIndex: 100,
     }} onClick={onClose}>
       <div onClick={e => e.stopPropagation()} style={{
-        width: 560, height: '100vh', background: '#fff',
+        width: 560, maxWidth: '100%', height: '100dvh', background: T.card,
         display: 'flex', flexDirection: 'column', overflow: 'hidden',
         animation: 'slideIn .2s ease',
       }}>
@@ -855,7 +862,7 @@ function CampaignDrawer({ campaign, onClose, token, onUpdate }) {
               )}
             </div>
             <Pill {...status} />
-            <button onClick={onClose} style={{
+            <button onClick={onClose} aria-label="Cerrar detalle" style={{
               background: 'transparent', border: 'none', cursor: 'pointer', padding: 4, color: T.text4,
             }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -921,7 +928,7 @@ function CampaignDrawer({ campaign, onClose, token, onUpdate }) {
               {/* MÉTRICAS si hay */}
               {metrics && (metrics.impressions || metrics.clicks) && (
                 <div style={{
-                  background: '#fff', borderRadius: 12,
+                  background: T.card, borderRadius: 12,
                   border: `.5px solid ${T.hairline}`, padding: 14,
                 }}>
                   <div style={{ fontSize: 10.5, color: T.text4, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 }}>
@@ -959,7 +966,7 @@ function CampaignDrawer({ campaign, onClose, token, onUpdate }) {
               {/* COPIES GOOGLE */}
               {copiesGoogle.length > 0 && (
                 <div style={{
-                  background: '#fff', borderRadius: 12,
+                  background: T.card, borderRadius: 12,
                   border: `.5px solid ${T.hairline}`, padding: 14,
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
@@ -989,7 +996,7 @@ function CampaignDrawer({ campaign, onClose, token, onUpdate }) {
               {/* COPIES META */}
               {copiesMeta.length > 0 && (
                 <div style={{
-                  background: '#fff', borderRadius: 12,
+                  background: T.card, borderRadius: 12,
                   border: `.5px solid ${T.hairline}`, padding: 14,
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
@@ -1020,7 +1027,7 @@ function CampaignDrawer({ campaign, onClose, token, onUpdate }) {
               {/* IMÁGENES o PROMPTS */}
               {imagePrompts.length > 0 && (
                 <div style={{
-                  background: '#fff', borderRadius: 12,
+                  background: T.card, borderRadius: 12,
                   border: `.5px solid ${T.hairline}`, padding: 14,
                 }}>
                   <div style={{ fontSize: 10.5, color: T.text4, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 }}>
@@ -1040,14 +1047,14 @@ function CampaignDrawer({ campaign, onClose, token, onUpdate }) {
               {/* IDs de plataformas si están publicadas */}
               {(c.google_campaign_id || c.meta_campaign_id) && (
                 <div style={{
-                  background: 'rgba(22,163,74,.04)', borderRadius: 10,
-                  border: '.5px solid rgba(22,163,74,.15)', padding: 12,
+                  background: 'rgba(5,150,105,.04)', borderRadius: 10,
+                  border: '.5px solid rgba(5,150,105,.15)', padding: 12,
                 }}>
-                  <div style={{ fontSize: 10.5, color: '#16a34a', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>
+                  <div style={{ fontSize: 10.5, color: '#059669', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>
                     ✓ Publicada
                   </div>
-                  {c.google_campaign_id && <div style={{ fontSize: 11, color: T.text3 }}>Google: <code style={{ background: '#fff', padding: '1px 5px', borderRadius: 3 }}>{c.google_campaign_id}</code></div>}
-                  {c.meta_campaign_id && <div style={{ fontSize: 11, color: T.text3, marginTop: 3 }}>Meta: <code style={{ background: '#fff', padding: '1px 5px', borderRadius: 3 }}>{c.meta_campaign_id}</code></div>}
+                  {c.google_campaign_id && <div style={{ fontSize: 11, color: T.text3 }}>Google: <code style={{ background: T.card, padding: '1px 5px', borderRadius: 3 }}>{c.google_campaign_id}</code></div>}
+                  {c.meta_campaign_id && <div style={{ fontSize: 11, color: T.text3, marginTop: 3 }}>Meta: <code style={{ background: T.card, padding: '1px 5px', borderRadius: 3 }}>{c.meta_campaign_id}</code></div>}
                 </div>
               )}
             </div>
@@ -1062,10 +1069,9 @@ function CampaignDrawer({ campaign, onClose, token, onUpdate }) {
 // TAB 3: PLATAFORMAS
 // ─────────────────────────────────────────────────────────
 function PlataformasTab({ token }) {
+  const T = useT()
   const [platforms, setPlatforms] = useState([])
   const [loading, setLoading] = useState(true)
-
-  useEffect(() => { load() }, [])
 
   async function load() {
     setLoading(true)
@@ -1078,6 +1084,8 @@ function PlataformasTab({ token }) {
     } catch {}
     setLoading(false)
   }
+
+  useEffect(() => { load() }, [])
 
   const PLATFORMS_LIST = [
     {
@@ -1104,7 +1112,7 @@ function PlataformasTab({ token }) {
         const connected = Array.isArray(platforms) ? platforms.find(pl => pl.platform === p.id || pl.platform?.toLowerCase() === p.id || pl.id === p.id) : null
         return (
           <div key={p.id} style={{
-            background: '#fff', borderRadius: 12,
+            background: T.card, borderRadius: 12,
             border: `.5px solid ${T.hairline}`, padding: 20,
           }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 14 }}>
@@ -1119,7 +1127,7 @@ function PlataformasTab({ token }) {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                   <span style={{ fontSize: 14, fontWeight: 600, color: T.text }}>{p.name}</span>
                   {connected ? (
-                    <Pill label="Conectada" color="#16a34a" bg="rgba(22,163,74,.1)" dot="#16a34a" />
+                    <Pill label="Conectada" color="#059669" bg="rgba(5,150,105,.1)" dot="#059669" />
                   ) : (
                     <Pill label="Desconectada" color="#6b7280" bg="rgba(107,114,128,.1)" dot="#9CA3AF" />
                   )}
@@ -1140,7 +1148,7 @@ function PlataformasTab({ token }) {
                 <div style={{ display: 'flex', gap: 6 }}>
                   <button style={{
                     flex: 1, padding: '7px', borderRadius: 8,
-                    background: '#fff', color: T.text2,
+                    background: T.card, color: T.text2,
                     border: `.5px solid ${T.hairline}`,
                     fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
                   }}>Verificar</button>
@@ -1174,6 +1182,7 @@ function PlataformasTab({ token }) {
 // MODAL NUEVA CAMPAÑA
 // ─────────────────────────────────────────────────────────
 function NewCampaignModal({ onClose, token, prefill, onCreated }) {
+  const T = useT()
   const [name, setName] = useState(prefill?.name || '')
   const [objective, setObjective] = useState(prefill?.objective || 'sales')
   const [platforms, setPlatforms] = useState(prefill?.platforms || ['google', 'meta'])
@@ -1283,7 +1292,7 @@ function NewCampaignModal({ onClose, token, prefill, onCreated }) {
     { k: 'google', l: 'Google Ads', bg: 'linear-gradient(135deg, #4285F4, #1a73e8)' },
     { k: 'meta', l: 'Meta Ads', bg: 'linear-gradient(135deg, #0866FF, #1877F2)' },
     { k: 'tiktok', l: 'TikTok', bg: 'linear-gradient(135deg, #FF0050, #25F4EE)' },
-    { k: 'email', l: 'Email', bg: 'linear-gradient(135deg, #16a34a, #15803d)' },
+    { k: 'email', l: 'Email', bg: 'linear-gradient(135deg, #059669, #047857)' },
   ]
 
   return (
@@ -1293,7 +1302,7 @@ function NewCampaignModal({ onClose, token, prefill, onCreated }) {
     }} onClick={onClose}>
       <div onClick={e => e.stopPropagation()} style={{
         width: '100%', maxWidth: 560, maxHeight: '90vh',
-        background: '#fff', borderRadius: 14,
+        background: T.card, borderRadius: 14,
         overflow: 'hidden', display: 'flex', flexDirection: 'column',
         animation: 'modalIn .2s ease',
         boxShadow: '0 20px 60px rgba(0,0,0,.2)',
@@ -1314,7 +1323,7 @@ function NewCampaignModal({ onClose, token, prefill, onCreated }) {
                     {mode === 'auto' ? 'Vera generará copies, prompts e imágenes automáticamente' : 'Tú escribes los copies, Vera te da feedback'}
                   </div>
                 </div>
-                <button onClick={onClose} style={{
+                <button onClick={onClose} aria-label="Cerrar" style={{
                   background: 'transparent', border: 'none', cursor: 'pointer', padding: 4, color: T.text4,
                 }}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -1527,7 +1536,7 @@ function NewCampaignModal({ onClose, token, prefill, onCreated }) {
                           width: '100%', padding: '8px 10px',
                           borderRadius: 6, border: `.5px solid ${T.hairline}`,
                           fontSize: 12.5, fontFamily: 'inherit', color: T.text, outline: 'none',
-                          background: '#fff',
+                          background: T.card,
                         }} />
                     </div>
                     <div>
@@ -1539,7 +1548,7 @@ function NewCampaignModal({ onClose, token, prefill, onCreated }) {
                           width: '100%', padding: '8px 10px',
                           borderRadius: 6, border: `.5px solid ${T.hairline}`,
                           fontSize: 12.5, fontFamily: 'inherit', color: T.text, outline: 'none',
-                          background: '#fff', resize: 'vertical',
+                          background: T.card, resize: 'vertical',
                         }} />
                     </div>
                     <div>
@@ -1550,7 +1559,7 @@ function NewCampaignModal({ onClose, token, prefill, onCreated }) {
                           width: '100%', padding: '8px 10px',
                           borderRadius: 6, border: `.5px solid ${T.hairline}`,
                           fontSize: 12.5, fontFamily: 'inherit', color: T.text, outline: 'none',
-                          background: '#fff',
+                          background: T.card,
                         }} />
                     </div>
                   </div>
@@ -1646,7 +1655,7 @@ function NewCampaignModal({ onClose, token, prefill, onCreated }) {
           <div style={{ padding: '60px 40px', textAlign: 'center' }}>
             <div style={{
               width: 60, height: 60, borderRadius: 999,
-              background: '#16a34a',
+              background: '#059669',
               display: 'grid', placeItems: 'center',
               margin: '0 auto 20px',
             }}>
@@ -1667,6 +1676,8 @@ function NewCampaignModal({ onClose, token, prefill, onCreated }) {
 // PÁGINA PRINCIPAL
 // ─────────────────────────────────────────────────────────
 export default function MarketingPage() {
+  const T = useT()
+  const { theme } = useTheme()
   const router = useRouter()
   const [tab, setTab] = useState('estrategia')
   const [token, setToken] = useState(null)
@@ -1675,13 +1686,6 @@ export default function MarketingPage() {
   const [newCampaignOpen, setNewCampaignOpen] = useState(false)
   const [campaignPrefill, setCampaignPrefill] = useState(null)
   const [summary, setSummary] = useState({ total: 0, active: 0 })
-
-  useEffect(() => {
-    const t = typeof window !== 'undefined' ? localStorage.getItem('nexum_token') : null
-    if (!t) { router.push('/login'); return }
-    setToken(t)
-    loadSummary(t)
-  }, [])
 
   async function loadSummary(t) {
     try {
@@ -1698,29 +1702,38 @@ export default function MarketingPage() {
     } catch {}
   }
 
+  useEffect(() => {
+    const t = typeof window !== 'undefined' ? localStorage.getItem('nexum_token') : null
+    if (!t) { router.push('/login'); return }
+    setToken(t)
+    loadSummary(t)
+  }, [])
+
   const notificationCount = summary.active
 
   return (
     <div style={{
-      minHeight: '100vh', background: T.bg, display: 'flex',
+      minHeight: '100dvh', background: T.bg, display: 'flex',
       fontFamily: FONT, WebkitFontSmoothing: 'antialiased',
     }}>
-      <style>{`*{box-sizing:border-box}::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-thumb{background:rgba(0,0,0,.12);border-radius:999px}input:focus{outline:none}`}</style>
+      <style>{`*{box-sizing:border-box}::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-thumb{background:${T.hairline};border-radius:999px}input:focus{outline:none}
+        @media (max-width:768px){.mkt-row{grid-template-columns:1fr!important}}`}</style>
 
       <Sidebar active="/marketing" />
 
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', height: '100vh' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', height: '100dvh' }}>
         <header style={{
           padding: '20px 32px 0',
-          background: 'rgba(251,251,253,.85)',
+          background: theme === 'dark' ? 'rgba(11,11,12,.85)' : 'rgba(251,251,253,.85)',
           backdropFilter: 'saturate(180%) blur(20px)',
+          WebkitBackdropFilter: 'saturate(180%) blur(20px)',
           borderBottom: `.5px solid ${T.hairline}`,
         }}>
           <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 14 }}>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
                 <h1 style={{ fontSize: 22, fontWeight: 600, color: T.text, margin: 0, letterSpacing: -0.3 }}>Marketing</h1>
-                <span style={{ width: 6, height: 6, borderRadius: 999, background: '#16a34a' }} />
+                <span style={{ width: 6, height: 6, borderRadius: 999, background: '#059669' }} />
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: T.text4 }}>
                 <FlagES size={11} />
@@ -1730,11 +1743,13 @@ export default function MarketingPage() {
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={() => setNotificationsOpen(o => !o)} style={{
+            <HeaderActions onVera={() => setVeraOpen(true)} router={router}>
+              <button onClick={() => setNotificationsOpen(o => !o)}
+                aria-label={`Notificaciones${notificationCount > 0 ? ` (${notificationCount})` : ''}`}
+                aria-expanded={notificationsOpen} style={{
                 position: 'relative',
                 padding: '7px 10px', borderRadius: 8,
-                background: '#fff', color: T.text2,
+                background: T.card, color: T.text2,
                 border: `.5px solid ${T.hairline}`,
                 cursor: 'pointer', fontFamily: 'inherit',
                 display: 'grid', placeItems: 'center',
@@ -1752,25 +1767,13 @@ export default function MarketingPage() {
                   }}>{notificationCount}</span>
                 )}
               </button>
-              <button onClick={() => setVeraOpen(true)} style={{
-                padding: '7px 14px', borderRadius: 8,
-                background: '#fff', color: VERA_BLUE,
-                border: `.5px solid rgba(0,113,227,.3)`,
-                fontSize: 12, fontWeight: 500, cursor: 'pointer',
-                fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6,
-              }}>
-                <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor">
-                  <path d="M8 1l1.5 5.5L15 8l-5.5 1.5L8 15l-1.5-5.5L1 8l5.5-1.5L8 1z" />
-                </svg>
-                Vera
-              </button>
               <button onClick={() => { setCampaignPrefill(null); setNewCampaignOpen(true) }} style={{
                 padding: '7px 14px', borderRadius: 8,
                 background: VERA_BLUE, color: '#fff', border: 'none',
                 fontSize: 12, fontWeight: 500, cursor: 'pointer',
                 fontFamily: 'inherit',
               }}>+ Nueva campaña</button>
-            </div>
+            </HeaderActions>
           </div>
 
           <div style={{ display: 'flex', gap: 2, background: T.sidebar, borderRadius: 8, padding: 3, width: 'fit-content' }}>
@@ -1812,7 +1815,7 @@ export default function MarketingPage() {
         <div onClick={() => setNotificationsOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 90 }}>
           <div onClick={e => e.stopPropagation()} style={{
             position: 'fixed', top: 70, right: 32,
-            width: 360, background: '#fff', borderRadius: 12,
+            width: 360, background: T.card, borderRadius: 12,
             border: `.5px solid ${T.hairline}`,
             boxShadow: '0 8px 30px rgba(0,0,0,.12)',
             padding: 14,
@@ -1821,8 +1824,8 @@ export default function MarketingPage() {
             {summary.active > 0 ? (
               <div onClick={() => { setNotificationsOpen(false); setTab('campanas') }} style={{
                 padding: '10px 12px', borderRadius: 8,
-                background: 'rgba(22,163,74,.04)',
-                border: '.5px solid rgba(22,163,74,.15)',
+                background: 'rgba(5,150,105,.04)',
+                border: '.5px solid rgba(5,150,105,.15)',
                 cursor: 'pointer',
               }}>
                 <div style={{ fontSize: 12, fontWeight: 600, color: T.text, marginBottom: 3 }}>

@@ -2,9 +2,10 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
-import { T, FONT } from '@/components/ui/tokens'
+import { FONT, useT, useTheme } from '@/components/ui/tokens'
 import VeraDrawer from '@/components/ui/VeraDrawer'
 import { openVeraDrawer } from '@/components/ui/useVeraStore'
+import { Skeleton, EmptyState, HeaderActions } from '@/components/ui/primitives'
 
 import { API_BASE as API } from '@/lib/api'
 const VERA_BLUE = '#0071E3'
@@ -13,7 +14,7 @@ const VERA_BLUE = '#0071E3'
 // CONFIGS
 // ─────────────────────────────────────────────────────────
 const SENTIMENT_CFG = {
-  positive: { label: 'Positivo', color: '#16a34a', bg: 'rgba(22,163,74,.1)', dot: '#16a34a' },
+  positive: { label: 'Positivo', color: '#059669', bg: 'rgba(5,150,105,.1)', dot: '#059669' },
   neutral:  { label: 'Neutral',  color: '#6b7280', bg: 'rgba(107,114,128,.1)', dot: '#9CA3AF' },
   negative: { label: 'Negativo', color: '#dc2626', bg: 'rgba(220,38,38,.1)', dot: '#dc2626' },
   urgent:   { label: 'Urgente',  color: '#9a3412', bg: 'rgba(154,52,18,.12)', dot: '#dc2626' },
@@ -21,12 +22,12 @@ const SENTIMENT_CFG = {
 const INTENT_CFG = {
   question:   { label: 'Pregunta',  color: '#0071E3', bg: 'rgba(0,113,227,.1)' },
   complaint:  { label: 'Queja',     color: '#dc2626', bg: 'rgba(220,38,38,.1)' },
-  purchase:   { label: 'Compra',    color: '#16a34a', bg: 'rgba(22,163,74,.1)' },
+  purchase:   { label: 'Compra',    color: '#059669', bg: 'rgba(5,150,105,.1)' },
   compliment: { label: 'Elogio',    color: '#7c3aed', bg: 'rgba(124,58,237,.1)' },
   other:      { label: 'Otro',      color: '#6b7280', bg: 'rgba(107,114,128,.1)' },
 }
 const RISK_CFG = {
-  bajo:    { label: 'Bajo',     color: '#16a34a', bg: 'rgba(22,163,74,.08)',  dot: '#16a34a' },
+  bajo:    { label: 'Bajo',     color: '#059669', bg: 'rgba(5,150,105,.08)',  dot: '#059669' },
   medio:   { label: 'Medio',    color: '#d97706', bg: 'rgba(217,119,6,.08)',  dot: '#F59E0B' },
   alto:    { label: 'Alto',     color: '#dc2626', bg: 'rgba(220,38,38,.08)',  dot: '#dc2626' },
   critico: { label: 'Crítico',  color: '#9a3412', bg: 'rgba(154,52,18,.10)',  dot: '#9a3412' },
@@ -38,7 +39,7 @@ const PLATFORM_LABEL = {
 const KB_TYPE_CFG = {
   faq:             { label: 'FAQ',       color: '#0071E3' },
   policy:          { label: 'Política',  color: '#7c3aed' },
-  product_catalog: { label: 'Catálogo',  color: '#16a34a' },
+  product_catalog: { label: 'Catálogo',  color: '#059669' },
   pricing:         { label: 'Precios',   color: '#d97706' },
   general:         { label: 'General',   color: '#6b7280' },
 }
@@ -47,7 +48,7 @@ const KB_TYPE_CFG = {
 // HELPERS
 // ─────────────────────────────────────────────────────────
 function avatarColor(name) {
-  const colors = ['#0071E3', '#7c3aed', '#16a34a', '#dc2626', '#d97706', '#0EA5E9', '#8B5CF6']
+  const colors = ['#0071E3', '#7c3aed', '#059669', '#dc2626', '#d97706', '#0EA5E9', '#8B5CF6']
   let hash = 0
   for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash)
   return colors[Math.abs(hash) % colors.length]
@@ -109,25 +110,28 @@ function Avatar({ name, size = 32, isVip }) {
   )
 }
 
-function KpiPill({ label, value, color = T.text }) {
+function KpiPill({ label, value, color }) {
+  const T = useT()
+  const c = color ?? T.text
   return (
     <div style={{
       display: 'inline-flex', alignItems: 'center', gap: 8,
       padding: '7px 12px', borderRadius: 999,
-      background: '#fff', border: `.5px solid ${T.hairline}`,
+      background: T.card, border: `.5px solid ${T.hairline}`,
       fontSize: 12,
     }}>
       <span style={{ color: T.text4, fontWeight: 500 }}>{label}</span>
-      <span style={{ color, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{value}</span>
+      <span style={{ color: c, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{value}</span>
     </div>
   )
 }
 
 function Tab({ active, onClick, label, badge }) {
+  const T = useT()
   return (
     <button onClick={onClick} style={{
       padding: '7px 14px', borderRadius: 8,
-      background: active ? '#fff' : 'transparent',
+      background: active ? T.card : 'transparent',
       color: active ? T.text : T.text3,
       border: 'none',
       boxShadow: active ? '0 1px 2px rgba(0,0,0,.06)' : 'none',
@@ -152,6 +156,7 @@ function Tab({ active, onClick, label, badge }) {
 // TAB 1: CLIENTES (con sub-vistas Lista/Grid/Kanban)
 // ─────────────────────────────────────────────────────────
 function ClientesTab({ contacts, onSelect, selected }) {
+  const T = useT()
   const [view, setView] = useState('list')
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('all')
@@ -175,11 +180,11 @@ function ClientesTab({ contacts, onSelect, selected }) {
             <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
           </svg>
           <input value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="Buscar cliente..."
+            placeholder="Buscar cliente..." aria-label="Buscar clientes"
             style={{
               width: '100%', padding: '7px 10px 7px 30px',
               borderRadius: 8, border: `.5px solid ${T.hairline}`,
-              background: '#fff', fontSize: 12, fontFamily: 'inherit',
+              background: T.card, fontSize: 12, fontFamily: 'inherit',
               color: T.text, outline: 'none',
             }} />
         </div>
@@ -188,7 +193,7 @@ function ClientesTab({ contacts, onSelect, selected }) {
           {[{k:'all',l:'Todos'},{k:'vip',l:'VIPs'},{k:'risk',l:'Riesgo'},{k:'active',l:'Activos'}].map(f => (
             <button key={f.k} onClick={() => setFilter(f.k)} style={{
               padding: '5px 10px', borderRadius: 6, border: 'none',
-              background: filter === f.k ? '#fff' : 'transparent',
+              background: filter === f.k ? T.card : 'transparent',
               color: filter === f.k ? T.text : T.text3,
               boxShadow: filter === f.k ? '0 1px 2px rgba(0,0,0,.06)' : 'none',
               fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
@@ -198,13 +203,13 @@ function ClientesTab({ contacts, onSelect, selected }) {
 
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 2, background: T.sidebar, borderRadius: 8, padding: 3 }}>
           {[
-            { k: 'list', icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg> },
-            { k: 'grid', icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg> },
-            { k: 'kanban', icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="6" height="18"/><rect x="10" y="3" width="6" height="12"/><rect x="17" y="3" width="4" height="9"/></svg> },
+            { k: 'list', label: 'Vista de lista', icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg> },
+            { k: 'grid', label: 'Vista de cuadrícula', icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg> },
+            { k: 'kanban', label: 'Vista kanban', icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="6" height="18"/><rect x="10" y="3" width="6" height="12"/><rect x="17" y="3" width="4" height="9"/></svg> },
           ].map(v => (
-            <button key={v.k} onClick={() => setView(v.k)} style={{
+            <button key={v.k} onClick={() => setView(v.k)} aria-label={v.label} style={{
               padding: '5px 10px', borderRadius: 6, border: 'none',
-              background: view === v.k ? '#fff' : 'transparent',
+              background: view === v.k ? T.card : 'transparent',
               color: view === v.k ? T.text : T.text3,
               boxShadow: view === v.k ? '0 1px 2px rgba(0,0,0,.06)' : 'none',
               cursor: 'pointer', display: 'grid', placeItems: 'center',
@@ -221,8 +226,9 @@ function ClientesTab({ contacts, onSelect, selected }) {
 }
 
 function ListView({ contacts, onSelect, selectedId }) {
+  const T = useT()
   return (
-    <div style={{ background: '#fff', borderRadius: 12, border: `.5px solid ${T.hairline}`, overflow: 'hidden' }}>
+    <div style={{ background: T.card, borderRadius: 12, border: `.5px solid ${T.hairline}`, overflow: 'hidden' }}>
       <div style={{
         display: 'grid', gridTemplateColumns: '40px 1fr 220px 100px 100px 100px 70px',
         gap: 12, padding: '10px 16px',
@@ -264,13 +270,18 @@ function ListView({ contacts, onSelect, selectedId }) {
         )
       })}
       {contacts.length === 0 && (
-        <div style={{ padding: 60, textAlign: 'center', color: T.text4, fontSize: 13 }}>Sin clientes</div>
+        <EmptyState
+          icon={<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>}
+          title="Sin clientes"
+          hint="No hay clientes que coincidan con tu búsqueda o filtros. Ajusta los criterios o añade un nuevo cliente."
+        />
       )}
     </div>
   )
 }
 
 function GridView({ contacts, onSelect }) {
+  const T = useT()
   return (
     <div style={{
       display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12,
@@ -278,13 +289,11 @@ function GridView({ contacts, onSelect }) {
       {contacts.map(c => {
         const risk = RISK_CFG[c.risk_level] || RISK_CFG.bajo
         return (
-          <div key={c.id} onClick={() => onSelect(c)}
-            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,.05)' }}
-            onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none' }}
+          <div key={c.id} onClick={() => onSelect(c)} className="hover-lift"
             style={{
-              background: '#fff', borderRadius: 12,
+              background: T.card, borderRadius: 12,
               border: `.5px solid ${T.hairline}`,
-              padding: 16, cursor: 'pointer', transition: 'all .15s',
+              padding: 16, cursor: 'pointer',
             }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 12 }}>
               <Avatar name={c.name} size={40} isVip={c.is_vip} />
@@ -321,6 +330,7 @@ function GridView({ contacts, onSelect }) {
 }
 
 function KanbanView({ contacts, onSelect }) {
+  const T = useT()
   const cols = ['bajo', 'medio', 'alto', 'critico']
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
@@ -341,13 +351,11 @@ function KanbanView({ contacts, onSelect }) {
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {items.map(c => (
-                <div key={c.id} onClick={() => onSelect(c)}
-                  onMouseEnter={e => e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,.06)'}
-                  onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}
+                <div key={c.id} onClick={() => onSelect(c)} className="hover-lift"
                   style={{
-                    background: '#fff', borderRadius: 8,
+                    background: T.card, borderRadius: 8,
                     border: `.5px solid ${T.hairline}`,
-                    padding: 10, cursor: 'pointer', transition: 'all .12s',
+                    padding: 10, cursor: 'pointer',
                   }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                     <Avatar name={c.name} size={24} isVip={c.is_vip} />
@@ -360,7 +368,11 @@ function KanbanView({ contacts, onSelect }) {
                 </div>
               ))}
               {items.length === 0 && (
-                <div style={{ padding: 20, textAlign: 'center', color: T.text4, fontSize: 11 }}>Vacío</div>
+                <EmptyState
+                  icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/></svg>}
+                  title="Sin clientes"
+                  hint="Ningún cliente en este nivel de riesgo."
+                />
               )}
             </div>
           </div>
@@ -374,11 +386,10 @@ function KanbanView({ contacts, onSelect }) {
 // TAB 2: INBOX GLOBAL
 // ─────────────────────────────────────────────────────────
 function InboxTab({ token, onSelectContact }) {
+  const T = useT()
   const [messages, setMessages] = useState([])
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState('pending')
-
-  useEffect(() => { load() }, [statusFilter])
 
   async function load() {
     setLoading(true)
@@ -394,6 +405,8 @@ function InboxTab({ token, onSelectContact }) {
     setLoading(false)
   }
 
+  useEffect(() => { load() }, [statusFilter])
+
   return (
     <>
       <div style={{ display: 'flex', gap: 2, background: T.sidebar, borderRadius: 8, padding: 3, marginBottom: 16, width: 'fit-content' }}>
@@ -405,7 +418,7 @@ function InboxTab({ token, onSelectContact }) {
         ].map(s => (
           <button key={s.k} onClick={() => setStatusFilter(s.k)} style={{
             padding: '5px 12px', borderRadius: 6, border: 'none',
-            background: statusFilter === s.k ? '#fff' : 'transparent',
+            background: statusFilter === s.k ? T.card : 'transparent',
             color: statusFilter === s.k ? T.text : T.text3,
             boxShadow: statusFilter === s.k ? '0 1px 2px rgba(0,0,0,.06)' : 'none',
             fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
@@ -414,13 +427,19 @@ function InboxTab({ token, onSelectContact }) {
       </div>
 
       {loading ? (
-        <div style={{ padding: 60, textAlign: 'center', color: T.text4, fontSize: 13 }}>Cargando...</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <Skeleton w="100%" h={72} />
+          <Skeleton w="100%" h={72} />
+          <Skeleton w="100%" h={72} />
+        </div>
       ) : (
-        <div style={{ background: '#fff', borderRadius: 12, border: `.5px solid ${T.hairline}`, overflow: 'hidden' }}>
+        <div style={{ background: T.card, borderRadius: 12, border: `.5px solid ${T.hairline}`, overflow: 'hidden' }}>
           {messages.length === 0 ? (
-            <div style={{ padding: 60, textAlign: 'center', color: T.text4, fontSize: 13 }}>
-              No hay mensajes en esta categoría
-            </div>
+            <EmptyState
+              icon={<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>}
+              title="Bandeja vacía"
+              hint="No hay mensajes en esta categoría. Aparecerán aquí cuando lleguen nuevas conversaciones de tus clientes."
+            />
           ) : messages.map(m => {
             const sent = SENTIMENT_CFG[m.ai_sentiment] || SENTIMENT_CFG.neutral
             const intent = INTENT_CFG[m.ai_intent] || INTENT_CFG.other
@@ -482,6 +501,7 @@ function InboxTab({ token, onSelectContact }) {
 // TAB 3: CONOCIMIENTO (Knowledge Base + Auto-responses)
 // ─────────────────────────────────────────────────────────
 function ConocimientoTab({ token }) {
+  const T = useT()
   const [kbEntries, setKbEntries] = useState([])
   const [autoEntries, setAutoEntries] = useState([])
   const [section, setSection] = useState('kb')
@@ -502,7 +522,7 @@ function ConocimientoTab({ token }) {
         ].map(s => (
           <button key={s.k} onClick={() => setSection(s.k)} style={{
             padding: '5px 12px', borderRadius: 6, border: 'none',
-            background: section === s.k ? '#fff' : 'transparent',
+            background: section === s.k ? T.card : 'transparent',
             color: section === s.k ? T.text : T.text3,
             boxShadow: section === s.k ? '0 1px 2px rgba(0,0,0,.06)' : 'none',
             fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
@@ -516,7 +536,7 @@ function ConocimientoTab({ token }) {
             const cfg = KB_TYPE_CFG[e.kb_type] || KB_TYPE_CFG.general
             return (
               <div key={e.id} style={{
-                background: '#fff', borderRadius: 12,
+                background: T.card, borderRadius: 12,
                 border: `.5px solid ${T.hairline}`, padding: 16,
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
@@ -531,7 +551,13 @@ function ConocimientoTab({ token }) {
             )
           })}
           {kbEntries.length === 0 && (
-            <div style={{ padding: 60, textAlign: 'center', color: T.text4, fontSize: 13, gridColumn: '1/-1' }}>Sin entradas</div>
+            <div style={{ gridColumn: '1/-1' }}>
+              <EmptyState
+                icon={<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>}
+                title="Sin entradas"
+                hint="Añade FAQs, políticas o catálogos para que Vera responda con información de tu negocio."
+              />
+            </div>
           )}
         </div>
       )}
@@ -540,7 +566,7 @@ function ConocimientoTab({ token }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {autoEntries.map(a => (
             <div key={a.id} style={{
-              background: '#fff', borderRadius: 12,
+              background: T.card, borderRadius: 12,
               border: `.5px solid ${T.hairline}`, padding: 16,
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
@@ -549,7 +575,7 @@ function ConocimientoTab({ token }) {
                   <Pill key={k} label={k} color={VERA_BLUE} bg="rgba(0,113,227,.08)" />
                 ))}
                 <span style={{ marginLeft: 'auto' }}>
-                  <Pill label={a.is_active ? 'Activo' : 'Inactivo'} color={a.is_active ? '#16a34a' : '#9CA3AF'} bg={a.is_active ? 'rgba(22,163,74,.08)' : 'rgba(107,114,128,.08)'} dot={a.is_active ? '#16a34a' : '#9CA3AF'} />
+                  <Pill label={a.is_active ? 'Activo' : 'Inactivo'} color={a.is_active ? '#059669' : '#9CA3AF'} bg={a.is_active ? 'rgba(5,150,105,.08)' : 'rgba(107,114,128,.08)'} dot={a.is_active ? '#059669' : '#9CA3AF'} />
                 </span>
               </div>
               <div style={{ fontSize: 13, color: T.text2, lineHeight: 1.6, padding: 10, background: T.sidebar, borderRadius: 8 }}>
@@ -558,7 +584,11 @@ function ConocimientoTab({ token }) {
             </div>
           ))}
           {autoEntries.length === 0 && (
-            <div style={{ padding: 60, textAlign: 'center', color: T.text4, fontSize: 13 }}>Sin auto-respuestas</div>
+            <EmptyState
+              icon={<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>}
+              title="Sin auto-respuestas"
+              hint="Configura respuestas automáticas por palabras clave para que Vera atienda mensajes al instante."
+            />
           )}
         </div>
       )}
@@ -570,6 +600,7 @@ function ConocimientoTab({ token }) {
 // TAB 4: INFORMES
 // ─────────────────────────────────────────────────────────
 function InformesTab({ token }) {
+  const T = useT()
   const [report, setReport] = useState(null)
   const [analytics, setAnalytics] = useState(null)
 
@@ -584,7 +615,7 @@ function InformesTab({ token }) {
     <>
       {report && (
         <div style={{
-          background: '#fff', borderRadius: 12,
+          background: T.card, borderRadius: 12,
           border: `.5px solid ${T.hairline}`, padding: 20, marginBottom: 16,
         }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
@@ -598,7 +629,7 @@ function InformesTab({ token }) {
               </div>
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
-              <KpiPill label="Positivos" value={`${report.positive_pct}%`} color="#16a34a" />
+              <KpiPill label="Positivos" value={`${report.positive_pct}%`} color="#059669" />
               <KpiPill label="Neutrales" value={`${report.neutral_pct}%`} color="#6b7280" />
               <KpiPill label="Negativos" value={`${report.negative_pct}%`} color="#dc2626" />
             </div>
@@ -626,7 +657,7 @@ function InformesTab({ token }) {
       )}
 
       {analytics && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
           {[
             { label: 'Mensajes hoy', val: analytics.messages_today },
             { label: 'Esta semana', val: analytics.messages_week },
@@ -634,7 +665,7 @@ function InformesTab({ token }) {
             { label: 'Tasa auto-respuesta', val: analytics.auto_response_rate ? `${analytics.auto_response_rate}%` : '—' },
           ].map((k, i) => (
             <div key={i} style={{
-              background: '#fff', borderRadius: 10,
+              background: T.card, borderRadius: 10,
               border: `.5px solid ${T.hairline}`, padding: 14,
             }}>
               <div style={{ fontSize: 10, color: T.text4, fontWeight: 500, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>{k.label}</div>
@@ -645,9 +676,11 @@ function InformesTab({ token }) {
       )}
 
       {!report && !analytics && (
-        <div style={{ padding: 60, textAlign: 'center', color: T.text4, fontSize: 13 }}>
-          Sin informes generados todavía
-        </div>
+        <EmptyState
+          icon={<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/></svg>}
+          title="Sin informes todavía"
+          hint="Cuando se registre actividad de clientes, aquí verás el informe semanal de sentiment y las métricas clave."
+        />
       )}
     </>
   )
@@ -657,13 +690,12 @@ function InformesTab({ token }) {
 // DRAWER INBOX DEL CLIENTE
 // ─────────────────────────────────────────────────────────
 function ClientDrawer({ contact, onClose, token, onUpdate }) {
+  const T = useT()
   const [messages, setMessages] = useState([])
   const [selectedMsg, setSelectedMsg] = useState(null)
   const [editedDraft, setEditedDraft] = useState('')
   const [analyzing, setAnalyzing] = useState(false)
   const h = () => ({ Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' })
-
-  useEffect(() => { loadMessages() }, [contact?.id])
 
   async function loadMessages() {
     try {
@@ -679,6 +711,8 @@ function ClientDrawer({ contact, onClose, token, onUpdate }) {
       }
     } catch {}
   }
+
+  useEffect(() => { loadMessages() }, [contact?.id])
 
   async function veraAnalyze(msg) {
     setAnalyzing(true)
@@ -737,13 +771,13 @@ function ClientDrawer({ contact, onClose, token, onUpdate }) {
       position: 'fixed', inset: 0, background: 'rgba(0,0,0,.35)',
       display: 'flex', justifyContent: 'flex-end', zIndex: 100,
     }} onClick={onClose}>
-      <div onClick={e => e.stopPropagation()} style={{
-        width: '88vw', maxWidth: 1200, height: '100vh',
-        background: '#fff', display: 'grid',
+      <div onClick={e => e.stopPropagation()} className="cli-row" style={{
+        width: '88vw', maxWidth: 1200, height: '100dvh',
+        background: T.card, display: 'grid',
         gridTemplateColumns: '300px 1fr 260px',
         animation: 'slideIn .2s ease',
       }}>
-        <style>{`@keyframes slideIn{from{transform:translateX(40px);opacity:0}to{transform:translateX(0);opacity:1}}`}</style>
+        <style>{`@keyframes slideIn{from{transform:translateX(40px);opacity:0}to{transform:translateX(0);opacity:1}}@media (max-width:768px){.cli-row{grid-template-columns:1fr!important}}`}</style>
 
         {/* COLUMNA 1: LISTA MENSAJES */}
         <div style={{ borderRight: `.5px solid ${T.hairline}`, background: T.sidebar, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -753,7 +787,7 @@ function ClientDrawer({ contact, onClose, token, onUpdate }) {
               <div style={{ fontSize: 13, fontWeight: 600, color: T.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{contact.name}</div>
               <div style={{ fontSize: 11, color: T.text4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{contact.email}</div>
             </div>
-            <button onClick={onClose} style={{
+            <button onClick={onClose} aria-label="Cerrar" style={{
               background: 'transparent', border: 'none', cursor: 'pointer',
               padding: 4, color: T.text4, display: 'grid', placeItems: 'center',
             }}>
@@ -767,7 +801,7 @@ function ClientDrawer({ contact, onClose, token, onUpdate }) {
                 <div key={m.id} onClick={() => { setSelectedMsg(m); setEditedDraft(m.ai_draft || '') }}
                   style={{
                     padding: '10px 12px', borderRadius: 8, cursor: 'pointer',
-                    background: selectedMsg?.id === m.id ? '#fff' : 'transparent',
+                    background: selectedMsg?.id === m.id ? T.card : 'transparent',
                     border: selectedMsg?.id === m.id ? `.5px solid ${T.hairline}` : '.5px solid transparent',
                     marginBottom: 4,
                   }}>
@@ -785,7 +819,11 @@ function ClientDrawer({ contact, onClose, token, onUpdate }) {
               )
             })}
             {messages.length === 0 && (
-              <div style={{ padding: 30, textAlign: 'center', color: T.text4, fontSize: 12 }}>Sin mensajes</div>
+              <EmptyState
+                icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>}
+                title="Sin mensajes"
+                hint="Este cliente todavía no tiene conversaciones registradas."
+              />
             )}
           </div>
         </div>
@@ -863,7 +901,7 @@ function ClientDrawer({ contact, onClose, token, onUpdate }) {
         <div style={{ borderLeft: `.5px solid ${T.hairline}`, background: T.sidebar, padding: 16, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div>
             <div style={{ fontSize: 10, color: T.text4, fontWeight: 500, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>Información</div>
-            <div style={{ background: '#fff', borderRadius: 10, border: `.5px solid ${T.hairline}`, padding: 12 }}>
+            <div style={{ background: T.card, borderRadius: 10, border: `.5px solid ${T.hairline}`, padding: 12 }}>
               <div style={{ fontSize: 10.5, color: T.text4, marginBottom: 2 }}>Email</div>
               <div style={{ fontSize: 12.5, color: T.text, marginBottom: 8 }}>{contact.email || '—'}</div>
               <div style={{ fontSize: 10.5, color: T.text4, marginBottom: 2 }}>Teléfono</div>
@@ -875,7 +913,7 @@ function ClientDrawer({ contact, onClose, token, onUpdate }) {
 
           <div>
             <div style={{ fontSize: 10, color: T.text4, fontWeight: 500, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>Sentiment</div>
-            <div style={{ background: '#fff', borderRadius: 10, border: `.5px solid ${T.hairline}`, padding: 12 }}>
+            <div style={{ background: T.card, borderRadius: 10, border: `.5px solid ${T.hairline}`, padding: 12 }}>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 10 }}>
                 <span style={{ fontSize: 26, fontWeight: 600, color: T.text }}>{contact.sentiment_score?.toFixed(1)}</span>
                 <span style={{ fontSize: 11, color: T.text4 }}>/ 10</span>
@@ -889,7 +927,7 @@ function ClientDrawer({ contact, onClose, token, onUpdate }) {
 
           <div>
             <div style={{ fontSize: 10, color: T.text4, fontWeight: 500, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>Stats</div>
-            <div style={{ background: '#fff', borderRadius: 10, border: `.5px solid ${T.hairline}`, padding: 12 }}>
+            <div style={{ background: T.card, borderRadius: 10, border: `.5px solid ${T.hairline}`, padding: 12 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
                 <span style={{ fontSize: 12, color: T.text3 }}>Mensajes</span>
                 <span style={{ fontSize: 12, color: T.text, fontWeight: 600 }}>{contact.total_messages}</span>
@@ -903,7 +941,7 @@ function ClientDrawer({ contact, onClose, token, onUpdate }) {
 
           <button onClick={toggleVip} style={{
             padding: '8px 12px', borderRadius: 8,
-            background: contact.is_vip ? 'rgba(255,215,0,.18)' : '#fff',
+            background: contact.is_vip ? 'rgba(255,215,0,.18)' : T.card,
             color: contact.is_vip ? '#9a3412' : T.text,
             border: `.5px solid ${contact.is_vip ? 'rgba(255,215,0,.5)' : T.hairline}`,
             fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
@@ -919,11 +957,10 @@ function ClientDrawer({ contact, onClose, token, onUpdate }) {
 // TAB 5: HISTORIAL (mensajes ya enviados/respondidos)
 // ─────────────────────────────────────────────────────────
 function HistorialTab({ token, onSelectContact }) {
+  const T = useT()
   const [messages, setMessages] = useState([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all')
-
-  useEffect(() => { load() }, [filter])
 
   async function load() {
     setLoading(true)
@@ -954,6 +991,8 @@ function HistorialTab({ token, onSelectContact }) {
     setLoading(false)
   }
 
+  useEffect(() => { load() }, [filter])
+
   // Agrupar por fecha
   const grouped = (() => {
     const groups = {}
@@ -974,9 +1013,9 @@ function HistorialTab({ token, onSelectContact }) {
   })()
 
   const STATUS_LABEL = {
-    sent: { label: 'Enviado manualmente', color: '#16a34a', bg: 'rgba(22,163,74,.1)', dot: '#16a34a' },
+    sent: { label: 'Enviado manualmente', color: '#059669', bg: 'rgba(5,150,105,.1)', dot: '#059669' },
     auto_sent: { label: 'Auto-enviado por Vera', color: '#0071E3', bg: 'rgba(0,113,227,.1)', dot: '#0071E3' },
-    approved: { label: 'Aprobado', color: '#16a34a', bg: 'rgba(22,163,74,.1)', dot: '#16a34a' },
+    approved: { label: 'Aprobado', color: '#059669', bg: 'rgba(5,150,105,.1)', dot: '#059669' },
     rejected: { label: 'Rechazado', color: '#dc2626', bg: 'rgba(220,38,38,.1)', dot: '#dc2626' },
   }
 
@@ -991,7 +1030,7 @@ function HistorialTab({ token, onSelectContact }) {
         ].map(f => (
           <button key={f.k} onClick={() => setFilter(f.k)} style={{
             padding: '5px 12px', borderRadius: 6, border: 'none',
-            background: filter === f.k ? '#fff' : 'transparent',
+            background: filter === f.k ? T.card : 'transparent',
             color: filter === f.k ? T.text : T.text3,
             boxShadow: filter === f.k ? '0 1px 2px rgba(0,0,0,.06)' : 'none',
             fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
@@ -1000,13 +1039,18 @@ function HistorialTab({ token, onSelectContact }) {
       </div>
 
       {loading ? (
-        <div style={{ padding: 60, textAlign: 'center', color: T.text4, fontSize: 13 }}>Cargando...</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <Skeleton w={140} h={12} />
+          <Skeleton w="100%" h={90} />
+          <Skeleton w="100%" h={90} />
+        </div>
       ) : messages.length === 0 ? (
-        <div style={{
-          padding: 60, textAlign: 'center', color: T.text4, fontSize: 13,
-          background: '#fff', borderRadius: 12, border: `.5px solid ${T.hairline}`,
-        }}>
-          Sin mensajes en el historial
+        <div style={{ background: T.card, borderRadius: 12, border: `.5px solid ${T.hairline}` }}>
+          <EmptyState
+            icon={<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>}
+            title="Sin mensajes en el historial"
+            hint="Aquí aparecerán las respuestas enviadas a tus clientes, manuales y automáticas, una vez que gestiones conversaciones."
+          />
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -1018,7 +1062,7 @@ function HistorialTab({ token, onSelectContact }) {
                 marginBottom: 8, paddingLeft: 4,
               }}>{groupName} · {items.length}</div>
 
-              <div style={{ background: '#fff', borderRadius: 12, border: `.5px solid ${T.hairline}`, overflow: 'hidden' }}>
+              <div style={{ background: T.card, borderRadius: 12, border: `.5px solid ${T.hairline}`, overflow: 'hidden' }}>
                 {items.map(m => {
                   const statusCfg = STATUS_LABEL[m.status] || STATUS_LABEL.sent
                   const sent = SENTIMENT_CFG[m.ai_sentiment] || SENTIMENT_CFG.neutral
@@ -1057,12 +1101,12 @@ function HistorialTab({ token, onSelectContact }) {
                             <div style={{
                               fontSize: 12.5, color: T.text2, lineHeight: 1.55,
                               padding: 10, borderRadius: 8,
-                              background: m.status === 'auto_sent' ? 'rgba(0,113,227,.04)' : 'rgba(22,163,74,.04)',
-                              borderLeft: `2px solid ${m.status === 'auto_sent' ? '#0071E3' : '#16a34a'}`,
+                              background: m.status === 'auto_sent' ? 'rgba(0,113,227,.04)' : 'rgba(5,150,105,.04)',
+                              borderLeft: `2px solid ${m.status === 'auto_sent' ? '#0071E3' : '#059669'}`,
                             }}>
                               <div style={{
                                 fontSize: 10, fontWeight: 600,
-                                color: m.status === 'auto_sent' ? '#0071E3' : '#16a34a',
+                                color: m.status === 'auto_sent' ? '#0071E3' : '#059669',
                                 textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4,
                               }}>
                                 {m.status === 'auto_sent' ? '✦ Respuesta de Vera' : '↑ Respuesta enviada'}
@@ -1088,6 +1132,8 @@ function HistorialTab({ token, onSelectContact }) {
 // PÁGINA PRINCIPAL
 // ─────────────────────────────────────────────────────────
 export default function ClientesPage() {
+  const T = useT()
+  const { theme } = useTheme()
   const router = useRouter()
   const [tab, setTab] = useState('clientes')
   const [contacts, setContacts] = useState([])
@@ -1095,14 +1141,6 @@ export default function ClientesPage() {
   const [loading, setLoading] = useState(true)
   const [token, setToken] = useState(null)
   const [pendingCount, setPendingCount] = useState(0)
-
-  useEffect(() => {
-    const t = typeof window !== 'undefined' ? localStorage.getItem('nexum_token') : null
-    if (!t) { router.push('/login'); return }
-    setToken(t)
-    loadContacts(t)
-    loadPendingCount(t)
-  }, [])
 
   async function loadContacts(t) {
     setLoading(true)
@@ -1127,6 +1165,14 @@ export default function ClientesPage() {
     } catch {}
   }
 
+  useEffect(() => {
+    const t = typeof window !== 'undefined' ? localStorage.getItem('nexum_token') : null
+    if (!t) { router.push('/login'); return }
+    setToken(t)
+    loadContacts(t)
+    loadPendingCount(t)
+  }, [])
+
   const stats = {
     total: contacts.length,
     vips: contacts.filter(c => c.is_vip).length,
@@ -1136,18 +1182,18 @@ export default function ClientesPage() {
 
   return (
     <div style={{
-      minHeight: '100vh', background: T.bg, display: 'flex',
+      minHeight: '100dvh', background: T.bg, display: 'flex',
       fontFamily: FONT, WebkitFontSmoothing: 'antialiased',
     }}>
       <style>{`*{box-sizing:border-box}::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-thumb{background:rgba(0,0,0,.12);border-radius:999px}input:focus{outline:none}`}</style>
 
       <Sidebar active="/clientes" />
 
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', height: '100vh' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', height: '100dvh' }}>
         {/* HEADER */}
         <header style={{
           padding: '20px 32px 0',
-          background: 'rgba(251,251,253,.85)',
+          background: theme === 'dark' ? 'rgba(11,11,12,.85)' : 'rgba(251,251,253,.85)',
           backdropFilter: 'saturate(180%) blur(20px)',
           borderBottom: `.5px solid ${T.hairline}`,
         }}>
@@ -1155,46 +1201,27 @@ export default function ClientesPage() {
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
                 <h1 style={{ fontSize: 22, fontWeight: 600, color: T.text, margin: 0, letterSpacing: -0.3 }}>Clientes</h1>
-                <span style={{ width: 6, height: 6, borderRadius: 999, background: '#16a34a' }} />
+                <span style={{ width: 6, height: 6, borderRadius: 999, background: '#059669' }} />
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: T.text4 }}>
-                <span style={{ fontSize: 14 }}>🇪🇸</span>
+                <svg width="16" height="11" viewBox="0 0 21 14" style={{ borderRadius: 2, display: 'block', flexShrink: 0 }} aria-label="España">
+                  <rect width="21" height="14" fill="#AA151B" />
+                  <rect y="3.5" width="21" height="7" fill="#F1BF00" />
+                </svg>
                 <span>España</span>
                 <span>·</span>
                 <span>{stats.total} contactos · {stats.vips} VIPs · {stats.risk} en riesgo</span>
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={() => openVeraDrawer({ modulo: 'clientes' })} style={{
-                  padding: '7px 14px', borderRadius: 8,
-                  background: '#fff', color: VERA_BLUE,
-                  border: `.5px solid rgba(0,113,227,.3)`,
-                  fontSize: 12, fontWeight: 500, cursor: 'pointer',
-                  fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 5,
-                }}>
-                  <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
-                    <path d="M8 1l1.5 5.5L15 8l-5.5 1.5L8 15l-1.5-5.5L1 8l5.5-1.5L8 1z" fill={VERA_BLUE}/>
-                  </svg>
-                  + Vera
-                </button>
-                <button style={{
-                padding: '7px 12px', borderRadius: 8,
-                background: '#fff', color: T.text3,
-                border: `.5px solid ${T.hairline}`,
-                fontSize: 12, fontWeight: 500, cursor: 'pointer',
-                fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 5,
-              }}>
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-                Configuración
-              </button>
+            <HeaderActions onVera={() => openVeraDrawer({ modulo: 'clientes' })} router={router}>
               <button style={{
                 padding: '7px 14px', borderRadius: 8,
                 background: VERA_BLUE, color: '#fff',
                 border: 'none', fontSize: 12, fontWeight: 500, cursor: 'pointer',
                 fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 5,
               }}>+ Nuevo cliente</button>
-            </div>
+            </HeaderActions>
           </div>
 
           {/* TABS */}
@@ -1210,9 +1237,15 @@ export default function ClientesPage() {
         </header>
 
         {/* CONTENIDO */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
+        <div className="fade-in" style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
           {loading ? (
-            <div style={{ padding: 60, textAlign: 'center', color: T.text4, fontSize: 13 }}>Cargando...</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <Skeleton w="100%" h={44} />
+              <Skeleton w="100%" h={64} />
+              <Skeleton w="100%" h={64} />
+              <Skeleton w="100%" h={64} />
+              <Skeleton w="100%" h={64} />
+            </div>
           ) : (
             <>
               {tab === 'clientes' && (

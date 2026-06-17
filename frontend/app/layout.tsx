@@ -1,22 +1,20 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import JurisdictionGuard from "@/components/JurisdictionGuard";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+import { ThemeProvider } from "@/components/ui/tokens";
 
 export const metadata: Metadata = {
   title: "Vortu by Nexum",
   description: "Gestión empresarial inteligente para pymes y autónomos",
 };
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+};
+
+// Fija el tema antes del primer pintado para evitar el parpadeo (FOUC).
+const themeInit = `(function(){try{var t=localStorage.getItem('vortu_theme');if(t!=='light'&&t!=='dark'){t=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}document.documentElement.setAttribute('data-theme',t);document.documentElement.style.colorScheme=t;}catch(e){}})();`;
 
 export default function RootLayout({
   children,
@@ -26,12 +24,17 @@ export default function RootLayout({
   return (
     <html
       lang="es"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
+      className="h-full antialiased"
     >
       <body className="min-h-full flex flex-col">
-        <JurisdictionGuard>
-          {children}
-        </JurisdictionGuard>
+        <script dangerouslySetInnerHTML={{ __html: themeInit }} />
+        <a href="#main-content" className="skip-link">Saltar al contenido</a>
+        <ThemeProvider>
+          <JurisdictionGuard>
+            {children}
+          </JurisdictionGuard>
+        </ThemeProvider>
       </body>
     </html>
   );

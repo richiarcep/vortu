@@ -2,18 +2,12 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 
+import { useT, FONT } from '@/components/ui/tokens'
+
 import { API_BASE as API } from '@/lib/api'
 
-const T = {
-  bg:'#FBFBFD', card:'#FFFFFF', sidebar:'#F5F5F7',
-  hairline:'rgba(0,0,0,0.08)', soft:'rgba(0,0,0,0.05)',
-  text:'#1D1D1F', text2:'#424245', text3:'#6E6E73', text4:'#86868B',
-  blue:'#0071E3', cyan:'#00B4D8',
-  green:'#34C759', greenSoft:'rgba(52,199,89,.1)',
-  amber:'#FF9500', amberSoft:'rgba(255,149,0,.1)',
-  red:'#FF3B30', redSoft:'rgba(255,59,48,.08)',
-  navy:'#0B1426',
-}
+// Hero card oscuro intencional (idéntico en claro y oscuro) — no es token de paleta
+const NAVY = '#0B1426'
 
 const PAISES = [
   {
@@ -61,6 +55,7 @@ const PAISES = [
 ]
 
 export default function OnboardingPage() {
+  const T = useT()
   const router  = useRouter()
   const [selected, setSelected] = useState(null)
   const [loading,  setLoading]  = useState(false)
@@ -112,8 +107,8 @@ export default function OnboardingPage() {
 
   return (
     <div style={{
-      minHeight:'100vh', background:T.bg,
-      fontFamily:'-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif',
+      minHeight:'100dvh', background:T.bg,
+      fontFamily:FONT,
       display:'flex', flexDirection:'column', alignItems:'center',
       justifyContent:'center', padding:'40px 20px',
     }}>
@@ -149,7 +144,7 @@ export default function OnboardingPage() {
 
         {/* Top */}
         <div style={{
-          background:T.navy, padding:'36px 40px',
+          background:NAVY, padding:'36px 40px',
           backgroundImage:'radial-gradient(ellipse 60% 80% at 100% 50%, rgba(0,180,216,0.12) 0%, transparent 70%)',
         }}>
           <div style={{fontSize:11,fontWeight:700,color:'rgba(255,255,255,0.4)',letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:10}}>
@@ -167,16 +162,21 @@ export default function OnboardingPage() {
         <div style={{padding:'32px 40px'}}>
           <div style={{
             display:'grid',
-            gridTemplateColumns:'repeat(3,1fr)',
+            gridTemplateColumns:'repeat(auto-fit, minmax(200px,1fr))',
             gap:14, marginBottom:28,
           }}>
             {PAISES.map(p => {
               const isSelected = selected === p.code
               return (
-                <div
+                <button
+                  type="button"
                   key={p.code}
                   onClick={() => p.disponible && setSelected(p.code)}
+                  disabled={!p.disponible}
+                  aria-pressed={isSelected}
+                  aria-label={`${p.name} — ${p.desc}`}
                   style={{
+                    textAlign:'left', font:'inherit', appearance:'none', width:'100%',
                     borderRadius:14,
                     border: isSelected
                       ? `1.5px solid ${p.color}`
@@ -222,7 +222,7 @@ export default function OnboardingPage() {
                   <div style={{fontSize:14,fontWeight:600,color:T.text,marginBottom:4}}>{p.name}</div>
                   <div style={{fontSize:12,color:isSelected ? p.color : T.text3,fontWeight:500,marginBottom:4}}>{p.desc}</div>
                   <div style={{fontSize:11,color:T.text4,lineHeight:1.5}}>{p.detalle}</div>
-                </div>
+                </button>
               )
             })}
           </div>
@@ -285,7 +285,11 @@ export default function OnboardingPage() {
                 Configurando...
               </>
             ) : (
-              <>Continuar con {pais ? pais.name : 'el país seleccionado'} <span style={{opacity:.5}}>→</span></>
+              <>Continuar con {pais ? pais.name : 'el país seleccionado'}
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{opacity:.5,flexShrink:0}}>
+                  <path d="M5 12h14M13 6l6 6-6 6"/>
+                </svg>
+              </>
             )}
           </button>
 

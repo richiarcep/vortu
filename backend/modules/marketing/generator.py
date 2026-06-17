@@ -9,11 +9,12 @@ Generates all creative content for a campaign:
 """
 import json
 import anthropic
+from vera.compat import vera_client
 
 from core.config import get_settings
 from modules.core.prompt_loader import get_prompt
 settings = get_settings()
-client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+client = vera_client(None, None, module="marketing")
 
 OBJECTIVES = {
     "awareness":    "aumentar el conocimiento de marca y llegar al máximo de personas posible",

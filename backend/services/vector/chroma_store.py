@@ -107,5 +107,5 @@ class ChromaStore(VectorStore):
         try:
             col = self._get_collection(collection)
             return col.count()
-        except:
+        except Exception:
             return 0

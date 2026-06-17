@@ -3,23 +3,34 @@ import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 
 import { API_BASE as API } from '@/lib/api'
+import { FONT, useT, useTheme } from '@/components/ui/tokens'
 
 // ─── Theme (matches /vera) ────────────────────────────────────
 const VERA_BLUE = '#0071E3'
 const VERA_PLUS_BLUE = '#003D8F'
 const GOLD = '#B8860B'
-const T = {
-  bg: '#FAFBFC',
-  card: '#FFFFFF',
-  text: '#0B1426',
-  text2: '#475569',
-  text3: '#6b7280',
-  text4: '#9ca3af',
-  hairline: '#E5E7EB',
-  sidebar: '#F4F6FB',
-  green: '#16a34a',
-  red: '#dc2626',
-}
+
+// ─── Iconos (Lucide-style, inline SVG, decorativos) ───────────
+const IconBolt = () => (
+  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z" />
+  </svg>
+)
+const IconLock = () => (
+  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <rect x="3" y="11" width="18" height="11" rx="2" />
+    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+  </svg>
+)
+const IconUndo = () => (
+  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M3 7v6h6" />
+    <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" />
+  </svg>
+)
 
 // ─── Labels para las 17 features (mapping desde feature_json a texto humano) ────
 const FEATURE_LABELS = {
@@ -59,6 +70,8 @@ function formatFeatureValue(key, value) {
 }
 
 export default function VeraPlusPage() {
+  const T = useT()
+  const { theme } = useTheme()
   const router = useRouter()
   const searchParams = useSearchParams()
   const [data, setData] = useState(null)
@@ -70,32 +83,31 @@ export default function VeraPlusPage() {
   const canceledMode = searchParams.get('canceled') === '1'
 
   useEffect(() => {
-    loadInfo()
-  }, [])
-
-  async function loadInfo() {
-    setLoading(true)
-    try {
-      const token = localStorage.getItem('nexum_token')
-      if (!token) {
-        router.push('/login')
-        return
+    async function loadInfo() {
+      setLoading(true)
+      try {
+        const token = localStorage.getItem('nexum_token')
+        if (!token) {
+          router.push('/login')
+          return
+        }
+        const r = await fetch(`${API}/api/vera/plus/info`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (r.ok) {
+          const d = await r.json()
+          setData(d)
+        } else {
+          setError('No se pudo cargar la información de planes')
+        }
+      } catch (e) {
+        setError(e.message)
+      } finally {
+        setLoading(false)
       }
-      const r = await fetch(`${API}/api/vera/plus/info`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      if (r.ok) {
-        const d = await r.json()
-        setData(d)
-      } else {
-        setError('No se pudo cargar la información de planes')
-      }
-    } catch (e) {
-      setError(e.message)
-    } finally {
-      setLoading(false)
     }
-  }
+    loadInfo()
+  }, [router])
 
   async function activatePlus() {
     setActivating(true)
@@ -124,7 +136,7 @@ export default function VeraPlusPage() {
 
   if (loading) {
     return (
-      <div style={{ background: T.bg, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ background: T.bg, minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ color: T.text3 }}>Cargando...</div>
       </div>
     )
@@ -132,7 +144,7 @@ export default function VeraPlusPage() {
 
   if (!data) {
     return (
-      <div style={{ background: T.bg, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ background: T.bg, minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ color: T.red }}>{error || 'Error cargando datos'}</div>
       </div>
     )
@@ -143,15 +155,21 @@ export default function VeraPlusPage() {
   const isPlus = data.is_plus_active
 
   return (
-    <div style={{ background: T.bg, minHeight: '100vh', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+    <div style={{ background: T.bg, minHeight: '100dvh', fontFamily: FONT }}>
+      <style>{`
+        @media (max-width:768px){
+          .vp-table-row{grid-template-columns:1.5fr 1fr 1fr !important;font-size:12px}
+          .vp-faq{grid-template-columns:1fr !important}
+        }
+      `}</style>
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '60px 24px' }}>
 
         {/* ─── Banner success/canceled ─── */}
         {successMode && (
           <div style={{
-            background: '#dcfce7', border: `1px solid ${T.green}`,
+            background: T.greenSoft, border: `1px solid ${T.green}`,
             borderRadius: 12, padding: '14px 18px', marginBottom: 24,
-            color: '#166534',
+            color: theme === 'dark' ? T.green : '#166534',
           }}>
             <strong>✓ Pago recibido.</strong> Tu suscripción a Vera Plus se está activando.
             Si en 1 minuto no ves los cambios, refresca la página.
@@ -159,7 +177,7 @@ export default function VeraPlusPage() {
         )}
         {canceledMode && (
           <div style={{
-            background: '#f4f6fb', border: `1px solid ${T.hairline}`,
+            background: T.sidebar, border: `1px solid ${T.hairline}`,
             borderRadius: 12, padding: '14px 18px', marginBottom: 24,
             color: T.text2,
           }}>
@@ -201,7 +219,7 @@ export default function VeraPlusPage() {
           {isPlus ? (
             <div style={{
               display: 'inline-flex', alignItems: 'center', gap: 10,
-              background: '#dcfce7', color: '#166534',
+              background: T.greenSoft, color: theme === 'dark' ? T.green : '#166534',
               padding: '14px 28px', borderRadius: 12,
               fontSize: 16, fontWeight: 700,
             }}>
@@ -242,7 +260,7 @@ export default function VeraPlusPage() {
           border: `1px solid ${T.hairline}`, overflow: 'hidden',
           boxShadow: '0 1px 3px rgba(0,0,0,.04)',
         }}>
-          <div style={{
+          <div className="vp-table-row" style={{
             display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr',
             background: T.sidebar, padding: '16px 24px',
             borderBottom: `1px solid ${T.hairline}`,
@@ -264,11 +282,11 @@ export default function VeraPlusPage() {
             if (baseVal === undefined && plusVal === undefined) return null
 
             return (
-              <div key={key} style={{
+              <div key={key} className="vp-table-row" style={{
                 display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr',
                 padding: '14px 24px',
                 borderBottom: i < FEATURE_ORDER.length - 1 ? `1px solid ${T.hairline}` : 'none',
-                background: i % 2 === 0 ? T.card : '#fafbfc',
+                background: i % 2 === 0 ? T.card : T.bg,
                 alignItems: 'center',
               }}>
                 <div style={{ fontSize: 13, color: T.text }}>
@@ -293,18 +311,18 @@ export default function VeraPlusPage() {
         </div>
 
         {/* ─── FAQ / Cómo funciona ─── */}
-        <div style={{ marginTop: 48, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 20 }}>
+        <div className="vp-faq" style={{ marginTop: 48, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px,1fr))', gap: 20 }}>
           {[
-            { icon: '⚡', title: 'Activación instantánea', text: 'Tras el pago, Vera Plus se activa automáticamente. No esperas a nadie.' },
-            { icon: '🔒', title: 'Pago seguro', text: 'Procesado por Stripe. Nunca vemos los datos de tu tarjeta.' },
-            { icon: '↩', title: 'Cancela cuando quieras', text: 'Sin permanencia ni penalizaciones. Vuelves a Vortu base con 1 click.' },
+            { icon: <IconBolt />, title: 'Activación instantánea', text: 'Tras el pago, Vera Plus se activa automáticamente. No esperas a nadie.' },
+            { icon: <IconLock />, title: 'Pago seguro', text: 'Procesado por Stripe. Nunca vemos los datos de tu tarjeta.' },
+            { icon: <IconUndo />, title: 'Cancela cuando quieras', text: 'Sin permanencia ni penalizaciones. Vuelves a Vortu base con 1 click.' },
           ].map((item, i) => (
             <div key={i} style={{
               background: T.card, borderRadius: 12,
               border: `1px solid ${T.hairline}`,
               padding: 20,
             }}>
-              <div style={{ fontSize: 28, marginBottom: 8 }}>{item.icon}</div>
+              <div style={{ marginBottom: 8, color: T.text }}>{item.icon}</div>
               <div style={{ fontSize: 15, fontWeight: 700, color: T.text, marginBottom: 6 }}>
                 {item.title}
               </div>

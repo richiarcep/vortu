@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Boolean
+from sqlalchemy import Column, Integer, String, Float, DateTime, Date, Text, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from core.database import Base
@@ -17,6 +17,14 @@ class Employee(Base):
     is_active = Column(Boolean, default=True)
     company_id = Column(Integer, ForeignKey("companies.id"), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Tipo de vínculo: "permanente" | "temporal" | "voluntario".
+    # Los voluntarios no son remunerados (gross_salary = 0) y suelen tener fecha de fin.
+    employee_type = Column(String, default="permanente", nullable=False)
+    start_date = Column(Date, nullable=True)   # alta del compromiso (temporales/voluntarios)
+    end_date = Column(Date, nullable=True)     # baja prevista del compromiso
+    availability = Column(Text, nullable=True) # disponibilidad/turnos (texto o JSON)
+    skills = Column(Text, nullable=True)       # habilidades/rol (CSV o JSON)
 
     company = relationship("Company", backref="employees")
     feedback = relationship("EmployeeFeedback", back_populates="employee")
@@ -58,12 +66,12 @@ def analyze_feedback(feedback_list: list) -> dict:
         "summary": {"total_rows": len(feedback_list), "numeric_columns": []}
     }
 
-    # Use Claude to analyze sentiment
-    from anthropic import Anthropic
+    # Use Claude to analyze sentiment (vía Vera)
+    from vera.compat import vera_client
     from core.config import get_settings
 
     settings = get_settings()
-    client = Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+    client = vera_client(None, None, module="hr")
 
     feedback_text = "\n".join([f"- {f}" for f in feedback_list])
 

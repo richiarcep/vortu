@@ -32,6 +32,7 @@ from api.agent import router as agent_router
 from api.backoffice_prompts import router as prompts_router
 from api.projects import router as projects_router
 from models.project import Project, Task, TimeEntry, ProjectExpense
+from models.workgroup import WorkGroup, WorkGroupMember, GroupTask, GroupTaskTime
 from modules.projects.scheduler import setup_project_scheduler
 from models.customer import Contact, Message, KnowledgeBase, AutoResponse, EmailConfig, SentimentReport
 from api.customers import router as customers_router

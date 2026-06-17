@@ -1,4 +1,5 @@
 import anthropic
+from vera.compat import vera_client
 import json
 from core.config import get_settings
 from vera.models import OPUS
@@ -8,7 +9,7 @@ settings = get_settings()
 
 def get_client():
     """Creates and returns an Anthropic client."""
-    return anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+    return vera_client(None, None, module="documentos")
 
 
 def analyze_document(parsed_data: dict, module: str) -> dict:

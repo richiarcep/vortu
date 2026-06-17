@@ -3,14 +3,14 @@ from datetime import date
 from sqlalchemy.orm import Session
 from modules.accounting.ledger import get_account_summary, get_trial_balance
 from modules.accounting.journal import get_account_balance
-import anthropic
 from core.config import get_settings
+from vera.ask import ask          # punto único de IA (cuota + config admin)
 
 settings = get_settings()
 
 
 def generate_pl_statement(db: Session, company_id: int,
-                           start_date: date, end_date: date) -> dict:
+                           start_date: date, end_date: date, with_narrative: bool = True) -> dict:
     """
     Genera un Estado de Resultados completo para un período dado.
     Ingresos - Gastos = Utilidad/Pérdida Neta
@@ -67,7 +67,8 @@ def generate_pl_statement(db: Session, company_id: int,
         "es_rentable": utilidad_bruta > 0
     }
 
-    pl["analisis_ia"] = generate_pl_narrative(pl)
+    if with_narrative:
+        pl["analisis_ia"] = generate_pl_narrative(db, company_id, pl)
     return pl
 
 
@@ -97,7 +98,7 @@ def _is_non_current_liability(name: str) -> bool:
 
 
 def generate_balance_sheet(db: Session, company_id: int,
-                            as_of_date: date) -> dict:
+                            as_of_date: date, with_narrative: bool = True) -> dict:
     """
     Genera un Balance General a una fecha específica.
     Activos = Pasivos + Patrimonio
@@ -140,6 +141,23 @@ def generate_balance_sheet(db: Session, company_id: int,
         HAVING COALESCE(SUM(je.credit)-SUM(je.debit), 0) != 0
     """), {"cid": company_id}).fetchall()
     equity_accounts = {r[0]: {"name": r[1], "balance": float(r[2])} for r in equity_rows}
+
+    # Resultado acumulado del ejercicio (PGC 129). El beneficio/pérdida acumulado que aún
+    # no se ha cerrado contra reservas pertenece al Patrimonio Neto. Sin esto el balance no
+    # cuadra, porque los asientos importados no incluyen el asiento de cierre a capital.
+    # Por la identidad de partida doble (Activo = Pasivo + Patrimonio + Resultado), añadirlo
+    # cuadra la ecuación exactamente cuando el libro está balanceado.
+    _res = db.execute(sql_text("""
+        SELECT
+          COALESCE(SUM(CASE WHEN a.account_type='income'  THEN je.credit - je.debit ELSE 0 END), 0),
+          COALESCE(SUM(CASE WHEN a.account_type='expense' THEN je.debit  - je.credit ELSE 0 END), 0)
+        FROM journal_entries je JOIN accounts a ON a.id = je.account_id
+        WHERE je.company_id = :cid AND je.date <= :asof
+    """), {"cid": company_id, "asof": str(as_of_date)}).first()
+    resultado_ejercicio = round(float(_res[0] or 0) - float(_res[1] or 0), 2)
+    if resultado_ejercicio != 0:
+        equity_accounts["129"] = {"name": "Resultado del ejercicio", "balance": resultado_ejercicio}
+
     total_patrimonio = sum(v["balance"] for v in equity_accounts.values())
     total_pasivos_y_patrimonio = round(total_pasivos + total_patrimonio, 2)
 
@@ -194,12 +212,13 @@ def generate_balance_sheet(db: Session, company_id: int,
         }
     }
 
-    balance["analisis_ia"] = generate_balance_sheet_narrative(balance)
+    if with_narrative:
+        balance["analisis_ia"] = generate_balance_sheet_narrative(db, company_id, balance)
     return balance
 
 
 def generate_cash_flow_statement(db: Session, company_id: int,
-                                  start_date: date, end_date: date) -> dict:
+                                  start_date: date, end_date: date, with_narrative: bool = True) -> dict:
     """
     Genera un Estado de Flujo de Efectivo para un período.
     Muestra cómo se movió el efectivo a través del negocio.
@@ -258,8 +277,51 @@ def generate_cash_flow_statement(db: Session, company_id: int,
         "posicion_efectivo": "positiva" if cambio_neto_efectivo > 0 else "negativa"
     }
 
-    flujo["analisis_ia"] = generate_cash_flow_narrative(flujo)
+    if with_narrative:
+        flujo["analisis_ia"] = generate_cash_flow_narrative(db, company_id, flujo)
     return flujo
+
+
+def _company_currency(db, company_id) -> str:
+    try:
+        from country.registry import get_country_info
+        from models.user import Company
+        co = db.query(Company).filter(Company.id == company_id).first()
+        return ((get_country_info(co.country) if co and co.country else None) or {}).get("symbol", "€")
+    except Exception:
+        return "€"
+
+
+def _attach_combined_narrative(db, company_id, pl, bs, cf) -> None:
+    """UN solo llamado a la IA (vía Vera) para los 3 análisis — más rápido y barato que 3."""
+    import json
+    sym = _company_currency(db, company_id)
+    prompt = f"""Analiza estos tres estados financieros de una empresa (moneda: {sym}).
+Devuelve SOLO un JSON con tres análisis de 2-3 oraciones cada uno, en español claro:
+{{"pl": "...", "balance": "...", "cashflow": "..."}}
+
+ESTADO DE RESULTADOS: {pl}
+BALANCE GENERAL: {bs}
+FLUJO DE EFECTIVO: {cf}
+
+Usa el símbolo de moneda {sym}. Sin markdown ni texto fuera del JSON."""
+    raw = ask(db, company_id, module="contabilidad", system=_SYS_CONTADOR, user=prompt,
+              max_tokens=900, quality="cheap", fallback="")
+    pl_t = bs_t = cf_t = "Análisis de IA no disponible."
+    if raw:
+        t = raw.strip()
+        if t.startswith("```"):
+            t = t.split("\n", 1)[-1].rsplit("```", 1)[0]
+        if "{" in t:
+            t = t[t.find("{"):t.rfind("}") + 1]
+        try:
+            j = json.loads(t)
+            pl_t = j.get("pl", pl_t); bs_t = j.get("balance", bs_t); cf_t = j.get("cashflow", cf_t)
+        except Exception:
+            pass
+    pl["analisis_ia"] = pl_t
+    bs["analisis_ia"] = bs_t
+    cf["analisis_ia"] = cf_t
 
 
 def generate_full_report(db: Session, company_id: int,
@@ -268,12 +330,14 @@ def generate_full_report(db: Session, company_id: int,
     Genera los tres estados financieros completos de una vez.
     Esta es la función principal que llama la API.
     """
-    estado_resultados = generate_pl_statement(db, company_id, start_date, end_date)
-    balance_general = generate_balance_sheet(db, company_id, end_date)
-    flujo_efectivo = generate_cash_flow_statement(db, company_id, start_date, end_date)
+    # Estados SIN narrativa individual (rápido), luego UN solo llamado a la IA para los 3.
+    estado_resultados = generate_pl_statement(db, company_id, start_date, end_date, with_narrative=False)
+    balance_general = generate_balance_sheet(db, company_id, end_date, with_narrative=False)
+    flujo_efectivo = generate_cash_flow_statement(db, company_id, start_date, end_date, with_narrative=False)
     puntaje_salud = calculate_health_score(
         estado_resultados, balance_general, flujo_efectivo
     )
+    _attach_combined_narrative(db, company_id, estado_resultados, balance_general, flujo_efectivo)
 
     return {
         "periodo": {"inicio": str(start_date), "fin": str(end_date)},
@@ -364,74 +428,43 @@ def get_rating(score: int) -> str:
 
 # ── Narrativas con IA ─────────────────────────────────────────────────────────
 
-def generate_pl_narrative(pl_data: dict) -> str:
-    try:
-        client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
-        message = client.messages.create(
-            model="claude-opus-4-6",
-            max_tokens=512,
-            messages=[{
-                "role": "user",
-                "content": f"""Eres un contador profesional escribiendo un análisis del 
-Estado de Resultados para el dueño de un negocio. Escribe 3-4 oraciones 
-en español claro y directo explicando los resultados. Sé específico con 
-los números. Destaca lo positivo y lo que requiere atención.
+_SYS_CONTADOR = "Eres un contador profesional que escribe análisis financieros claros y directos en español."
+
+
+def generate_pl_narrative(db, company_id, pl_data: dict) -> str:
+    prompt = f"""Análisis del Estado de Resultados para el dueño de un negocio.
+Escribe 3-4 oraciones en español claro y directo explicando los resultados.
+Sé específico con los números. Destaca lo positivo y lo que requiere atención.
 
 Datos del Estado de Resultados: {pl_data}
 
 Escribe únicamente el párrafo narrativo, sin encabezados ni viñetas."""
-            }]
-        )
-        return message.content[0].text
-    except Exception:
-        return "Análisis de IA no disponible."
+    return ask(db, company_id, module="contabilidad", system=_SYS_CONTADOR, user=prompt,
+               max_tokens=512, quality="cheap", fallback="Análisis de IA no disponible.")
 
 
-def generate_balance_sheet_narrative(bs_data: dict) -> str:
-    try:
-        client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
-        message = client.messages.create(
-            model="claude-opus-4-6",
-            max_tokens=512,
-            messages=[{
-                "role": "user",
-                "content": f"""Eres un contador profesional escribiendo un análisis del 
-Balance General para el dueño de un negocio. Escribe 3-4 oraciones en 
-español claro explicando la posición financiera. Comenta sobre el balance 
-de la ecuación contable, la razón de liquidez y los niveles de deuda.
+def generate_balance_sheet_narrative(db, company_id, bs_data: dict) -> str:
+    prompt = f"""Análisis del Balance General para el dueño de un negocio.
+Escribe 3-4 oraciones en español claro explicando la posición financiera.
+Comenta sobre el balance de la ecuación contable, la razón de liquidez y los niveles de deuda.
 
 Datos del Balance General: {bs_data}
 
 Escribe únicamente el párrafo narrativo, sin encabezados ni viñetas."""
-            }]
-        )
-        return message.content[0].text
-    except Exception:
-        return "Análisis de IA no disponible."
+    return ask(db, company_id, module="contabilidad", system=_SYS_CONTADOR, user=prompt,
+               max_tokens=512, quality="cheap", fallback="Análisis de IA no disponible.")
 
 
-def generate_cash_flow_narrative(cf_data: dict) -> str:
-    try:
-        client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
-        message = client.messages.create(
-            model="claude-opus-4-6",
-            max_tokens=512,
-            messages=[{
-                "role": "user",
-                "content": f"""Eres un contador profesional escribiendo un análisis del 
-Estado de Flujo de Efectivo para el dueño de un negocio. Escribe 3-4 
-oraciones en español claro explicando cómo se movió el efectivo en el 
-negocio. Comenta sobre las actividades operativas, de inversión y de 
-financiamiento.
+def generate_cash_flow_narrative(db, company_id, cf_data: dict) -> str:
+    prompt = f"""Análisis del Estado de Flujo de Efectivo para el dueño de un negocio.
+Escribe 3-4 oraciones en español claro explicando cómo se movió el efectivo en el negocio.
+Comenta sobre las actividades operativas, de inversión y de financiamiento.
 
 Datos del Flujo de Efectivo: {cf_data}
 
 Escribe únicamente el párrafo narrativo, sin encabezados ni viñetas."""
-            }]
-        )
-        return message.content[0].text
-    except Exception:
-        return "Análisis de IA no disponible."
+    return ask(db, company_id, module="contabilidad", system=_SYS_CONTADOR, user=prompt,
+               max_tokens=512, quality="cheap", fallback="Análisis de IA no disponible.")
 
 def generate_full_report_from_registro(db, company_id, start_date, end_date):
     from sqlalchemy import text

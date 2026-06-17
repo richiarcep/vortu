@@ -2,8 +2,9 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
-import { T, FONT } from '@/components/ui/tokens'
+import { T, FONT, useT, useTheme } from '@/components/ui/tokens'
 import VeraDrawer from '@/components/ui/VeraDrawer'
+import { HeaderActions } from '@/components/ui/primitives'
 
 import { API_BASE as API } from '@/lib/api'
 const VERA_BLUE = '#0071E3'
@@ -13,14 +14,14 @@ const VERA_BLUE = '#0071E3'
 // ─────────────────────────────────────────────────────────
 const DEPT_CFG = {
   diseno:     { label: 'Diseño',     color: '#7c3aed', bg: 'rgba(124,58,237,.1)' },
-  ventas:     { label: 'Ventas',     color: '#16a34a', bg: 'rgba(22,163,74,.1)' },
+  ventas:     { label: 'Ventas',     color: '#059669', bg: 'rgba(5,150,105,.1)' },
   almacen:    { label: 'Almacén',    color: '#d97706', bg: 'rgba(217,119,6,.1)' },
   marketing:  { label: 'Marketing',  color: '#0EA5E9', bg: 'rgba(14,165,233,.1)' },
   admin:      { label: 'Admin',      color: '#6b7280', bg: 'rgba(107,114,128,.1)' },
   tecnologia: { label: 'Tecnología', color: '#0071E3', bg: 'rgba(0,113,227,.1)' },
 }
 const CONTRACT_CFG = {
-  indefinido: { label: 'Indefinido', color: '#16a34a', bg: 'rgba(22,163,74,.1)', dot: '#16a34a' },
+  indefinido: { label: 'Indefinido', color: '#059669', bg: 'rgba(5,150,105,.1)', dot: '#059669' },
   temporal:   { label: 'Temporal',   color: '#d97706', bg: 'rgba(217,119,6,.1)', dot: '#F59E0B' },
   practicas:  { label: 'Prácticas',  color: '#0EA5E9', bg: 'rgba(14,165,233,.1)', dot: '#0EA5E9' },
   becario:    { label: 'Becario',    color: '#7c3aed', bg: 'rgba(124,58,237,.1)', dot: '#7c3aed' },
@@ -30,20 +31,51 @@ const VACATION_CFG = {
   vacation: { label: 'Vacaciones', color: '#0071E3', bg: 'rgba(0,113,227,.1)', dot: '#0071E3' },
   sick:     { label: 'Baja',       color: '#dc2626', bg: 'rgba(220,38,38,.1)', dot: '#dc2626' },
   personal: { label: 'Personal',   color: '#7c3aed', bg: 'rgba(124,58,237,.1)', dot: '#7c3aed' },
-  parental: { label: 'Maternidad', color: '#16a34a', bg: 'rgba(22,163,74,.1)', dot: '#16a34a' },
+  parental: { label: 'Maternidad', color: '#059669', bg: 'rgba(5,150,105,.1)', dot: '#059669' },
 }
 const STATUS_CFG = {
-  approved: { label: 'Aprobado', color: '#16a34a', bg: 'rgba(22,163,74,.1)', dot: '#16a34a' },
+  approved: { label: 'Aprobado', color: '#059669', bg: 'rgba(5,150,105,.1)', dot: '#059669' },
   pending:  { label: 'Pendiente', color: '#d97706', bg: 'rgba(217,119,6,.1)', dot: '#F59E0B' },
   rejected: { label: 'Rechazado', color: '#dc2626', bg: 'rgba(220,38,38,.1)', dot: '#dc2626' },
 }
+// Tipo de vínculo del empleado (alineado con el backend: employee_type).
+const EMPLOYEE_TYPE_CFG = {
+  permanente: { label: 'Plantilla',  color: T.blue,  bg: 'rgba(0,113,227,.1)', dot: T.blue },
+  temporal:   { label: 'Temporal',   color: T.amber, bg: T.amberSoft,          dot: T.amber },
+  voluntario: { label: 'Voluntario', color: T.green, bg: T.greenSoft,          dot: T.green },
+}
+const TYPE_FILTERS = [
+  { k: 'all',        l: 'Todos' },
+  { k: 'permanente', l: 'Plantilla' },
+  { k: 'temporal',   l: 'Temporales' },
+  { k: 'voluntario', l: 'Voluntarios' },
+]
+// Estados/prioridad de las tareas de grupo (espejo de los enums del backend).
+const TASK_STATUS_CFG = {
+  pendiente:   { label: 'Pendiente',   color: T.text3, bg: 'rgba(0,0,0,.05)',    dot: '#9CA3AF' },
+  en_progreso: { label: 'En progreso', color: T.blue,  bg: 'rgba(0,113,227,.1)', dot: T.blue },
+  completada:  { label: 'Completada',  color: T.green, bg: T.greenSoft,          dot: T.green },
+  bloqueada:   { label: 'Bloqueada',   color: T.red,   bg: T.redSoft,            dot: T.red },
+}
+const TASK_PRIORITY_CFG = {
+  baja:    { label: 'Baja',    color: T.text3, bg: 'rgba(0,0,0,.05)' },
+  media:   { label: 'Media',   color: T.blue,  bg: 'rgba(0,113,227,.1)' },
+  alta:    { label: 'Alta',    color: T.amber, bg: T.amberSoft },
+  urgente: { label: 'Urgente', color: T.red,   bg: T.redSoft },
+}
+const KANBAN_COLS = [
+  { k: 'pendiente',   l: 'Pendiente' },
+  { k: 'en_progreso', l: 'En progreso' },
+  { k: 'completada',  l: 'Completada' },
+  { k: 'bloqueada',   l: 'Bloqueada' },
+]
 const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
 
 // ─────────────────────────────────────────────────────────
 // HELPERS
 // ─────────────────────────────────────────────────────────
 function avatarColor(name) {
-  const colors = ['#0071E3', '#7c3aed', '#16a34a', '#dc2626', '#d97706', '#0EA5E9', '#8B5CF6']
+  const colors = ['#0071E3', '#7c3aed', '#059669', '#dc2626', '#d97706', '#0EA5E9', '#8B5CF6']
   let hash = 0
   for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash)
   return colors[Math.abs(hash) % colors.length]
@@ -91,10 +123,11 @@ function Avatar({ name, size = 32 }) {
 }
 
 function Tab({ active, onClick, label, badge }) {
+  const T = useT()
   return (
     <button onClick={onClick} style={{
       padding: '7px 14px', borderRadius: 8,
-      background: active ? '#fff' : 'transparent',
+      background: active ? T.card : 'transparent',
       color: active ? T.text : T.text3, border: 'none',
       boxShadow: active ? '0 1px 2px rgba(0,0,0,.06)' : 'none',
       fontSize: 12.5, fontWeight: 500, cursor: 'pointer',
@@ -117,15 +150,23 @@ function Tab({ active, onClick, label, badge }) {
 // VERA INSIGHT (banner arriba que dice qué hacer)
 // ─────────────────────────────────────────────────────────
 function VeraInsight({ dashboard, onAsk }) {
+  const T = useT()
   if (!dashboard) return null
 
   // Generar insights inteligentes basados en datos reales
   const insights = []
 
+  const ICON_SVG = {
+    risk: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" /><path d="M12 9v4M12 17h.01" /></svg>,
+    contract: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6M9 13h6M9 17h6" /></svg>,
+    calendar: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>,
+    star: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3l1.9 5.8H20l-4.9 3.6 1.9 5.8L12 14.6 7 18.2l1.9-5.8L4 8.8h6.1L12 3z" /></svg>,
+  }
+
   if (dashboard.employees_at_risk?.length > 0) {
     insights.push({
       priority: 'high',
-      icon: '⚠',
+      icon: ICON_SVG.risk,
       title: `${dashboard.employees_at_risk.length} ${dashboard.employees_at_risk.length === 1 ? 'empleado en riesgo' : 'empleados en riesgo de fuga'}`,
       detail: dashboard.employees_at_risk.map(e => `${e.name} (${e.negative_pct}% feedback negativo)`).join(', '),
       action: 'Agenda 1:1 esta semana',
@@ -135,7 +176,7 @@ function VeraInsight({ dashboard, onAsk }) {
   if (dashboard.contracts_expiring_60d > 0) {
     insights.push({
       priority: 'medium',
-      icon: '📋',
+      icon: ICON_SVG.contract,
       title: `${dashboard.contracts_expiring_60d} contrato${dashboard.contracts_expiring_60d === 1 ? '' : 's'} vence${dashboard.contracts_expiring_60d === 1 ? '' : 'n'} en 60 días`,
       action: 'Decide si renovar o no renovar',
     })
@@ -144,7 +185,7 @@ function VeraInsight({ dashboard, onAsk }) {
   if (dashboard.out_today >= 3) {
     insights.push({
       priority: 'medium',
-      icon: '🌴',
+      icon: ICON_SVG.calendar,
       title: `${dashboard.out_today} personas fuera hoy`,
       action: 'Verifica cobertura operativa',
     })
@@ -153,7 +194,7 @@ function VeraInsight({ dashboard, onAsk }) {
   if (dashboard.feedback?.score >= 7) {
     insights.push({
       priority: 'low',
-      icon: '✨',
+      icon: ICON_SVG.star,
       title: `Clima laboral excelente (${dashboard.feedback.score}/10)`,
       action: 'Buen momento para pedir feedback de procesos',
     })
@@ -163,7 +204,7 @@ function VeraInsight({ dashboard, onAsk }) {
 
   return (
     <div style={{
-      background: '#fff', borderRadius: 12,
+      background: T.card, borderRadius: 12,
       border: `.5px solid ${T.hairline}`,
       padding: 16, marginBottom: 16,
     }}>
@@ -192,14 +233,14 @@ function VeraInsight({ dashboard, onAsk }) {
             padding: '10px 12px', borderRadius: 8,
             background: ins.priority === 'high' ? 'rgba(220,38,38,.04)' :
                        ins.priority === 'medium' ? 'rgba(217,119,6,.04)' :
-                       'rgba(22,163,74,.04)',
+                       'rgba(5,150,105,.04)',
             border: `.5px solid ${
               ins.priority === 'high' ? 'rgba(220,38,38,.15)' :
               ins.priority === 'medium' ? 'rgba(217,119,6,.15)' :
-              'rgba(22,163,74,.15)'
+              'rgba(5,150,105,.15)'
             }`,
           }}>
-            <span style={{ fontSize: 14, marginTop: 1 }}>{ins.icon}</span>
+            <span style={{ marginTop: 1, display: 'flex', color: ins.priority === 'high' ? T.red : ins.priority === 'medium' ? T.amber : T.green }}>{ins.icon}</span>
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 13, fontWeight: 500, color: T.text, marginBottom: 2 }}>{ins.title}</div>
               {ins.detail && <div style={{ fontSize: 11.5, color: T.text3, marginBottom: 4 }}>{ins.detail}</div>}
@@ -216,13 +257,16 @@ function VeraInsight({ dashboard, onAsk }) {
 // TAB 1: EQUIPO
 // ─────────────────────────────────────────────────────────
 function EquipoTab({ employees, onSelect }) {
+  const T = useT()
   const [search, setSearch] = useState('')
   const [deptFilter, setDeptFilter] = useState('all')
+  const [typeFilter, setTypeFilter] = useState('all')
   const [view, setView] = useState('grid')
 
   const filtered = employees.filter(e => {
     if (search && !e.full_name.toLowerCase().includes(search.toLowerCase())) return false
     if (deptFilter !== 'all' && e.department !== deptFilter) return false
+    if (typeFilter !== 'all' && (e.employee_type || 'permanente') !== typeFilter) return false
     return true
   })
 
@@ -241,15 +285,27 @@ function EquipoTab({ employees, onSelect }) {
             style={{
               width: '100%', padding: '7px 10px 7px 30px',
               borderRadius: 8, border: `.5px solid ${T.hairline}`,
-              background: '#fff', fontSize: 12, fontFamily: 'inherit',
+              background: T.card, fontSize: 12, fontFamily: 'inherit',
               color: T.text, outline: 'none',
             }} />
         </div>
 
         <div style={{ display: 'flex', gap: 2, background: T.sidebar, borderRadius: 8, padding: 3 }}>
+          {TYPE_FILTERS.map(f => (
+            <button key={f.k} onClick={() => setTypeFilter(f.k)} style={{
+              padding: '5px 10px', borderRadius: 6, border: 'none',
+              background: typeFilter === f.k ? T.card : 'transparent',
+              color: typeFilter === f.k ? T.text : T.text3,
+              boxShadow: typeFilter === f.k ? '0 1px 2px rgba(0,0,0,.06)' : 'none',
+              fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
+            }}>{f.l}</button>
+          ))}
+        </div>
+
+        <div style={{ display: 'flex', gap: 2, background: T.sidebar, borderRadius: 8, padding: 3 }}>
           <button onClick={() => setDeptFilter('all')} style={{
             padding: '5px 10px', borderRadius: 6, border: 'none',
-            background: deptFilter === 'all' ? '#fff' : 'transparent',
+            background: deptFilter === 'all' ? T.card : 'transparent',
             color: deptFilter === 'all' ? T.text : T.text3,
             boxShadow: deptFilter === 'all' ? '0 1px 2px rgba(0,0,0,.06)' : 'none',
             fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
@@ -257,7 +313,7 @@ function EquipoTab({ employees, onSelect }) {
           {depts.map(d => (
             <button key={d} onClick={() => setDeptFilter(d)} style={{
               padding: '5px 10px', borderRadius: 6, border: 'none',
-              background: deptFilter === d ? '#fff' : 'transparent',
+              background: deptFilter === d ? T.card : 'transparent',
               color: deptFilter === d ? T.text : T.text3,
               boxShadow: deptFilter === d ? '0 1px 2px rgba(0,0,0,.06)' : 'none',
               fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
@@ -272,7 +328,7 @@ function EquipoTab({ employees, onSelect }) {
           ].map(v => (
             <button key={v.k} onClick={() => setView(v.k)} style={{
               padding: '5px 10px', borderRadius: 6, border: 'none',
-              background: view === v.k ? '#fff' : 'transparent',
+              background: view === v.k ? T.card : 'transparent',
               color: view === v.k ? T.text : T.text3,
               boxShadow: view === v.k ? '0 1px 2px rgba(0,0,0,.06)' : 'none',
               cursor: 'pointer', display: 'grid', placeItems: 'center',
@@ -285,12 +341,14 @@ function EquipoTab({ employees, onSelect }) {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12 }}>
           {filtered.map(e => {
             const dept = DEPT_CFG[e.department] || { label: e.department, color: T.text3, bg: 'rgba(0,0,0,.04)' }
+            const etype = EMPLOYEE_TYPE_CFG[e.employee_type || 'permanente']
+            const isVolunteer = (e.employee_type || 'permanente') === 'voluntario'
             return (
               <div key={e.id} onClick={() => onSelect(e)}
                 onMouseEnter={ev => { ev.currentTarget.style.transform = 'translateY(-1px)'; ev.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,.05)' }}
                 onMouseLeave={ev => { ev.currentTarget.style.transform = 'translateY(0)'; ev.currentTarget.style.boxShadow = 'none' }}
                 style={{
-                  background: '#fff', borderRadius: 12,
+                  background: T.card, borderRadius: 12,
                   border: `.5px solid ${T.hairline}`,
                   padding: 16, cursor: 'pointer', transition: 'all .15s',
                 }}>
@@ -298,19 +356,35 @@ function EquipoTab({ employees, onSelect }) {
                   <Avatar name={e.full_name} size={40} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 13.5, fontWeight: 600, color: T.text, marginBottom: 2 }}>{e.full_name}</div>
-                    <div style={{ fontSize: 11.5, color: T.text4 }}>{e.position}</div>
+                    <div style={{ fontSize: 11.5, color: T.text4 }}>{e.position || '—'}</div>
                   </div>
                 </div>
-                <div style={{ display: 'flex', gap: 5, marginBottom: 10 }}>
-                  <Pill label={dept.label} color={dept.color} bg={dept.bg} />
+                <div style={{ display: 'flex', gap: 5, marginBottom: 10, flexWrap: 'wrap' }}>
+                  {etype && <Pill label={etype.label} color={etype.color} bg={etype.bg} dot={etype.dot} />}
+                  {e.department && <Pill label={dept.label} color={dept.color} bg={dept.bg} />}
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: `.5px solid ${T.hairline}`, paddingTop: 10 }}>
-                  <div>
-                    <div style={{ fontSize: 10, color: T.text4, fontWeight: 500, textTransform: 'uppercase', letterSpacing: 0.5 }}>Salario anual</div>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: T.text, fontVariantNumeric: 'tabular-nums', marginTop: 1 }}>
-                      {fmtEuro(e.gross_salary)}
+                  {isVolunteer ? (
+                    <div>
+                      <div style={{ fontSize: 10, color: T.text4, fontWeight: 500, textTransform: 'uppercase', letterSpacing: 0.5 }}>Horas aportadas</div>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: T.text, fontVariantNumeric: 'tabular-nums', marginTop: 1 }}>
+                        {(e.hours_contributed || 0).toLocaleString('es-ES')}h
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div>
+                      <div style={{ fontSize: 10, color: T.text4, fontWeight: 500, textTransform: 'uppercase', letterSpacing: 0.5 }}>Salario anual</div>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: T.text, fontVariantNumeric: 'tabular-nums', marginTop: 1 }}>
+                        {fmtEuro(e.gross_salary)}
+                      </div>
+                    </div>
+                  )}
+                  {e.end_date && (
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: 10, color: T.text4, fontWeight: 500, textTransform: 'uppercase', letterSpacing: 0.5 }}>Hasta</div>
+                      <div style={{ fontSize: 12.5, fontWeight: 500, color: T.text3, marginTop: 2 }}>{fmtDate(e.end_date)}</div>
+                    </div>
+                  )}
                 </div>
               </div>
             )
@@ -319,25 +393,27 @@ function EquipoTab({ employees, onSelect }) {
       )}
 
       {view === 'list' && (
-        <div style={{ background: '#fff', borderRadius: 12, border: `.5px solid ${T.hairline}`, overflow: 'hidden' }}>
+        <div style={{ background: T.card, borderRadius: 12, border: `.5px solid ${T.hairline}`, overflow: 'hidden' }}>
           <div style={{
-            display: 'grid', gridTemplateColumns: '40px 1fr 1fr 110px 100px',
+            display: 'grid', gridTemplateColumns: '40px 1fr 1fr 110px 110px 100px',
             gap: 12, padding: '10px 16px',
             fontSize: 10, color: T.text4, fontWeight: 500,
             textTransform: 'uppercase', letterSpacing: 0.5,
             borderBottom: `.5px solid ${T.hairline}`, background: T.sidebar,
           }}>
-            <div></div><div>Nombre</div><div>Puesto</div><div>Departamento</div>
-            <div style={{ textAlign: 'right' }}>Salario</div>
+            <div></div><div>Nombre</div><div>Puesto</div><div>Tipo</div><div>Departamento</div>
+            <div style={{ textAlign: 'right' }}>Salario / Horas</div>
           </div>
           {filtered.map(e => {
             const dept = DEPT_CFG[e.department] || { label: e.department, color: T.text3, bg: 'rgba(0,0,0,.04)' }
+            const etype = EMPLOYEE_TYPE_CFG[e.employee_type || 'permanente']
+            const isVolunteer = (e.employee_type || 'permanente') === 'voluntario'
             return (
               <div key={e.id} onClick={() => onSelect(e)}
                 onMouseEnter={ev => ev.currentTarget.style.background = 'rgba(0,0,0,.02)'}
                 onMouseLeave={ev => ev.currentTarget.style.background = 'transparent'}
                 style={{
-                  display: 'grid', gridTemplateColumns: '40px 1fr 1fr 110px 100px',
+                  display: 'grid', gridTemplateColumns: '40px 1fr 1fr 110px 110px 100px',
                   gap: 12, padding: '12px 16px',
                   borderBottom: `.5px solid ${T.hairline}`,
                   cursor: 'pointer', alignItems: 'center',
@@ -345,9 +421,12 @@ function EquipoTab({ employees, onSelect }) {
                 }}>
                 <Avatar name={e.full_name} size={28} />
                 <div style={{ fontSize: 13, fontWeight: 500 }}>{e.full_name}</div>
-                <div style={{ fontSize: 12, color: T.text3 }}>{e.position}</div>
-                <div><Pill label={dept.label} color={dept.color} bg={dept.bg} /></div>
-                <div style={{ textAlign: 'right', fontSize: 13, fontWeight: 500, fontVariantNumeric: 'tabular-nums' }}>{fmtEuro(e.gross_salary)}</div>
+                <div style={{ fontSize: 12, color: T.text3 }}>{e.position || '—'}</div>
+                <div>{etype && <Pill label={etype.label} color={etype.color} bg={etype.bg} dot={etype.dot} />}</div>
+                <div>{e.department && <Pill label={dept.label} color={dept.color} bg={dept.bg} />}</div>
+                <div style={{ textAlign: 'right', fontSize: 13, fontWeight: 500, fontVariantNumeric: 'tabular-nums' }}>
+                  {isVolunteer ? `${(e.hours_contributed || 0)}h` : fmtEuro(e.gross_salary)}
+                </div>
               </div>
             )
           })}
@@ -361,6 +440,7 @@ function EquipoTab({ employees, onSelect }) {
 // TAB 2: VACACIONES
 // ─────────────────────────────────────────────────────────
 function VacacionesTab({ token }) {
+  const T = useT()
   const [vacations, setVacations] = useState([])
   const [summary, setSummary] = useState({})
   const [filter, setFilter] = useState('upcoming')
@@ -404,21 +484,21 @@ function VacacionesTab({ token }) {
       <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
         <div style={{
           padding: '8px 14px', borderRadius: 10,
-          background: '#fff', border: `.5px solid ${T.hairline}`,
+          background: T.card, border: `.5px solid ${T.hairline}`,
         }}>
           <div style={{ fontSize: 10, color: T.text4, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>Fuera hoy</div>
           <div style={{ fontSize: 18, fontWeight: 600, color: T.text, fontVariantNumeric: 'tabular-nums' }}>{summary.today_out || 0}</div>
         </div>
         <div style={{
           padding: '8px 14px', borderRadius: 10,
-          background: '#fff', border: `.5px solid ${T.hairline}`,
+          background: T.card, border: `.5px solid ${T.hairline}`,
         }}>
           <div style={{ fontSize: 10, color: T.text4, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>Esta semana</div>
           <div style={{ fontSize: 18, fontWeight: 600, color: T.text, fontVariantNumeric: 'tabular-nums' }}>{summary.this_week || 0}</div>
         </div>
         <div style={{
           padding: '8px 14px', borderRadius: 10,
-          background: '#fff', border: `.5px solid ${T.hairline}`,
+          background: T.card, border: `.5px solid ${T.hairline}`,
         }}>
           <div style={{ fontSize: 10, color: T.text4, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>Pendientes</div>
           <div style={{ fontSize: 18, fontWeight: 600, color: '#d97706', fontVariantNumeric: 'tabular-nums' }}>{summary.pending || 0}</div>
@@ -433,7 +513,7 @@ function VacacionesTab({ token }) {
           ].map(f => (
             <button key={f.k} onClick={() => setFilter(f.k)} style={{
               padding: '5px 12px', borderRadius: 6, border: 'none',
-              background: filter === f.k ? '#fff' : 'transparent',
+              background: filter === f.k ? T.card : 'transparent',
               color: filter === f.k ? T.text : T.text3,
               boxShadow: filter === f.k ? '0 1px 2px rgba(0,0,0,.06)' : 'none',
               fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
@@ -442,7 +522,7 @@ function VacacionesTab({ token }) {
         </div>
       </div>
 
-      <div style={{ background: '#fff', borderRadius: 12, border: `.5px solid ${T.hairline}`, overflow: 'hidden' }}>
+      <div style={{ background: T.card, borderRadius: 12, border: `.5px solid ${T.hairline}`, overflow: 'hidden' }}>
         <div style={{
           display: 'grid', gridTemplateColumns: '40px 1fr 200px 100px 110px 110px 130px',
           gap: 12, padding: '10px 16px',
@@ -483,7 +563,7 @@ function VacacionesTab({ token }) {
                   <>
                     <button onClick={() => updateStatus(v.id, 'approved')} style={{
                       padding: '4px 8px', borderRadius: 6,
-                      background: 'rgba(22,163,74,.1)', color: '#16a34a',
+                      background: 'rgba(5,150,105,.1)', color: '#059669',
                       border: 'none', cursor: 'pointer',
                       fontSize: 11, fontFamily: 'inherit', marginRight: 4,
                     }}>Aprobar</button>
@@ -513,6 +593,7 @@ function VacacionesTab({ token }) {
 // TAB 3: CONTRATOS
 // ─────────────────────────────────────────────────────────
 function ContratosTab({ token }) {
+  const T = useT()
   const [contracts, setContracts] = useState([])
   const [summary, setSummary] = useState({})
 
@@ -524,15 +605,15 @@ function ContratosTab({ token }) {
   return (
     <>
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
-        <div style={{ padding: '8px 14px', borderRadius: 10, background: '#fff', border: `.5px solid ${T.hairline}` }}>
+        <div style={{ padding: '8px 14px', borderRadius: 10, background: T.card, border: `.5px solid ${T.hairline}` }}>
           <div style={{ fontSize: 10, color: T.text4, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>Indefinidos</div>
           <div style={{ fontSize: 18, fontWeight: 600, color: T.text, fontVariantNumeric: 'tabular-nums' }}>{summary.indefinidos || 0}</div>
         </div>
-        <div style={{ padding: '8px 14px', borderRadius: 10, background: '#fff', border: `.5px solid ${T.hairline}` }}>
+        <div style={{ padding: '8px 14px', borderRadius: 10, background: T.card, border: `.5px solid ${T.hairline}` }}>
           <div style={{ fontSize: 10, color: T.text4, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>Temporales</div>
           <div style={{ fontSize: 18, fontWeight: 600, color: T.text, fontVariantNumeric: 'tabular-nums' }}>{summary.temporales || 0}</div>
         </div>
-        <div style={{ padding: '8px 14px', borderRadius: 10, background: '#fff', border: `.5px solid ${T.hairline}` }}>
+        <div style={{ padding: '8px 14px', borderRadius: 10, background: T.card, border: `.5px solid ${T.hairline}` }}>
           <div style={{ fontSize: 10, color: T.text4, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>Prácticas</div>
           <div style={{ fontSize: 18, fontWeight: 600, color: T.text, fontVariantNumeric: 'tabular-nums' }}>{summary.practicas || 0}</div>
         </div>
@@ -544,7 +625,7 @@ function ContratosTab({ token }) {
         )}
       </div>
 
-      <div style={{ background: '#fff', borderRadius: 12, border: `.5px solid ${T.hairline}`, overflow: 'hidden' }}>
+      <div style={{ background: T.card, borderRadius: 12, border: `.5px solid ${T.hairline}`, overflow: 'hidden' }}>
         <div style={{
           display: 'grid', gridTemplateColumns: '40px 1fr 120px 110px 110px 90px 110px',
           gap: 12, padding: '10px 16px',
@@ -591,6 +672,7 @@ function ContratosTab({ token }) {
 // TAB 4: NÓMINAS
 // ─────────────────────────────────────────────────────────
 function NominasTab({ token }) {
+  const T = useT()
   const [payslips, setPayslips] = useState([])
   const [summary, setSummary] = useState({})
 
@@ -616,15 +698,15 @@ function NominasTab({ token }) {
   return (
     <>
       <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-        <div style={{ padding: '8px 14px', borderRadius: 10, background: '#fff', border: `.5px solid ${T.hairline}` }}>
+        <div style={{ padding: '8px 14px', borderRadius: 10, background: T.card, border: `.5px solid ${T.hairline}` }}>
           <div style={{ fontSize: 10, color: T.text4, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>Bruto pagado</div>
           <div style={{ fontSize: 18, fontWeight: 600, color: T.text, fontVariantNumeric: 'tabular-nums' }}>{fmtEuro(summary.total_gross)}</div>
         </div>
-        <div style={{ padding: '8px 14px', borderRadius: 10, background: '#fff', border: `.5px solid ${T.hairline}` }}>
+        <div style={{ padding: '8px 14px', borderRadius: 10, background: T.card, border: `.5px solid ${T.hairline}` }}>
           <div style={{ fontSize: 10, color: T.text4, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>Neto pagado</div>
           <div style={{ fontSize: 18, fontWeight: 600, color: T.text, fontVariantNumeric: 'tabular-nums' }}>{fmtEuro(summary.total_net)}</div>
         </div>
-        <div style={{ padding: '8px 14px', borderRadius: 10, background: '#fff', border: `.5px solid ${T.hairline}` }}>
+        <div style={{ padding: '8px 14px', borderRadius: 10, background: T.card, border: `.5px solid ${T.hairline}` }}>
           <div style={{ fontSize: 10, color: T.text4, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>Coste total empresa</div>
           <div style={{ fontSize: 18, fontWeight: 600, color: T.text, fontVariantNumeric: 'tabular-nums' }}>{fmtEuro(summary.total_cost)}</div>
         </div>
@@ -647,7 +729,7 @@ function NominasTab({ token }) {
               </div>
             </div>
 
-            <div style={{ background: '#fff', borderRadius: 12, border: `.5px solid ${T.hairline}`, overflow: 'hidden' }}>
+            <div style={{ background: T.card, borderRadius: 12, border: `.5px solid ${T.hairline}`, overflow: 'hidden' }}>
               {group.items.map(p => (
                 <div key={p.id} style={{
                   display: 'grid', gridTemplateColumns: '40px 1fr 100px 100px 100px 100px',
@@ -690,6 +772,7 @@ function NominasTab({ token }) {
 // DRAWER EMPLEADO (detalle)
 // ─────────────────────────────────────────────────────────
 function EmployeeDrawer({ employee, onClose, token }) {
+  const T = useT()
   const [feedbacks, setFeedbacks] = useState([])
   const [contract, setContract] = useState(null)
   const [vacations, setVacations] = useState([])
@@ -703,6 +786,9 @@ function EmployeeDrawer({ employee, onClose, token }) {
 
   if (!employee) return null
   const dept = DEPT_CFG[employee.department] || { label: employee.department, color: T.text3, bg: 'rgba(0,0,0,.04)' }
+  const etype = EMPLOYEE_TYPE_CFG[employee.employee_type || 'permanente']
+  const isVolunteer = (employee.employee_type || 'permanente') === 'voluntario'
+  const skillList = (employee.skills || '').split(',').map(s => s.trim()).filter(Boolean)
 
   return (
     <div style={{
@@ -710,7 +796,7 @@ function EmployeeDrawer({ employee, onClose, token }) {
       display: 'flex', justifyContent: 'flex-end', zIndex: 100,
     }} onClick={onClose}>
       <div onClick={e => e.stopPropagation()} style={{
-        width: 460, height: '100vh', background: '#fff',
+        width: 460, height: '100vh', background: T.card,
         display: 'flex', flexDirection: 'column', overflow: 'hidden',
         animation: 'slideIn .2s ease',
       }}>
@@ -721,9 +807,10 @@ function EmployeeDrawer({ employee, onClose, token }) {
             <Avatar name={employee.full_name} size={56} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 16, fontWeight: 600, color: T.text, marginBottom: 2 }}>{employee.full_name}</div>
-              <div style={{ fontSize: 12.5, color: T.text3, marginBottom: 8 }}>{employee.position}</div>
-              <div style={{ display: 'flex', gap: 5 }}>
-                <Pill label={dept.label} color={dept.color} bg={dept.bg} />
+              <div style={{ fontSize: 12.5, color: T.text3, marginBottom: 8 }}>{employee.position || '—'}</div>
+              <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                {etype && <Pill label={etype.label} color={etype.color} bg={etype.bg} dot={etype.dot} />}
+                {employee.department && <Pill label={dept.label} color={dept.color} bg={dept.bg} />}
               </div>
             </div>
             <button onClick={onClose} style={{
@@ -743,6 +830,50 @@ function EmployeeDrawer({ employee, onClose, token }) {
               <div style={{ fontSize: 12.5, color: T.text }}>{employee.email}</div>
             </div>
           </div>
+
+          {/* Compromiso temporal / voluntariado */}
+          {(isVolunteer || employee.employee_type === 'temporal' || employee.start_date || employee.end_date || employee.availability || skillList.length > 0) && (
+            <div>
+              <div style={{ fontSize: 10, color: T.text4, fontWeight: 500, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
+                {isVolunteer ? 'Voluntariado' : 'Vínculo'}
+              </div>
+              <div style={{ background: T.sidebar, borderRadius: 10, padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  {etype && <Pill label={etype.label} color={etype.color} bg={etype.bg} dot={etype.dot} />}
+                  {isVolunteer && (
+                    <span style={{ fontSize: 13, fontWeight: 600, color: T.text }}>
+                      {(employee.hours_contributed || 0)}h aportadas
+                    </span>
+                  )}
+                </div>
+                {(employee.start_date || employee.end_date) && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, color: T.text3 }}>
+                    <span>{employee.start_date ? fmtDate(employee.start_date) : '—'}</span>
+                    <span>{employee.end_date ? fmtDate(employee.end_date) : 'Sin fin'}</span>
+                  </div>
+                )}
+                {employee.availability && (
+                  <div>
+                    <div style={{ fontSize: 10.5, color: T.text4, marginBottom: 2 }}>Disponibilidad</div>
+                    <div style={{ fontSize: 12, color: T.text2 }}>{employee.availability}</div>
+                  </div>
+                )}
+                {skillList.length > 0 && (
+                  <div>
+                    <div style={{ fontSize: 10.5, color: T.text4, marginBottom: 4 }}>Habilidades</div>
+                    <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                      {skillList.map((s, i) => (
+                        <span key={i} style={{
+                          fontSize: 11, padding: '3px 8px', borderRadius: 6,
+                          background: T.card, border: `.5px solid ${T.hairline}`, color: T.text2,
+                        }}>{s}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {contract && (
             <div>
@@ -791,12 +922,508 @@ function EmployeeDrawer({ employee, onClose, token }) {
 
 
 // ─────────────────────────────────────────────────────────
-// VERA DRAWER (chat con contexto HR)
+// MODAL: NUEVO EMPLEADO / VOLUNTARIO
 // ─────────────────────────────────────────────────────────
+function fieldStyle(T) {
+  return {
+    width: '100%', padding: '8px 10px', borderRadius: 8,
+    border: `.5px solid ${T.hairline}`, background: T.sidebar,
+    fontSize: 12.5, fontFamily: 'inherit', color: T.text, outline: 'none',
+  }
+}
+function Label({ children }) {
+  const T = useT()
+  return <div style={{ fontSize: 11, color: T.text3, fontWeight: 500, marginBottom: 5 }}>{children}</div>
+}
+
+function NewEmployeeModal({ token, onClose, onCreated }) {
+  const T = useT()
+  const [form, setForm] = useState({
+    full_name: '', email: '', employee_type: 'permanente', department: '', position: '',
+    gross_salary: '', start_date: '', end_date: '', availability: '', skills: '',
+  })
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+  const isVolunteer = form.employee_type === 'voluntario'
+  const isTemporal = form.employee_type === 'temporal'
+
+  async function save() {
+    if (!form.full_name || !form.email) { setError('Nombre y email son obligatorios'); return }
+    setSaving(true); setError('')
+    try {
+      const body = {
+        full_name: form.full_name, email: form.email, employee_type: form.employee_type,
+        department: form.department || null, position: form.position || null,
+        gross_salary: isVolunteer ? 0 : (parseFloat(form.gross_salary) || 0),
+        start_date: form.start_date || null, end_date: form.end_date || null,
+        availability: form.availability || null, skills: form.skills || null,
+      }
+      const r = await fetch(`${API}/api/hr/employees`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      if (!r.ok) { const d = await r.json().catch(() => ({})); setError(d.detail || 'Error al crear'); setSaving(false); return }
+      onCreated && onCreated()
+      onClose()
+    } catch { setError('Error de red'); setSaving(false) }
+  }
+
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.35)', display: 'grid', placeItems: 'center', zIndex: 110 }}>
+      <div onClick={e => e.stopPropagation()} style={{
+        width: 460, maxHeight: '88vh', overflowY: 'auto', background: T.card, borderRadius: 16,
+        border: `.5px solid ${T.hairline}`, boxShadow: '0 12px 48px rgba(0,0,0,.18)', padding: 22,
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <div style={{ fontSize: 16, fontWeight: 600, color: T.text }}>Nuevo miembro del equipo</div>
+          <button onClick={onClose} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: T.text4 }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div>
+            <Label>Tipo de vínculo</Label>
+            <div style={{ display: 'flex', gap: 6 }}>
+              {Object.entries(EMPLOYEE_TYPE_CFG).map(([k, cfg]) => (
+                <button key={k} onClick={() => set('employee_type', k)} style={{
+                  flex: 1, padding: '7px 0', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit',
+                  fontSize: 12, fontWeight: 500,
+                  border: `1px solid ${form.employee_type === k ? cfg.color : T.hairline}`,
+                  background: form.employee_type === k ? cfg.bg : T.card,
+                  color: form.employee_type === k ? cfg.color : T.text3,
+                }}>{cfg.label}</button>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 10 }}>
+            <div style={{ flex: 1 }}><Label>Nombre completo *</Label>
+              <input style={fieldStyle(T)} value={form.full_name} onChange={e => set('full_name', e.target.value)} /></div>
+          </div>
+          <div><Label>Email *</Label>
+            <input style={fieldStyle(T)} value={form.email} onChange={e => set('email', e.target.value)} /></div>
+
+          <div style={{ display: 'flex', gap: 10 }}>
+            <div style={{ flex: 1 }}><Label>Departamento</Label>
+              <input style={fieldStyle(T)} value={form.department} onChange={e => set('department', e.target.value)} placeholder="ventas, logística..." /></div>
+            <div style={{ flex: 1 }}><Label>{isVolunteer ? 'Rol' : 'Puesto'}</Label>
+              <input style={fieldStyle(T)} value={form.position} onChange={e => set('position', e.target.value)} /></div>
+          </div>
+
+          {!isVolunteer && (
+            <div><Label>Salario bruto anual (€)</Label>
+              <input style={fieldStyle(T)} type="number" value={form.gross_salary} onChange={e => set('gross_salary', e.target.value)} /></div>
+          )}
+
+          {(isVolunteer || isTemporal) && (
+            <>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <div style={{ flex: 1 }}><Label>Fecha inicio</Label>
+                  <input style={fieldStyle(T)} type="date" value={form.start_date} onChange={e => set('start_date', e.target.value)} /></div>
+                <div style={{ flex: 1 }}><Label>Fecha fin</Label>
+                  <input style={fieldStyle(T)} type="date" value={form.end_date} onChange={e => set('end_date', e.target.value)} /></div>
+              </div>
+              <div><Label>Disponibilidad / turnos</Label>
+                <input style={fieldStyle(T)} value={form.availability} onChange={e => set('availability', e.target.value)} placeholder="Tardes L-V, fines de semana..." /></div>
+              <div><Label>Habilidades (separadas por coma)</Label>
+                <input style={fieldStyle(T)} value={form.skills} onChange={e => set('skills', e.target.value)} placeholder="Logística, Atención al público" /></div>
+            </>
+          )}
+
+          {error && <div style={{ fontSize: 12, color: T.red }}>{error}</div>}
+
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
+            <button onClick={onClose} style={{
+              padding: '8px 16px', borderRadius: 999, border: `.5px solid ${T.hairline}`,
+              background: T.card, color: T.text2, fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit',
+            }}>Cancelar</button>
+            <button onClick={save} disabled={saving} style={{
+              padding: '8px 16px', borderRadius: 999, border: 'none',
+              background: VERA_BLUE, color: '#fff', fontSize: 12.5, fontWeight: 500,
+              cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.6 : 1, fontFamily: 'inherit',
+            }}>{saving ? 'Guardando...' : 'Crear'}</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────
+// MODAL: NUEVO GRUPO
+// ─────────────────────────────────────────────────────────
+function NewGroupModal({ token, onClose, onCreated }) {
+  const T = useT()
+  const [form, setForm] = useState({ name: '', description: '', start_date: '', end_date: '' })
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+
+  async function save() {
+    if (!form.name) { setError('El nombre es obligatorio'); return }
+    setSaving(true); setError('')
+    try {
+      const r = await fetch(`${API}/api/hr/workgroups`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: form.name, description: form.description || null,
+          start_date: form.start_date || null, end_date: form.end_date || null,
+        }),
+      })
+      if (!r.ok) { setError('Error al crear el grupo'); setSaving(false); return }
+      const g = await r.json()
+      onCreated && onCreated(g)
+      onClose()
+    } catch { setError('Error de red'); setSaving(false) }
+  }
+
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.35)', display: 'grid', placeItems: 'center', zIndex: 110 }}>
+      <div onClick={e => e.stopPropagation()} style={{
+        width: 420, background: T.card, borderRadius: 16,
+        border: `.5px solid ${T.hairline}`, boxShadow: '0 12px 48px rgba(0,0,0,.18)', padding: 22,
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <div style={{ fontSize: 16, fontWeight: 600, color: T.text }}>Nuevo grupo de trabajo</div>
+          <button onClick={onClose} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: T.text4 }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div><Label>Nombre *</Label>
+            <input style={fieldStyle(T)} value={form.name} onChange={e => set('name', e.target.value)} placeholder="Logística evento" /></div>
+          <div><Label>Descripción</Label>
+            <textarea style={{ ...fieldStyle(T), minHeight: 60, resize: 'vertical' }} value={form.description} onChange={e => set('description', e.target.value)} /></div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <div style={{ flex: 1 }}><Label>Inicio</Label>
+              <input style={fieldStyle(T)} type="date" value={form.start_date} onChange={e => set('start_date', e.target.value)} /></div>
+            <div style={{ flex: 1 }}><Label>Fin</Label>
+              <input style={fieldStyle(T)} type="date" value={form.end_date} onChange={e => set('end_date', e.target.value)} /></div>
+          </div>
+          {error && <div style={{ fontSize: 12, color: T.red }}>{error}</div>}
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
+            <button onClick={onClose} style={{
+              padding: '8px 16px', borderRadius: 999, border: `.5px solid ${T.hairline}`,
+              background: T.card, color: T.text2, fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit',
+            }}>Cancelar</button>
+            <button onClick={save} disabled={saving} style={{
+              padding: '8px 16px', borderRadius: 999, border: 'none',
+              background: VERA_BLUE, color: '#fff', fontSize: 12.5, fontWeight: 500,
+              cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.6 : 1, fontFamily: 'inherit',
+            }}>{saving ? 'Creando...' : 'Crear grupo'}</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────
+// TAB 5: GRUPOS DE TRABAJO
+// ─────────────────────────────────────────────────────────
+function GruposTab({ token, employees, onSelect, reloadKey }) {
+  const T = useT()
+  const [groups, setGroups] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  async function load() {
+    setLoading(true)
+    try {
+      const r = await fetch(`${API}/api/hr/workgroups`, { headers: { Authorization: `Bearer ${token}` } })
+      if (r.ok) setGroups(await r.json())
+    } catch {}
+    setLoading(false)
+  }
+  useEffect(() => { load() }, [reloadKey])
+
+  if (loading) return <div style={{ padding: 40, textAlign: 'center', color: T.text4, fontSize: 13 }}>Cargando grupos...</div>
+  if (groups.length === 0) return (
+    <div style={{ padding: 60, textAlign: 'center', color: T.text4, fontSize: 13 }}>
+      Aún no hay grupos de trabajo. Crea el primero con “+ Nuevo grupo”.
+    </div>
+  )
+
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 12 }}>
+      {groups.map(g => {
+        return (
+          <div key={g.id} onClick={() => onSelect(g.id)}
+            onMouseEnter={ev => { ev.currentTarget.style.transform = 'translateY(-1px)'; ev.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,.05)' }}
+            onMouseLeave={ev => { ev.currentTarget.style.transform = 'translateY(0)'; ev.currentTarget.style.boxShadow = 'none' }}
+            style={{ background: T.card, borderRadius: 12, border: `.5px solid ${T.hairline}`, padding: 16, cursor: 'pointer', transition: 'all .15s' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+              <span style={{ width: 10, height: 10, borderRadius: 3, background: g.color || T.blue, flexShrink: 0 }} />
+              <div style={{ fontSize: 14, fontWeight: 600, color: T.text, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.name}</div>
+            </div>
+            {g.description && <div style={{ fontSize: 12, color: T.text4, marginBottom: 12, lineHeight: 1.4 }}>{g.description}</div>}
+
+            <div style={{ marginBottom: 10 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: T.text4, marginBottom: 4 }}>
+                <span>{g.completed_tasks}/{g.task_count} tareas</span>
+                <span style={{ fontVariantNumeric: 'tabular-nums' }}>{g.completion_percentage}%</span>
+              </div>
+              <div style={{ height: 6, borderRadius: 999, background: T.sidebar, overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${g.completion_percentage}%`, background: T.green, borderRadius: 999, transition: 'width .4s' }} />
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: `.5px solid ${T.hairline}`, paddingTop: 10, fontSize: 11.5, color: T.text3 }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>
+                {g.member_count} miembros
+              </span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
+                {g.total_hours}h
+              </span>
+              {g.blocked_tasks > 0 && (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: T.red }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M15 9l-6 6M9 9l6 6" /></svg>
+                  {g.blocked_tasks}
+                </span>
+              )}
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────
+// DRAWER GRUPO (miembros + kanban de tareas + horas)
+// ─────────────────────────────────────────────────────────
+function GroupDrawer({ groupId, token, employees, onClose, onChanged }) {
+  const T = useT()
+  const [group, setGroup] = useState(null)
+  const [tab, setTab] = useState('tareas')
+  const [newTask, setNewTask] = useState('')
+  const [addMemberId, setAddMemberId] = useState('')
+
+  async function load() {
+    try {
+      const r = await fetch(`${API}/api/hr/workgroups/${groupId}`, { headers: { Authorization: `Bearer ${token}` } })
+      if (r.ok) setGroup(await r.json())
+    } catch {}
+  }
+  function changed() { load(); onChanged && onChanged() }
+  useEffect(() => { load() }, [groupId])
+
+  async function createTask() {
+    if (!newTask.trim()) return
+    await fetch(`${API}/api/hr/workgroups/${groupId}/tasks`, {
+      method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: newTask.trim() }),
+    })
+    setNewTask(''); changed()
+  }
+  async function moveTask(taskId, status) {
+    await fetch(`${API}/api/hr/tasks/${taskId}`, {
+      method: 'PUT', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+    })
+    changed()
+  }
+  async function deleteTask(taskId) {
+    await fetch(`${API}/api/hr/tasks/${taskId}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } })
+    changed()
+  }
+  async function assignTask(taskId, employeeId) {
+    await fetch(`${API}/api/hr/tasks/${taskId}`, {
+      method: 'PUT', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ assigned_to: employeeId ? parseInt(employeeId) : null }),
+    })
+    changed()
+  }
+  async function logHours(taskId) {
+    const h = prompt('¿Cuántas horas aportar a esta tarea?')
+    if (!h) return
+    const hours = parseFloat(h); if (isNaN(hours) || hours <= 0) return
+    const t = (group.tasks || []).find(x => x.id === taskId)
+    await fetch(`${API}/api/hr/tasks/${taskId}/horas`, {
+      method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ hours, employee_id: t?.assigned_to || null }),
+    })
+    changed()
+  }
+  async function addMember() {
+    if (!addMemberId) return
+    await fetch(`${API}/api/hr/workgroups/${groupId}/members`, {
+      method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ employee_id: parseInt(addMemberId) }),
+    })
+    setAddMemberId(''); changed()
+  }
+  async function removeMember(memberId) {
+    await fetch(`${API}/api/hr/workgroups/${groupId}/members/${memberId}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } })
+    changed()
+  }
+  async function archiveGroup() {
+    if (!confirm('¿Archivar este grupo?')) return
+    await fetch(`${API}/api/hr/workgroups/${groupId}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } })
+    onChanged && onChanged(); onClose()
+  }
+
+  const tasks = group?.tasks || []
+  const memberIds = new Set((group?.members || []).map(m => m.employee_id))
+  const nonMembers = employees.filter(e => !memberIds.has(e.id))
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.35)', display: 'flex', justifyContent: 'flex-end', zIndex: 100 }} onClick={onClose}>
+      <div onClick={e => e.stopPropagation()} style={{
+        width: 640, maxWidth: '94vw', height: '100vh', background: T.card,
+        display: 'flex', flexDirection: 'column', overflow: 'hidden', animation: 'slideIn .2s ease',
+      }}>
+        <style>{`@keyframes slideIn{from{transform:translateX(40px);opacity:0}to{transform:translateX(0);opacity:1}}`}</style>
+
+        {!group ? (
+          <div style={{ padding: 40, textAlign: 'center', color: T.text4 }}>Cargando...</div>
+        ) : (
+          <>
+            <div style={{ padding: 20, borderBottom: `.5px solid ${T.hairline}` }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                <span style={{ width: 12, height: 12, borderRadius: 4, background: group.color || T.blue, marginTop: 5 }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 17, fontWeight: 600, color: T.text }}>{group.name}</div>
+                  {group.description && <div style={{ fontSize: 12.5, color: T.text3, marginTop: 3 }}>{group.description}</div>}
+                  <div style={{ display: 'flex', gap: 14, marginTop: 8, fontSize: 11.5, color: T.text4 }}>
+                    <span>{group.member_count} miembros</span>
+                    <span>{group.completed_tasks}/{group.task_count} tareas ({group.completion_percentage}%)</span>
+                    <span>{group.total_hours}h aportadas</span>
+                  </div>
+                </div>
+                <button onClick={archiveGroup} title="Archivar" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: T.text4, fontSize: 11 }}>Archivar</button>
+                <button onClick={onClose} style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 4, color: T.text4 }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+              </div>
+              <div style={{ display: 'flex', gap: 2, background: T.sidebar, borderRadius: 8, padding: 3, width: 'fit-content', marginTop: 14 }}>
+                <Tab label="Tareas" active={tab === 'tareas'} onClick={() => setTab('tareas')} badge={tasks.length} />
+                <Tab label="Miembros" active={tab === 'miembros'} onClick={() => setTab('miembros')} badge={group.member_count} />
+              </div>
+            </div>
+
+            <div style={{ flex: 1, overflowY: 'auto', padding: 20 }}>
+              {tab === 'tareas' && (
+                <>
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+                    <input value={newTask} onChange={e => setNewTask(e.target.value)} onKeyDown={e => e.key === 'Enter' && createTask()}
+                      placeholder="Nueva tarea y Enter..." style={{ ...fieldStyle(T), flex: 1 }} />
+                    <button onClick={createTask} style={{
+                      padding: '8px 16px', borderRadius: 8, border: 'none', background: VERA_BLUE, color: '#fff',
+                      fontSize: 12.5, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
+                    }}>Añadir</button>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
+                    {KANBAN_COLS.map(col => {
+                      const colTasks = tasks.filter(t => t.status === col.k)
+                      const cfg = TASK_STATUS_CFG[col.k]
+                      return (
+                        <div key={col.k} style={{ background: T.sidebar, borderRadius: 10, padding: 10, minHeight: 80 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                            <span style={{ width: 7, height: 7, borderRadius: 999, background: cfg.dot }} />
+                            <span style={{ fontSize: 11.5, fontWeight: 600, color: T.text2 }}>{col.l}</span>
+                            <span style={{ fontSize: 10.5, color: T.text4 }}>{colTasks.length}</span>
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            {colTasks.map(t => {
+                              const prio = TASK_PRIORITY_CFG[t.priority] || TASK_PRIORITY_CFG.media
+                              const idx = KANBAN_COLS.findIndex(c => c.k === col.k)
+                              const next = KANBAN_COLS[(idx + 1) % KANBAN_COLS.length]
+                              return (
+                                <div key={t.id} style={{ background: T.card, borderRadius: 8, border: `.5px solid ${T.hairline}`, padding: 10 }}>
+                                  <div style={{ fontSize: 12.5, fontWeight: 500, color: T.text, marginBottom: 6 }}>{t.title}</div>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 8, flexWrap: 'wrap' }}>
+                                    <Pill label={prio.label} color={prio.color} bg={prio.bg} />
+                                    {t.actual_hours > 0 && <span style={{ fontSize: 10.5, color: T.text4 }}>{t.actual_hours}h</span>}
+                                  </div>
+                                  <select value={t.assigned_to || ''} onChange={e => assignTask(t.id, e.target.value)}
+                                    style={{ ...fieldStyle(T), padding: '5px 8px', fontSize: 11, marginBottom: 6 }}>
+                                    <option value="">Sin asignar</option>
+                                    {employees.map(emp => <option key={emp.id} value={emp.id}>{emp.full_name}</option>)}
+                                  </select>
+                                  <div style={{ display: 'flex', gap: 6 }}>
+                                    <button type="button" onClick={() => moveTask(t.id, next.k)} title={`Mover a ${next.l}`} aria-label={`Mover "${t.title}" a ${next.l}`} style={{
+                                      flex: 1, padding: '5px 0', minHeight: 28, borderRadius: 6, border: `.5px solid ${T.hairline}`,
+                                      background: T.card, color: T.text2, fontSize: 10.5, cursor: 'pointer', fontFamily: 'inherit',
+                                    }}>→ {next.l}</button>
+                                    <button type="button" onClick={() => logHours(t.id)} title="Registrar horas" aria-label={`Registrar horas en "${t.title}"`} style={{
+                                      padding: '5px 8px', minHeight: 28, borderRadius: 6, border: `.5px solid ${T.hairline}`,
+                                      background: T.card, color: T.text2, cursor: 'pointer', fontFamily: 'inherit', display: 'grid', placeItems: 'center',
+                                    }}>
+                                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
+                                    </button>
+                                    <button type="button" onClick={() => deleteTask(t.id)} title="Eliminar tarea" aria-label={`Eliminar "${t.title}"`} style={{
+                                      padding: '5px 8px', minHeight: 28, borderRadius: 6, border: `.5px solid ${T.hairline}`,
+                                      background: T.card, color: T.red, cursor: 'pointer', fontFamily: 'inherit', display: 'grid', placeItems: 'center',
+                                    }}>
+                                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /></svg>
+                                    </button>
+                                  </div>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </>
+              )}
+
+              {tab === 'miembros' && (
+                <>
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+                    <select value={addMemberId} onChange={e => setAddMemberId(e.target.value)} style={{ ...fieldStyle(T), flex: 1 }}>
+                      <option value="">Añadir miembro...</option>
+                      {nonMembers.map(e => <option key={e.id} value={e.id}>{e.full_name} ({EMPLOYEE_TYPE_CFG[e.employee_type || 'permanente']?.label})</option>)}
+                    </select>
+                    <button onClick={addMember} style={{
+                      padding: '8px 16px', borderRadius: 8, border: 'none', background: VERA_BLUE, color: '#fff',
+                      fontSize: 12.5, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
+                    }}>Añadir</button>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {(group.members || []).map(m => (
+                      <div key={m.id} style={{
+                        display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
+                        background: T.card, borderRadius: 10, border: `.5px solid ${T.hairline}`,
+                      }}>
+                        <Avatar name={m.employee_name || '?'} size={32} />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 13, fontWeight: 500, color: T.text }}>{m.employee_name}</div>
+                          {m.role && <div style={{ fontSize: 11.5, color: T.text4 }}>{m.role}</div>}
+                        </div>
+                        <button onClick={() => removeMember(m.id)} style={{
+                          background: 'transparent', border: 'none', cursor: 'pointer', color: T.text4, fontSize: 12,
+                        }}>Quitar</button>
+                      </div>
+                    ))}
+                    {(group.members || []).length === 0 && (
+                      <div style={{ padding: 30, textAlign: 'center', color: T.text4, fontSize: 12.5 }}>Sin miembros todavía</div>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ─────────────────────────────────────────────────────────
 // PÁGINA PRINCIPAL
 // ─────────────────────────────────────────────────────────
 export default function HRPage() {
+  const T = useT()
+  const { theme } = useTheme()
   const router = useRouter()
   const [tab, setTab] = useState('equipo')
   const [employees, setEmployees] = useState([])
@@ -805,6 +1432,11 @@ export default function HRPage() {
   const [token, setToken] = useState(null)
   const [loading, setLoading] = useState(true)
   const [pendingVacations, setPendingVacations] = useState(0)
+  const [showNewEmployee, setShowNewEmployee] = useState(false)
+  const [showNewGroup, setShowNewGroup] = useState(false)
+  const [selectedGroup, setSelectedGroup] = useState(null)
+  const [groupsReloadKey, setGroupsReloadKey] = useState(0)
+  const refreshGroups = () => setGroupsReloadKey(k => k + 1)
 
   // Notificaciones: empleados en riesgo + contratos por vencer + vacaciones pendientes
   const notificationCount = (
@@ -855,7 +1487,7 @@ export default function HRPage() {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', height: '100vh' }}>
         <header style={{
           padding: '20px 32px 0',
-          background: 'rgba(251,251,253,.85)',
+          background: theme === 'dark' ? 'rgba(11,11,12,.85)' : 'rgba(251,251,253,.85)',
           backdropFilter: 'saturate(180%) blur(20px)',
           borderBottom: `.5px solid ${T.hairline}`,
         }}>
@@ -863,7 +1495,7 @@ export default function HRPage() {
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
                 <h1 style={{ fontSize: 22, fontWeight: 600, color: T.text, margin: 0, letterSpacing: -0.3 }}>Recursos Humanos</h1>
-                <span style={{ width: 6, height: 6, borderRadius: 999, background: '#16a34a' }} />
+                <span style={{ width: 6, height: 6, borderRadius: 999, background: '#059669' }} />
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: T.text4 }}>
                 <span style={{ fontSize: 14 }}>🇪🇸</span>
@@ -877,11 +1509,15 @@ export default function HRPage() {
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={() => setNotificationsOpen(o => !o)} style={{
+            <HeaderActions onVera={() => setVeraOpen(true)} router={router}>
+              <button onClick={() => setNotificationsOpen(o => !o)}
+                aria-label={`Notificaciones${notificationCount > 0 ? ` (${notificationCount})` : ''}`}
+                aria-expanded={notificationsOpen}
+                style={{
                 position: 'relative',
                 padding: '7px 10px', borderRadius: 8,
-                background: '#fff', color: T.text2,
+                minWidth: 36, minHeight: 36,
+                background: T.card, color: T.text2,
                 border: `.5px solid ${T.hairline}`,
                 cursor: 'pointer', fontFamily: 'inherit',
                 display: 'grid', placeItems: 'center',
@@ -899,30 +1535,18 @@ export default function HRPage() {
                   }}>{notificationCount}</span>
                 )}
               </button>
-              <button onClick={() => setVeraOpen(true)} style={{
-                padding: '7px 14px', borderRadius: 8,
-                background: '#fff', color: VERA_BLUE,
-                border: `.5px solid rgba(0,113,227,.3)`,
-                fontSize: 12, fontWeight: 500, cursor: 'pointer',
-                fontFamily: 'inherit',
-                display: 'flex', alignItems: 'center', gap: 6,
-              }}>
-                <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor">
-                  <path d="M8 1l1.5 5.5L15 8l-5.5 1.5L8 15l-1.5-5.5L1 8l5.5-1.5L8 1z" />
-                </svg>
-                Vera
-              </button>
-              <button style={{
+              <button onClick={() => tab === 'grupos' ? setShowNewGroup(true) : setShowNewEmployee(true)} style={{
                 padding: '7px 14px', borderRadius: 8,
                 background: VERA_BLUE, color: '#fff',
                 border: 'none', fontSize: 12, fontWeight: 500, cursor: 'pointer',
                 fontFamily: 'inherit',
-              }}>+ Nuevo empleado</button>
-            </div>
+              }}>{tab === 'grupos' ? '+ Nuevo grupo' : '+ Nuevo empleado'}</button>
+            </HeaderActions>
           </div>
 
           <div style={{ display: 'flex', gap: 2, background: T.sidebar, borderRadius: 8, padding: 3, width: 'fit-content' }}>
             <Tab label="Equipo" active={tab === 'equipo'} onClick={() => setTab('equipo')} />
+            <Tab label="Grupos" active={tab === 'grupos'} onClick={() => setTab('grupos')} />
             <Tab label="Vacaciones" active={tab === 'vacaciones'} onClick={() => setTab('vacaciones')} badge={pendingVacations} />
             <Tab label="Contratos" active={tab === 'contratos'} onClick={() => setTab('contratos')} badge={dashboard?.contracts_expiring_60d} />
             <Tab label="Nóminas" active={tab === 'nominas'} onClick={() => setTab('nominas')} />
@@ -931,12 +1555,13 @@ export default function HRPage() {
           <div style={{ height: 16 }} />
         </header>
 
-        <div style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
+        <div id="main-content" tabIndex={-1} style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
           {loading ? (
             <div style={{ padding: 60, textAlign: 'center', color: T.text4, fontSize: 13 }}>Cargando...</div>
           ) : (
             <>
               {tab === 'equipo' && <EquipoTab employees={employees} onSelect={setSelected} />}
+              {tab === 'grupos' && <GruposTab token={token} employees={employees} onSelect={setSelectedGroup} reloadKey={groupsReloadKey} />}
               {tab === 'vacaciones' && <VacacionesTab token={token} />}
               {tab === 'contratos' && <ContratosTab token={token} />}
               {tab === 'nominas' && <NominasTab token={token} />}
@@ -946,6 +1571,9 @@ export default function HRPage() {
       </div>
 
       {selected && <EmployeeDrawer employee={selected} onClose={() => setSelected(null)} token={token} />}
+      {selectedGroup && <GroupDrawer groupId={selectedGroup} token={token} employees={employees} onClose={() => setSelectedGroup(null)} onChanged={refreshGroups} />}
+      {showNewEmployee && <NewEmployeeModal token={token} onClose={() => setShowNewEmployee(false)} onCreated={() => loadAll(token)} />}
+      {showNewGroup && <NewGroupModal token={token} onClose={() => setShowNewGroup(false)} onCreated={() => { refreshGroups(); setTab('grupos') }} />}
       {veraOpen && <VeraDrawer onClose={() => setVeraOpen(false)} token={token} dashboard={dashboard} />}
 
       {notificationsOpen && (
@@ -955,92 +1583,7 @@ export default function HRPage() {
           <div onClick={e => e.stopPropagation()} style={{
             position: 'fixed', top: 70, right: 32,
             width: 380, maxHeight: 500, overflowY: 'auto',
-            background: '#fff', borderRadius: 12,
-            border: `.5px solid ${T.hairline}`,
-            boxShadow: '0 8px 30px rgba(0,0,0,.12)',
-            padding: 14,
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>Notificaciones</div>
-              <button onClick={() => { setNotificationsOpen(false); setVeraOpen(true) }} style={{
-                fontSize: 11, color: VERA_BLUE, background: 'transparent',
-                border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 500,
-              }}>Pregunta a Vera →</button>
-            </div>
-
-            {notificationCount === 0 ? (
-              <div style={{ padding: 30, textAlign: 'center', color: T.text4, fontSize: 12 }}>
-                Sin notificaciones nuevas
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {dashboard?.employees_at_risk?.length > 0 && (
-                  <div style={{
-                    padding: '10px 12px', borderRadius: 8,
-                    background: 'rgba(220,38,38,.04)',
-                    border: '.5px solid rgba(220,38,38,.15)',
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
-                      <span style={{ width: 6, height: 6, borderRadius: 999, background: '#dc2626' }} />
-                      <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>
-                        {dashboard.employees_at_risk.length} {dashboard.employees_at_risk.length === 1 ? 'empleado en riesgo de fuga' : 'empleados en riesgo de fuga'}
-                      </span>
-                    </div>
-                    <div style={{ fontSize: 11, color: T.text3, marginBottom: 4, paddingLeft: 12 }}>
-                      {dashboard.employees_at_risk.map(e => `${e.name} (${e.negative_pct}%)`).join(', ')}
-                    </div>
-                    <div style={{ fontSize: 11, color: T.text2, fontWeight: 500, paddingLeft: 12 }}>→ Agenda 1:1 esta semana</div>
-                  </div>
-                )}
-
-                {dashboard?.contracts_expiring_60d > 0 && (
-                  <div onClick={() => { setNotificationsOpen(false); setTab('contratos') }} style={{
-                    padding: '10px 12px', borderRadius: 8,
-                    background: 'rgba(217,119,6,.04)',
-                    border: '.5px solid rgba(217,119,6,.15)',
-                    cursor: 'pointer',
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
-                      <span style={{ width: 6, height: 6, borderRadius: 999, background: '#d97706' }} />
-                      <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>
-                        {dashboard.contracts_expiring_60d} {dashboard.contracts_expiring_60d === 1 ? 'contrato vence' : 'contratos vencen'} en 60 días
-                      </span>
-                    </div>
-                    <div style={{ fontSize: 11, color: T.text2, fontWeight: 500, paddingLeft: 12 }}>→ Decide si renovar</div>
-                  </div>
-                )}
-
-                {pendingVacations > 0 && (
-                  <div onClick={() => { setNotificationsOpen(false); setTab('vacaciones') }} style={{
-                    padding: '10px 12px', borderRadius: 8,
-                    background: 'rgba(0,113,227,.04)',
-                    border: '.5px solid rgba(0,113,227,.15)',
-                    cursor: 'pointer',
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
-                      <span style={{ width: 6, height: 6, borderRadius: 999, background: VERA_BLUE }} />
-                      <span style={{ fontSize: 12, fontWeight: 600, color: T.text }}>
-                        {pendingVacations} {pendingVacations === 1 ? 'solicitud de vacaciones pendiente' : 'solicitudes de vacaciones pendientes'}
-                      </span>
-                    </div>
-                    <div style={{ fontSize: 11, color: T.text2, fontWeight: 500, paddingLeft: 12 }}>→ Revisa y aprueba</div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-      {veraOpen && <VeraDrawer onClose={() => setVeraOpen(false)} token={token} dashboard={dashboard} />}
-
-      {notificationsOpen && (
-        <div onClick={() => setNotificationsOpen(false)} style={{
-          position: 'fixed', inset: 0, zIndex: 90,
-        }}>
-          <div onClick={e => e.stopPropagation()} style={{
-            position: 'fixed', top: 70, right: 32,
-            width: 380, maxHeight: 500, overflowY: 'auto',
-            background: '#fff', borderRadius: 12,
+            background: T.card, borderRadius: 12,
             border: `.5px solid ${T.hairline}`,
             boxShadow: '0 8px 30px rgba(0,0,0,.12)',
             padding: 14,

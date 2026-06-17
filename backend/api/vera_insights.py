@@ -21,7 +21,7 @@ CACHE_TTL_HOURS = 24
 def _ctx_for_module(db, company_id, modulo):
     ctx = {}
 
-    if modulo in ("finanzas", "dashboard"):
+    if modulo in ("finanzas", "dashboard", "contabilidad"):
         r = db.execute(text("""
             SELECT
               COALESCE(SUM(CASE WHEN a.account_type='income' THEN je.credit-je.debit ELSE 0 END), 0),
@@ -66,7 +66,7 @@ def _ctx_for_module(db, company_id, modulo):
 
     if modulo == "hr":
         r = db.execute(text("""
-            SELECT COUNT(*), COALESCE(SUM(salary), 0)
+            SELECT COUNT(*), COALESCE(SUM(gross_salary), 0)
             FROM employees WHERE company_id = :cid AND is_active = 1
         """), {"cid": company_id}).fetchone()
         if r:

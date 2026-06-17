@@ -52,6 +52,15 @@ def generate_snapshot(db: Session, company_id: int, target_date: date = None) ->
     ingresos_mes = float(ventas_mes[1] or 0)
     ticket_medio = float(ventas_mes[2] or 0)
 
+    # Gastos del mes LIVE desde contabilidad (débitos en cuentas de gasto del PGC).
+    from sqlalchemy import text as _sql_text
+    gastos_mes = float(db.execute(_sql_text("""
+        SELECT COALESCE(SUM(je.debit), 0)
+        FROM journal_entries je JOIN accounts a ON a.id = je.account_id
+        WHERE je.company_id = :cid AND a.account_type = 'expense'
+          AND je.date >= :d1 AND je.date < :d2
+    """), {"cid": company_id, "d1": str(month_start), "d2": str(month_end)}).scalar() or 0)
+
     ventas_anterior = db.query(func.sum(Sale.total)).filter(
         Sale.company_id == company_id,
         Sale.sale_date >= prev_month_start,
@@ -111,7 +120,8 @@ def generate_snapshot(db: Session, company_id: int, target_date: date = None) ->
     proyectos_riesgo = db.query(func.count(Project.id)).filter(Project.company_id == company_id, Project.health_score < 5).scalar() or 0
 
     # ── Calcular labels automáticos ────────────────────────────────────────
-    margen_pct = (float((ingresos_mes - 0) / ingresos_mes * 100) if ingresos_mes > 0 else 0)
+    resultado_neto_mes = ingresos_mes - gastos_mes
+    margen_pct = (float(resultado_neto_mes / ingresos_mes * 100) if ingresos_mes > 0 else 0)
 
     # Label riesgo negocio
     riesgo = "bajo"
@@ -171,8 +181,8 @@ def generate_snapshot(db: Session, company_id: int, target_date: date = None) ->
     snapshot.num_empleados_rango    = size_rango
     snapshot.empresa_size           = size
     snapshot.ingresos_mes           = round(ingresos_mes, 2)
-    snapshot.gastos_mes             = 0  # TODO: conectar contabilidad
-    snapshot.resultado_neto         = round(ingresos_mes, 2)
+    snapshot.gastos_mes             = round(gastos_mes, 2)            # LIVE desde contabilidad
+    snapshot.resultado_neto         = round(ingresos_mes - gastos_mes, 2)
     snapshot.margen_neto_pct        = round(margen_pct, 2)
     snapshot.ratio_gastos_ingresos  = 0
     snapshot.ingresos_mes_anterior  = round(ingresos_anterior, 2)

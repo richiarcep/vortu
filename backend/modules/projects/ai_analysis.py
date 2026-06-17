@@ -2,6 +2,7 @@ import json
 from datetime import date
 from sqlalchemy.orm import Session
 from anthropic import Anthropic
+from vera.compat import vera_client
 from core.config import get_settings
 from models.project import Project, Task, TimeEntry, ProjectExpense
 from modules.projects.health import calculate_health_score
@@ -70,7 +71,7 @@ def analyze_project_with_ai(db: Session, project: Project) -> dict:
         "vencidas":         len([t for t in tasks if t.due_date and t.due_date < today and t.status != "completada"]),
     }
 
-    client = Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+    client = vera_client(None, None, module="proyectos")
 
     prompt = f"""Eres un consultor de gestión de proyectos experto. Analiza este proyecto y devuelve SOLO un JSON con esta estructura exacta:
 
@@ -151,7 +152,7 @@ def generate_post_project_report(db: Session, project: Project) -> dict:
     budget_accuracy = ((project.budget - total_cost) / project.budget * 100) if project.budget else 0
     time_accuracy = ((estimated_hours - total_hours) / estimated_hours * 100) if estimated_hours else 0
 
-    client = Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+    client = vera_client(None, None, module="proyectos")
 
     prompt = f"""Genera un informe post-proyecto profesional en español. Devuelve SOLO un JSON:
 

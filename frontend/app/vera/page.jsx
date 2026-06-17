@@ -2,19 +2,26 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
-import { T, FONT, I } from '@/components/ui/tokens'
+import { FONT, I, useT, useTheme } from '@/components/ui/tokens'
 
 import { API_BASE as API } from '@/lib/api'
 const VERA_BLUE = '#0071E3'
 const VERA_PLUS_BLUE = '#003D8F'
 
+// Iconos Lucide-style inline (stroke currentColor) — sustituyen a los emojis usados
+// como icono en las sugerencias, para a11y consistente.
+const SUGG_ICON_PROPS = {
+  width: 18, height: 18, viewBox: '0 0 24 24', fill: 'none',
+  stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round',
+  strokeLinejoin: 'round', 'aria-hidden': true,
+}
 const SUGGESTIONS = [
-  { icon: '📊', text: '¿Cuál es mi margen este mes?' },
-  { icon: '🏆', text: 'Top 5 productos más vendidos' },
-  { icon: '⚠️', text: 'Clientes en riesgo de impago' },
-  { icon: '💰', text: 'Previsión de caja próximos 30 días' },
-  { icon: '📈', text: 'Compara este trimestre vs el anterior' },
-  { icon: '🧾', text: 'Explícame mi modelo 303 de IVA' },
+  { icon: <svg {...SUGG_ICON_PROPS}><line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" /></svg>, text: '¿Cuál es mi margen este mes?' },
+  { icon: <svg {...SUGG_ICON_PROPS}><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" /><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" /><path d="M4 22h16" /><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22" /><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" /><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" /></svg>, text: 'Top 5 productos más vendidos' },
+  { icon: <svg {...SUGG_ICON_PROPS}><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>, text: 'Clientes en riesgo de impago' },
+  { icon: <svg {...SUGG_ICON_PROPS}><line x1="12" y1="2" x2="12" y2="22" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>, text: 'Previsión de caja próximos 30 días' },
+  { icon: <svg {...SUGG_ICON_PROPS}><polyline points="22 7 13.5 15.5 8.5 10.5 2 17" /><polyline points="16 7 22 7 22 13" /></svg>, text: 'Compara este trimestre vs el anterior' },
+  { icon: <svg {...SUGG_ICON_PROPS}><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z" /><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8" /><path d="M12 17.5v-11" /></svg>, text: 'Explícame mi modelo 303 de IVA' },
 ]
 
 function FlagES({ size = 12 }) {
@@ -29,6 +36,7 @@ function FlagES({ size = 12 }) {
 }
 
 function ProfileBtn({ user, router }) {
+  const T = useT()
   const [open, setOpen] = useState(false)
   const ref = useRef()
   useEffect(() => {
@@ -149,6 +157,8 @@ function renderMarkdown(text) {
 }
 
 export default function VeraModule() {
+  const T = useT()
+  const { theme } = useTheme()
   const router = useRouter()
   const [token, setToken] = useState(null)
   const [user, setUser] = useState(null)
@@ -454,13 +464,13 @@ export default function VeraModule() {
 
   return (
     <div style={{
-      height: '100vh', background: T.bg, display: 'flex', overflow: 'hidden',
+      height: '100dvh', background: T.bg, display: 'flex', overflow: 'hidden',
       fontFamily: FONT, WebkitFontSmoothing: 'antialiased',
     }}>
       <style>{`
         *{box-sizing:border-box}
         ::-webkit-scrollbar{width:5px;height:5px}
-        ::-webkit-scrollbar-thumb{background:rgba(0,0,0,.12);border-radius:999px}
+        ::-webkit-scrollbar-thumb{background:${theme === 'dark' ? 'rgba(255,255,255,.18)' : 'rgba(0,0,0,.12)'};border-radius:999px}
         input:focus,textarea:focus{outline:none}
         .chat-item .actions{opacity:0;transition:opacity .15s}
         .chat-item:hover .actions{opacity:1}
@@ -469,14 +479,19 @@ export default function VeraModule() {
         @keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
         .msg-actions{opacity:0;transition:opacity .15s}
         .msg-wrapper:hover .msg-actions{opacity:1}
+        @media (max-width:900px){
+          .vera-row{grid-template-columns:1fr!important}
+          .vera-side{display:none!important}
+        }
       `}</style>
 
       <Sidebar active="/vera" />
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <header style={{
-          height: 56, background: 'rgba(251,251,253,.85)',
+          height: 56, background: theme === 'dark' ? 'rgba(11,11,12,.85)' : 'rgba(251,251,253,.85)',
           backdropFilter: 'saturate(180%) blur(20px)',
+          WebkitBackdropFilter: 'saturate(180%) blur(20px)',
           borderBottom: `.5px solid ${T.hairline}`,
           display: 'flex', alignItems: 'center', padding: '0 24px',
           flexShrink: 0, gap: 14,
@@ -505,7 +520,7 @@ export default function VeraModule() {
           </div>
         </header>
 
-        <div style={{
+        <div className="vera-row" style={{
           flex: 1, display: 'grid',
           gridTemplateColumns: '240px 1fr 260px',
           overflow: 'hidden',
@@ -542,8 +557,8 @@ export default function VeraModule() {
                   <circle cx="11" cy="11" r="8" />
                   <line x1="21" y1="21" x2="16.65" y2="16.65" />
                 </svg>
-                <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Buscar chats..."
-                  style={{ width: '100%', padding: '7px 10px 7px 30px', borderRadius: 8, border: '.5px solid #E5E5EA', background: '#fff', fontSize: 12, fontFamily: 'inherit', color: '#1d1d1f', outline: 'none' }}
+                <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Buscar chats..." aria-label="Buscar chats"
+                  style={{ width: '100%', padding: '7px 10px 7px 30px', borderRadius: 8, border: `.5px solid ${T.hairline}`, background: T.card, fontSize: 12, fontFamily: 'inherit', color: T.text, outline: 'none' }}
                 />
               </div>
             </div>
@@ -597,11 +612,12 @@ export default function VeraModule() {
                             if (e.key === 'Escape') setEditingId(null)
                           }}
                           onClick={e => e.stopPropagation()}
+                          aria-label="Renombrar chat"
                           style={{
                             flex: 1, border: `.5px solid ${VERA_BLUE}`,
                             borderRadius: 4, padding: '2px 6px',
                             fontSize: 12.5, fontFamily: 'inherit',
-                            background: '#fff', color: T.text,
+                            background: T.card, color: T.text,
                           }}
                         />
                       ) : (
@@ -616,7 +632,7 @@ export default function VeraModule() {
                           <div className="actions" style={{
                             display: 'flex', gap: 2, flexShrink: 0,
                           }}>
-                            <button onClick={(e) => startRenameChat(c, e)} title="Editar nombre" style={{
+                            <button onClick={(e) => startRenameChat(c, e)} title="Editar nombre" aria-label={`Editar nombre del chat "${c.title}"`} style={{
                               width: 22, height: 22, borderRadius: 5,
                               background: 'transparent', border: 'none',
                               color: T.text4, cursor: 'pointer',
@@ -630,7 +646,7 @@ export default function VeraModule() {
                                 <path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                               </svg>
                             </button>
-                            <button onClick={(e) => deleteChat(c.id, e)} title="Eliminar" style={{
+                            <button onClick={(e) => deleteChat(c.id, e)} title="Eliminar" aria-label={`Eliminar chat "${c.title}"`} style={{
                               width: 22, height: 22, borderRadius: 5,
                               background: 'transparent', border: 'none',
                               color: T.text4, cursor: 'pointer',
@@ -696,6 +712,7 @@ export default function VeraModule() {
                         if (e.key === 'Enter') { saveRename(activeChat.id); setEditingTitleChat(false) }
                         if (e.key === 'Escape') setEditingTitleChat(false)
                       }}
+                      aria-label="Renombrar chat actual"
                       style={{
                         flex: 1, padding: '4px 8px', borderRadius: 6,
                         border: `.5px solid ${VERA_BLUE}`, fontSize: 13, fontWeight: 500,
@@ -741,7 +758,7 @@ export default function VeraModule() {
 
                       <div style={{
                         display: 'grid',
-                        gridTemplateColumns: 'repeat(2, 1fr)',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
                         gap: 10,
                       }}>
                         {SUGGESTIONS.map((s, i) => (
@@ -767,7 +784,7 @@ export default function VeraModule() {
                               e.currentTarget.style.boxShadow = 'none'
                             }}
                           >
-                            <span style={{ fontSize: 18, flexShrink: 0 }}>{s.icon}</span>
+                            <span style={{ flexShrink: 0, display: 'grid', placeItems: 'center', color: VERA_BLUE }}>{s.icon}</span>
                             <span style={{ fontSize: 12.5, color: T.text2, lineHeight: 1.4 }}>{s.text}</span>
                           </div>
                         ))}
@@ -959,7 +976,7 @@ export default function VeraModule() {
                 <div style={{ padding: '16px 24px 20px', borderTop: `.5px solid ${T.hairline}`, background: T.bg }}>
                   <div style={{
                     display: 'flex', gap: 8, alignItems: 'center',
-                    background: '#fff', borderRadius: 999,
+                    background: T.card, borderRadius: 999,
                     padding: '6px 6px 6px 18px',
                     border: `.5px solid ${T.hairline}`,
                     maxWidth: 720, margin: '0 auto',
@@ -977,6 +994,7 @@ export default function VeraModule() {
                         }
                       }}
                       placeholder={isPlus ? 'Pregunta a Vera Plus…' : 'Pregunta a Vera…'}
+                      aria-label={isPlus ? 'Pregunta a Vera Plus' : 'Pregunta a Vera'}
                       rows={1}
                       style={{
                         flex: 1, border: 'none', background: 'transparent',
@@ -984,7 +1002,7 @@ export default function VeraModule() {
                         resize: 'none', padding: '6px 0', maxHeight: 120,
                       }}
                     />
-                    <button onClick={() => sendMessage()} disabled={!input.trim() || sending} style={{
+                    <button onClick={() => sendMessage()} disabled={!input.trim() || sending} aria-label="Enviar mensaje" style={{
                       width: 34, height: 34, borderRadius: 999,
                       background: input.trim() ? (isPlus ? VERA_PLUS_BLUE : VERA_BLUE) : T.hairline,
                       color: input.trim() ? '#fff' : T.text4,
@@ -1026,7 +1044,7 @@ export default function VeraModule() {
           </div>
 
           {/* PANEL DERECHO */}
-          <div style={{
+          <div className="vera-side" style={{
             borderLeft: `.5px solid ${T.hairline}`,
             background: T.sidebar,
             padding: 14,
@@ -1074,7 +1092,7 @@ export default function VeraModule() {
                     <span style={{ fontSize: 12, color: T.text2 }}>{s.name}</span>
                     <span style={{
                       width: 6, height: 6, borderRadius: 999,
-                      background: s.active ? '#16a34a' : T.text4,
+                      background: s.active ? '#059669' : T.text4,
                     }} />
                   </div>
                 ))}
@@ -1107,7 +1125,7 @@ export default function VeraModule() {
                 /* BASE: barra + estado + CTA según nivel */
                 <div style={{
                   background: T.card, borderRadius: 10,
-                  border: `.5px solid ${status?.blocked ? '#fee2e2' : T.hairline}`,
+                  border: `.5px solid ${status?.blocked ? T.redSoft : T.hairline}`,
                   padding: '10px 12px',
                 }}>
                   <div style={{

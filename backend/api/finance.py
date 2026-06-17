@@ -6,6 +6,7 @@ from datetime import date, timedelta
 import json
 from core.database import get_db
 from core.security import get_current_user
+from vera.compat import vera_client   # IA por Vera (cuota + config admin)
 from models.user import User
 from models.document import Document
 from modules.finance.statements import generate_financial_statements
@@ -254,7 +255,7 @@ def get_ratios_financieros(
     }
 
     # ── Ask Claude to interpret each ratio ────────────────────────────────────
-    client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+    client = vera_client(db, company_id, module="finanzas", quality="cheap")
 
     message = client.messages.create(
         model="claude-opus-4-6",
@@ -463,7 +464,7 @@ def get_proyecciones(
                        'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
         next_months.append(f"{month_names[month_num-1]} {year}")
 
-    client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+    client = vera_client(db, company_id, module="finanzas")
 
     _base = get_prompt("finance_projections")
     prompt = f"""{_base}

@@ -294,7 +294,7 @@ async def create_campaign(
         if an:
             def _p(v):
                 try: return json.loads(v) if v else {}
-                except: return {}
+                except (ValueError, TypeError): return {}
             analysis_dict = {
                 "sector": an.sector,
                 "business_type": an.business_type,
@@ -353,7 +353,7 @@ async def create_campaign(
 
     def _p(v):
         try: return json.loads(v) if v else {}
-        except: return {}
+        except (ValueError, TypeError): return {}
 
     return {
         "id": campaign.id,
@@ -384,7 +384,7 @@ def list_campaigns(
 
     def _p(v):
         try: return json.loads(v) if v else []
-        except: return []
+        except (ValueError, TypeError): return []
 
     return {
         "campaigns": [
@@ -423,7 +423,7 @@ def get_campaign(
 
     def _p(v):
         try: return json.loads(v) if v else {}
-        except: return {}
+        except (ValueError, TypeError): return {}
 
     return {
         "id": campaign.id,
@@ -511,7 +511,7 @@ async def publish_campaign(
 
     def _p(v):
         try: return json.loads(v) if v else {}
-        except: return {}
+        except (ValueError, TypeError): return {}
 
     results = {}
     campaign_data = {

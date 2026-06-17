@@ -125,11 +125,60 @@ def get_resumen(
         "margen": margen
     }
 
+    # Serie diaria REAL (14 días) de ingresos y gastos, para sparklines por KPI.
+    # La ventana termina en el ÚLTIMO día con asientos (no en hoy), para no arrastrar
+    # una cola de ceros cuando los datos terminan antes de la fecha actual.
+    series = []
+    try:
+        _last = db.execute(text("SELECT MAX(date) FROM journal_entries WHERE company_id=:cid"),
+                           {"cid": cid}).scalar()
+        end_d = today
+        if _last:
+            try:
+                ld = date.fromisoformat(str(_last)[:10])
+                end_d = min(today, ld)
+            except Exception:
+                end_d = today
+        since14 = end_d - timedelta(days=13)
+        rows = db.execute(text("""
+            SELECT je.date,
+              COALESCE(SUM(CASE WHEN a.code LIKE '70%' THEN je.credit - je.debit ELSE 0 END), 0) AS ing,
+              COALESCE(SUM(CASE WHEN (a.code LIKE '60%' OR a.code LIKE '62%' OR a.code LIKE '63%'
+                                   OR a.code LIKE '64%' OR a.code LIKE '65%' OR a.code LIKE '66%'
+                                   OR a.code LIKE '67%' OR a.code LIKE '68%' OR a.code LIKE '69%')
+                            THEN je.debit - je.credit ELSE 0 END), 0) AS gas
+            FROM journal_entries je JOIN accounts a ON a.id = je.account_id
+            WHERE je.company_id = :cid AND je.date >= :d1 AND je.date <= :d2
+            GROUP BY je.date ORDER BY je.date
+        """), {"cid": cid, "d1": str(since14), "d2": str(end_d)}).fetchall()
+        by_date = {str(r[0]): (float(r[1] or 0), float(r[2] or 0)) for r in rows}
+        # Nº de ventas por día (para el sparkline del KPI "Ventas hoy")
+        by_date_v = {}
+        try:
+            vrows = db.execute(text("""
+                SELECT DATE(sale_date) d, COUNT(*) n FROM sales
+                WHERE company_id = :cid AND DATE(sale_date) >= :d1 AND DATE(sale_date) <= :d2
+                GROUP BY DATE(sale_date)
+            """), {"cid": cid, "d1": str(since14), "d2": str(end_d)}).fetchall()
+            by_date_v = {str(r[0]): int(r[1] or 0) for r in vrows}
+        except Exception:
+            by_date_v = {}
+        for i in range(14):
+            dd = since14 + timedelta(days=i)
+            ing_d, gas_d = by_date.get(str(dd), (0.0, 0.0))
+            series.append({
+                "date": str(dd), "ingresos": round(ing_d, 2), "gastos": round(gas_d, 2),
+                "ventas": by_date_v.get(str(dd), 0),
+            })
+    except Exception as e:
+        print(f"ERROR serie_14d: {e}")
+
     return {
         "fecha": str(today),
         "period": period,
         "days": days,
         "ultimos_30_dias": data,
+        "series_14d": series,
         "saldo_caja_actual": round(saldo, 2),
         "alertas_activas": len(alertas),
         "empleados": empleados,

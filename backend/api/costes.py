@@ -13,7 +13,7 @@ Y journal_entries con module_source='documentos' y reference=número de factura.
 """
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import func, extract, and_, or_, desc, asc
+from sqlalchemy import func, extract, and_, or_, desc, asc, text
 from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime, timedelta, date
@@ -54,7 +54,7 @@ def _parse_notes(notes: Optional[str]) -> dict:
     m = re.search(r"Doc\s*ID:\s*(\d+)", notes)
     if m:
         try: out["doc_id"] = int(m.group(1))
-        except: pass
+        except (ValueError, TypeError): pass
     return out
 
 
@@ -136,11 +136,14 @@ def get_kpis(db: Session = Depends(get_db), current_user: User = Depends(get_cur
     year_inicio = date(today.year, 1, 1)
     year_fin = date(today.year + 1, 1, 1)
 
+    # Gastos LIVE desde contabilidad: débitos en cuentas de gasto del PGC (journal_entries).
     def sum_range(d1, d2):
-        r = db.query(func.coalesce(func.sum(CostEntry.amount), 0), func.count(CostEntry.id)).filter(
-            CostEntry.company_id == company_id,
-            CostEntry.date >= d1, CostEntry.date < d2
-        ).first()
+        r = db.execute(text("""
+            SELECT COALESCE(SUM(je.debit), 0), COUNT(*)
+            FROM journal_entries je JOIN accounts a ON a.id = je.account_id
+            WHERE je.company_id = :cid AND a.account_type = 'expense'
+              AND je.date >= :d1 AND je.date < :d2
+        """), {"cid": company_id, "d1": str(d1), "d2": str(d2)}).first()
         return float(r[0] or 0), int(r[1] or 0)
 
     total_mes, count_mes = sum_range(mes_inicio, mes_fin)
@@ -148,30 +151,18 @@ def get_kpis(db: Session = Depends(get_db), current_user: User = Depends(get_cur
     total_ytd, _ = sum_range(year_inicio, year_fin)
     variacion_pct = ((total_mes - total_mes_ant) / total_mes_ant * 100) if total_mes_ant > 0 else 0.0
 
-    # Top categoría del mes
-    top_cat = db.query(CostCategory.name, func.sum(CostEntry.amount).label("t")).join(
-        CostCategory, CostCategory.id == CostEntry.category_id
-    ).filter(
-        CostEntry.company_id == company_id,
-        CostEntry.date >= mes_inicio, CostEntry.date < mes_fin
-    ).group_by(CostCategory.id).order_by(desc("t")).first()
+    # Top categoría del mes = la cuenta de gasto con mayor débito (nombre del PGC)
+    top_cat = db.execute(text("""
+        SELECT a.name, SUM(je.debit) AS t
+        FROM journal_entries je JOIN accounts a ON a.id = je.account_id
+        WHERE je.company_id = :cid AND a.account_type = 'expense'
+          AND je.date >= :d1 AND je.date < :d2
+        GROUP BY a.id ORDER BY t DESC LIMIT 1
+    """), {"cid": company_id, "d1": str(mes_inicio), "d2": str(mes_fin)}).first()
+    top_categoria = {"name": top_cat[0], "total": round(float(top_cat[1] or 0), 2)} if top_cat else None
 
-    top_categoria = {"name": top_cat[0], "total": float(top_cat[1] or 0)} if top_cat else None
-
-    # Top proveedor del mes (parseado de notes)
-    entries_mes = db.query(CostEntry).filter(
-        CostEntry.company_id == company_id,
-        CostEntry.date >= mes_inicio, CostEntry.date < mes_fin
-    ).all()
-    prov_totals = {}
-    for e in entries_mes:
-        prov = _parse_notes(e.notes)["provider"]
-        if prov:
-            prov_totals[prov] = prov_totals.get(prov, 0) + float(e.amount or 0)
+    # Proveedor no es fiable a nivel de asiento individual → lo omitimos en la vista live.
     top_proveedor = None
-    if prov_totals:
-        name, total = max(prov_totals.items(), key=lambda x: x[1])
-        top_proveedor = {"name": name, "total": round(total, 2)}
 
     return {
         "total_mes": round(total_mes, 2),
@@ -348,27 +339,19 @@ def get_gasto(gasto_id: int, db: Session = Depends(get_db), current_user: User =
 def agg_categorias(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     year_inicio = date(date.today().year, 1, 1)
     year_fin = date(date.today().year + 1, 1, 1)
-    rows = db.query(
-        CostCategory.id, CostCategory.name, CostCategory.color, CostCategory.icon,
-        func.count(CostEntry.id), func.coalesce(func.sum(CostEntry.amount), 0)
-    ).outerjoin(CostEntry, and_(
-        CostEntry.category_id == CostCategory.id,
-        CostEntry.company_id == current_user.company_id,
-        CostEntry.date >= year_inicio, CostEntry.date < year_fin
-    )).filter(CostCategory.company_id == current_user.company_id).group_by(CostCategory.id).all()
+    # LIVE desde contabilidad: agrupa por cuenta de gasto del PGC (= categoría).
+    rows = db.execute(text("""
+        SELECT a.code, a.name, COUNT(*) AS c, ROUND(SUM(je.debit), 2) AS t
+        FROM journal_entries je JOIN accounts a ON a.id = je.account_id
+        WHERE je.company_id = :cid AND a.account_type = 'expense'
+          AND je.date >= :d1 AND je.date < :d2
+        GROUP BY a.id HAVING t > 0 ORDER BY t DESC
+    """), {"cid": current_user.company_id, "d1": str(year_inicio), "d2": str(year_fin)}).fetchall()
 
-    # Añadir "Sin categoría" (entries con category_id NULL)
-    sin_cat = db.query(func.count(CostEntry.id), func.coalesce(func.sum(CostEntry.amount), 0)).filter(
-        CostEntry.company_id == current_user.company_id,
-        CostEntry.category_id.is_(None),
-        CostEntry.date >= year_inicio, CostEntry.date < year_fin
-    ).first()
-
-    items = [{"category_id": r[0], "name": r[1], "color": r[2], "icon": r[3], "count": r[4], "total": float(r[5])} for r in rows]
-    if sin_cat and sin_cat[0] > 0:
-        items.append({"category_id": None, "name": "Sin categoría", "color": "#86868B", "icon": "box", "count": sin_cat[0], "total": float(sin_cat[1])})
-
-    items = [i for i in items if i["count"] > 0]
+    _PALETTE = ["#0071E3", "#FF9500", "#34C759", "#AF52DE", "#FF3B30", "#00B4D8", "#FFCC00", "#5856D6"]
+    items = [{"category_id": r[0], "name": r[1], "color": _PALETTE[i % len(_PALETTE)],
+              "icon": "box", "count": r[2], "total": float(r[3])}
+             for i, r in enumerate(rows)]
     items.sort(key=lambda x: x["total"], reverse=True)
     total_global = sum(i["total"] for i in items) or 1
     for i in items:
@@ -422,10 +405,12 @@ def agg_evolucion(db: Session = Depends(get_db), current_user: User = Depends(ge
         while m <= 0:
             m += 12; y -= 1
         inicio, fin = _month_range(y, m)
-        total = db.query(func.coalesce(func.sum(CostEntry.amount), 0)).filter(
-            CostEntry.company_id == current_user.company_id,
-            CostEntry.date >= inicio, CostEntry.date < fin
-        ).scalar() or 0
+        total = db.execute(text("""
+            SELECT COALESCE(SUM(je.debit), 0)
+            FROM journal_entries je JOIN accounts a ON a.id = je.account_id
+            WHERE je.company_id = :cid AND a.account_type = 'expense'
+              AND je.date >= :d1 AND je.date < :d2
+        """), {"cid": current_user.company_id, "d1": str(inicio), "d2": str(fin)}).scalar() or 0
         items.append({"year": y, "month": m, "label": date(y, m, 1).strftime("%b"), "total": round(float(total), 2)})
     return {"items": items}
 
