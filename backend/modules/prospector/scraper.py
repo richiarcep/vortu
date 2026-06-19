@@ -1,5 +1,5 @@
 """
-Nexum Prospector — Scraping de leads via Apify.
+Vela Prospector — Scraping de leads via Apify.
 Fuentes: Google Maps, Instagram, Facebook, LinkedIn.
 """
 import os

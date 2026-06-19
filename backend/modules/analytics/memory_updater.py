@@ -80,7 +80,7 @@ def auto_update_memory(db: Session, company_id: int):
     existing_facts = "\n".join([f"- [{e.categoria}] {e.contenido}" for e in existing_entries]) or "Sin hechos previos."
     manual_context = memory.manual_training or "Sin contexto manual."
 
-    prompt = f"""Eres el analista de IA de Nexum. Tu trabajo es aprender sobre este negocio analizando sus datos históricos.
+    prompt = f"""Eres el analista de IA de Vela. Tu trabajo es aprender sobre este negocio analizando sus datos históricos.
 
 NO describes datos — DETECTAS PATRONES, CONCLUYES y RECOMIENDAS acciones concretas.
 

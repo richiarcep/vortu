@@ -1,5 +1,5 @@
 """
-Nexum Prospector API — Solo accesible desde el backoffice de Nexum.
+Vela Prospector API — Solo accesible desde el backoffice de Vela.
 """
 import json
 from datetime import datetime

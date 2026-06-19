@@ -144,7 +144,7 @@ export default function FiscalConfig() {
   const [testResult, setTestResult] = useState(null)
   const [stats, setStats] = useState(null)
 
-  const getToken = () => localStorage.getItem('nexum_token')
+  const getToken = () => localStorage.getItem('vela_token')
 
   useEffect(()=>{
     const t = getToken()
@@ -261,7 +261,7 @@ export default function FiscalConfig() {
             </div>
           )}
           <div style={{marginLeft:'auto',display:'flex',alignItems:'center',gap:8}}>
-            <div style={{width:28,height:28,borderRadius:999,background:'linear-gradient(135deg,#0071E3,#00B4D8)',color:'#fff',display:'grid',placeItems:'center',fontWeight:600,fontSize:11}}>
+            <div style={{width:28,height:28,borderRadius:999,background:'linear-gradient(135deg,#4F46E5,#A5B1FF)',color:'#fff',display:'grid',placeItems:'center',fontWeight:600,fontSize:11}}>
               {user?.name?.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase()||'US'}
             </div>
           </div>
@@ -297,7 +297,7 @@ export default function FiscalConfig() {
                     style={{
                       padding:'16px',borderRadius:14,
                       border:`.5px solid ${paisSeleccionado===p.code?T.blue:T.hairline}`,
-                      background:paisSeleccionado===p.code?'rgba(0,113,227,.06)':p.disponible?T.card:'rgba(0,0,0,.02)',
+                      background:paisSeleccionado===p.code?'rgba(79,70,229,.06)':p.disponible?T.card:'rgba(0,0,0,.02)',
                       cursor:p.disponible?'pointer':'not-allowed',
                       opacity:p.disponible?1:0.5,
                       boxShadow:paisSeleccionado===p.code?`0 0 0 1px ${T.blue}`:'none',
@@ -420,11 +420,11 @@ export default function FiscalConfig() {
               </div>
 
               <div style={{display:'flex',gap:10,marginBottom:20}}>
-                <button onClick={()=>setTieneCert(false)} style={{flex:1,padding:'14px',border:`.5px solid ${!tieneCert?T.blue:T.hairline}`,borderRadius:12,background:!tieneCert?'rgba(0,113,227,.06)':T.card,cursor:'pointer',fontFamily:'inherit',boxShadow:!tieneCert?`0 0 0 1px ${T.blue}`:'none'}}>
+                <button onClick={()=>setTieneCert(false)} style={{flex:1,padding:'14px',border:`.5px solid ${!tieneCert?T.blue:T.hairline}`,borderRadius:12,background:!tieneCert?'rgba(79,70,229,.06)':T.card,cursor:'pointer',fontFamily:'inherit',boxShadow:!tieneCert?`0 0 0 1px ${T.blue}`:'none'}}>
                   <div style={{fontSize:13,fontWeight:500,color:!tieneCert?T.blue:T.text}}>No tengo certificado aún</div>
                   <div style={{fontSize:11,color:T.text4,marginTop:2}}>Usar ambiente de pruebas</div>
                 </button>
-                <button onClick={()=>setTieneCert(true)} style={{flex:1,padding:'14px',border:`.5px solid ${tieneCert?T.blue:T.hairline}`,borderRadius:12,background:tieneCert?'rgba(0,113,227,.06)':T.card,cursor:'pointer',fontFamily:'inherit',boxShadow:tieneCert?`0 0 0 1px ${T.blue}`:'none'}}>
+                <button onClick={()=>setTieneCert(true)} style={{flex:1,padding:'14px',border:`.5px solid ${tieneCert?T.blue:T.hairline}`,borderRadius:12,background:tieneCert?'rgba(79,70,229,.06)':T.card,cursor:'pointer',fontFamily:'inherit',boxShadow:tieneCert?`0 0 0 1px ${T.blue}`:'none'}}>
                   <div style={{fontSize:13,fontWeight:500,color:tieneCert?T.blue:T.text}}>Ya tengo mi certificado</div>
                   <div style={{fontSize:11,color:T.text4,marginTop:2}}>Subir archivo .p12</div>
                 </button>
@@ -476,7 +476,7 @@ export default function FiscalConfig() {
                     {key:'produccion',label:'Producción', desc:'DTE con validez legal ante el Ministerio de Hacienda.'},
                   ].map(a=>(
                     <div key={a.key} onClick={()=>setForm(f=>({...f,ambiente:a.key}))}
-                      style={{flex:1,padding:'12px 14px',borderRadius:10,border:`.5px solid ${form.ambiente===a.key?a.key==='produccion'?T.green:T.blue:T.hairline}`,background:form.ambiente===a.key?a.key==='produccion'?T.greenSoft:'rgba(0,113,227,.06)':T.card,cursor:'pointer',boxShadow:form.ambiente===a.key?`0 0 0 1px ${a.key==='produccion'?T.green:T.blue}`:'none'}}>
+                      style={{flex:1,padding:'12px 14px',borderRadius:10,border:`.5px solid ${form.ambiente===a.key?a.key==='produccion'?T.green:T.blue:T.hairline}`,background:form.ambiente===a.key?a.key==='produccion'?T.greenSoft:'rgba(79,70,229,.06)':T.card,cursor:'pointer',boxShadow:form.ambiente===a.key?`0 0 0 1px ${a.key==='produccion'?T.green:T.blue}`:'none'}}>
                       <div style={{fontSize:13,fontWeight:500,color:form.ambiente===a.key?a.key==='produccion'?T.green:T.blue:T.text,marginBottom:3}}>{a.label}</div>
                       <div style={{fontSize:11,color:T.text4,lineHeight:1.4}}>{a.desc}</div>
                     </div>
@@ -602,7 +602,7 @@ export default function FiscalConfig() {
                     {code:'06',name:'Nota de Débito',         desc:'Cargos adicionales'},
                   ].map(d=>(
                     <div key={d.code} style={{display:'flex',alignItems:'center',gap:12,padding:'9px 0',borderBottom:`.5px solid ${T.soft}`}}>
-                      <span style={{fontSize:11,fontWeight:600,color:T.blue,background:'rgba(0,113,227,.08)',padding:'2px 8px',borderRadius:999,flexShrink:0}}>{d.code}</span>
+                      <span style={{fontSize:11,fontWeight:600,color:T.blue,background:'rgba(79,70,229,.08)',padding:'2px 8px',borderRadius:999,flexShrink:0}}>{d.code}</span>
                       <div>
                         <div style={{fontSize:13,fontWeight:500,color:T.text}}>{d.name}</div>
                         <div style={{fontSize:11,color:T.text4}}>{d.desc}</div>

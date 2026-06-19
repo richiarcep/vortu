@@ -11,12 +11,12 @@ import os
 import sys
 
 DB_PATHS = [
-    os.path.expanduser('~/Desktop/vortu/backend/nexum.db'),
-    os.path.expanduser('~/Desktop/vortu/backend/vortu.db'),
+    os.path.expanduser('~/Desktop/vela/backend/vela.db'),
+    os.path.expanduser('~/Desktop/vela/backend/vela.db'),
 ]
 db_path = next((p for p in DB_PATHS if os.path.exists(p)), None)
 if not db_path:
-    backend = os.path.expanduser('~/Desktop/vortu/backend')
+    backend = os.path.expanduser('~/Desktop/vela/backend')
     for f in os.listdir(backend):
         if f.endswith('.db'):
             db_path = os.path.join(backend, f)

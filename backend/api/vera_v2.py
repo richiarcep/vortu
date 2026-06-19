@@ -193,7 +193,7 @@ def get_system_prompt(db: Session, company_id, user_message: str = "") -> str:
     """)).fetchone()
 
     base = base_row[0] if base_row else (
-        "Eres Vera, la IA central de Vortu. Hablas en español neutro. "
+        "Eres Vera, la IA central de Vela. Hablas en español neutro. "
         "Eres directa, precisa y útil. Te basas EXCLUSIVAMENTE en los datos del "
         "negocio que se te proporcionan abajo. Si te falta un dato concreto, dilo "
         "claramente. Nunca uses plantillas con {variables} ni placeholders."

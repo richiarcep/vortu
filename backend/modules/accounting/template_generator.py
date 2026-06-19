@@ -69,7 +69,7 @@ def generate_qr_code(data: dict, secret_key: str) -> BytesIO:
     ).hexdigest()[:16].upper()
 
     # Final QR content
-    qr_content = f"NEXUM|{payload}|SIG:{signature}"
+    qr_content = f"VELA|{payload}|SIG:{signature}"
 
     # Generate QR
     qr = qrcode.QRCode(
@@ -187,7 +187,7 @@ def generate_daily_register_template(
     if logo_path and os.path.exists(logo_path):
         left_content.append(Image(logo_path, width=30*mm, height=12*mm))
     else:
-        left_content.append(Paragraph("Nexum", styles["app_name"]))
+        left_content.append(Paragraph("Vela", styles["app_name"]))
         left_content.append(Paragraph("Gestión Empresarial con IA", styles["app_tag"]))
 
     # Center: document title block
@@ -220,7 +220,7 @@ def generate_daily_register_template(
     # ── COMPANY INFO + QR ─────────────────────────────────────────────────────
     # Generate QR
     qr_data = {
-        "app": "nexum",
+        "app": "vela",
         "company_id": company_data["id"],
         "doc_id": doc_id,
         "period": period_str,
@@ -247,7 +247,7 @@ def generate_daily_register_template(
     # Doc ID below company
     doc_id_para = Paragraph(f"ID: {doc_id}", styles["doc_id"])
     security_para = Paragraph(
-        "✓ Documento verificado por Nexum", styles["security"]
+        "✓ Documento verificado por Vela", styles["security"]
     )
 
     info_qr_table = Table(
@@ -279,7 +279,7 @@ def generate_daily_register_template(
         ["1. Complete una fila por cada transacción del día.",
          "2. Use I para Ingreso y G para Gasto en la columna Tipo.",
          "3. Escriba con letra clara y números legibles.",
-         "4. Al finalizar, suba este documento a Nexum para procesamiento automático."]
+         "4. Al finalizar, suba este documento a Vela para procesamiento automático."]
     ]
     inst_table = Table(instructions, colWidths=[CONTENT_W])
     inst_table.setStyle(TableStyle([
@@ -447,12 +447,12 @@ def generate_daily_register_template(
     # ── FOOTER ────────────────────────────────────────────────────────────────
     footer_data = [[
         Paragraph(
-            f"Generado por Nexum · {datetime.now().strftime('%d/%m/%Y %H:%M')}",
+            f"Generado por Vela · {datetime.now().strftime('%d/%m/%Y %H:%M')}",
             styles["footer"]
         ),
         Paragraph(f"ID: {doc_id}", styles["doc_id"]),
         Paragraph(
-            "Suba este documento en nexum.app/registro para procesamiento automático",
+            "Suba este documento en vela.app/registro para procesamiento automático",
             styles["footer"]
         ),
     ]]

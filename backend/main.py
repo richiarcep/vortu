@@ -19,7 +19,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from apscheduler.schedulers.background import BackgroundScheduler
 from core.config import get_settings
-from core.database import create_tables
+from core.database import create_tables, ensure_runtime_schema
 from api.auth import router as auth_router
 from api.upload import router as upload_router
 from api.documentos import router as documentos_router
@@ -56,7 +56,7 @@ from api.vera_insights import router as vera_insights_router
 from api.vera_pipeline_admin import router as vera_pipeline_admin_router
 from api.doc_templates_admin import router as doc_templates_admin_router
 from api.doc_prompts_admin import router as doc_prompts_admin_router
-from api.vera_nexum import router as vera_nexum_router
+from api.vera_network import router as vera_network_router
 from api.vera_quota import router as vera_quota_router
 from api.extraction_review_admin import router as extraction_review_router
 from models.analytics import ProspectorSearch, ProspectorLead
@@ -73,6 +73,7 @@ scheduler = BackgroundScheduler()
 async def lifespan(app: FastAPI):
     # Startup
     create_tables()
+    ensure_runtime_schema()
     setup_project_scheduler(scheduler)
     scheduler.start()
     print(f"✓ {settings.APP_NAME} v{settings.APP_VERSION} started")
@@ -100,6 +101,8 @@ _allowed_origins = sorted({
     settings.FRONTEND_URL,
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "http://localhost:3010",
+    "http://127.0.0.1:3010",
 })
 app.add_middleware(
     CORSMiddleware,
@@ -140,7 +143,7 @@ app.include_router(vera_insights_router)
 app.include_router(vera_pipeline_admin_router)
 app.include_router(doc_templates_admin_router)
 app.include_router(doc_prompts_admin_router)
-app.include_router(vera_nexum_router)
+app.include_router(vera_network_router)
 app.include_router(vera_quota_router)
 app.include_router(extraction_review_router)
 

@@ -163,7 +163,7 @@ def get_ai_alert_analysis(alerts: list, company_id: int) -> str:
         max_tokens=512,
         messages=[{
             "role": "user",
-            "content": f"""Eres el asistente financiero de Nexum. 
+            "content": f"""Eres el asistente financiero de Vela. 
 Analiza estas alertas detectadas automáticamente en el negocio 
 y escribe un párrafo ejecutivo en español que:
 1. Resuma la situación general del negocio

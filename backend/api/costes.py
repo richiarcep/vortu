@@ -1,5 +1,5 @@
 """
-Centro de Costes - API (SQLAlchemy + modelos Vortu)
+Centro de Costes - API (SQLAlchemy + modelos Vela)
 
 Conecta:
 - cost_entries (gastos)
@@ -565,7 +565,7 @@ async def vera_parse_gasto(payload: GastoVeraRequest, current_user: User = Depen
 
     today_iso = date.today().isoformat()
     yesterday_iso = (date.today() - timedelta(days=1)).isoformat()
-    system = f"""Eres Vera, asistente contable de Vortu para España.
+    system = f"""Eres Vera, asistente contable de Vela para España.
 Convierte la descripción del usuario en un JSON con campos:
 description, amount (con IVA), iva_rate (21|10|4|0), date (YYYY-MM-DD),
 provider, payment_method, pgc_cuenta_gasto (600|621|622|623|624|625|626|627|628|629).

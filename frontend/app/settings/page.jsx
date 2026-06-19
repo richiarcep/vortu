@@ -1,8 +1,9 @@
 'use client'
 import { useState, useEffect, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { API_BASE } from '@/lib/api'
 
-const API = 'http://127.0.0.1:8000'
+const API = API_BASE
 
 import Sidebar from '@/components/Sidebar'
 import { useT, useTheme } from '@/components/ui/tokens'
@@ -253,7 +254,7 @@ function FiscalWizard({token}){
           </div>
           <Card style={{marginBottom:12}}>
             <div style={{fontSize:13,color:T.text2,lineHeight:1.6}}>
-              Vortu configurara automaticamente todo lo necesario para cumplir con la normativa fiscal de <strong>{paisInfo?.ente}</strong>. El pais queda fijo al registrar la empresa — si necesitas operar en otro pais, contacta con soporte.
+              Vela configurara automaticamente todo lo necesario para cumplir con la normativa fiscal de <strong>{paisInfo?.ente}</strong>. El pais queda fijo al registrar la empresa — si necesitas operar en otro pais, contacta con soporte.
             </div>
           </Card>
           <Btn onClick={()=>setPaso(2)}>
@@ -432,7 +433,7 @@ function FiscalWizard({token}){
           {tieneCert===true&&!certSubido&&(
             <div style={{marginBottom:20}}>
               <div style={{padding:'12px 14px',background:T.sidebar,borderRadius:10,border:`.5px solid ${T.hairline}`,marginBottom:16,fontSize:13,color:T.text2,lineHeight:1.6}}>
-                El archivo de firma digital tiene extension <strong>.p12</strong> y viene con una contrasena. Vortu lo guardara cifrado — no tendras que volver a subirlo.
+                El archivo de firma digital tiene extension <strong>.p12</strong> y viene con una contrasena. Vela lo guardara cifrado — no tendras que volver a subirlo.
               </div>
               <Field label="Archivo de firma digital (.p12)">
                 <div style={{border:`1.5px dashed ${certFile?T.green:T.hairline}`,borderRadius:12,padding:'28px',textAlign:'center',background:certFile?T.greenSoft:T.sidebar,cursor:'pointer',transition:'all .2s'}}
@@ -472,7 +473,7 @@ function FiscalWizard({token}){
                   Activaremos tu cuenta en <strong>modo de pruebas</strong>. Podras generar y practicar con tus documentos fiscales, pero no tendran validez legal hasta que subas tu firma digital.
                 </div>
                 <div style={{fontSize:13,color:T.text2,lineHeight:1.6}}>
-                  Cuando la tengas, vuelve aqui y la subes en menos de un minuto. Vortu hara el resto automaticamente.
+                  Cuando la tengas, vuelve aqui y la subes en menos de un minuto. Vela hara el resto automaticamente.
                 </div>
               </div>
               <BtnSec onClick={()=>setTieneCert(null)}>Volver</BtnSec>
@@ -496,7 +497,7 @@ function FiscalWizard({token}){
           <Steps current={4} total={5} labels={['Pais','Empresa','Firma','Config','Activar']}/>
           <div style={{fontSize:16,fontWeight:600,color:T.text,letterSpacing:-0.3,marginBottom:4}}>Configuracion de documentos</div>
           <div style={{fontSize:13,color:T.text3,marginBottom:20,lineHeight:1.6}}>
-            Vortu ya tiene todo configurado con los valores estandar para El Salvador. Solo ajusta lo que necesites.
+            Vela ya tiene todo configurado con los valores estandar para El Salvador. Solo ajusta lo que necesites.
           </div>
 
           <Field label="Modo de operacion">
@@ -629,7 +630,7 @@ function FiscalWizard({token}){
                 {code:'06',name:'Nota de Debito',            desc:'Para cargos adicionales a facturas'},
               ].map(d=>(
                 <div key={d.code} style={{display:'flex',alignItems:'center',gap:12,padding:'9px 0',borderBottom:`.5px solid ${T.soft}`}}>
-                  <span style={{fontSize:11,fontWeight:600,color:T.blue,background:'rgba(0,113,227,.08)',padding:'2px 8px',borderRadius:999,flexShrink:0}}>{d.code}</span>
+                  <span style={{fontSize:11,fontWeight:600,color:T.blue,background:'rgba(79,70,229,.08)',padding:'2px 8px',borderRadius:999,flexShrink:0}}>{d.code}</span>
                   <div>
                     <div style={{fontSize:13,fontWeight:500,color:T.text}}>{d.name}</div>
                     <div style={{fontSize:11,color:T.text4}}>{d.desc}</div>
@@ -685,8 +686,8 @@ function SettingsInner(){
   const [twoFA,setTwoFA]=useState({enabled:false,loading:false,qr:null,secret:null,code:'',verifying:false,error:null,step:null})
   const PLANS_INFO=[
     {id:'starter',name:'Starter',monthly:19,users:1,modules:['Dashboard','Contabilidad','Finanzas','Ventas'],moduleCount:4,ai:50,docs:25,color:'#6b7280'},
-    {id:'pro',name:'Pro',monthly:39,users:3,modules:['Dashboard','Contabilidad','Finanzas','Ventas','RRHH','Proyectos','Clientes','Documentos','Agente IA'],moduleCount:9,ai:500,docs:100,color:'#00B4D8'},
-    {id:'business',name:'Business',monthly:79,users:10,modules:['Dashboard','Contabilidad','Finanzas','Ventas','RRHH','Proyectos','Clientes','Documentos','Agente IA','Marketing IA'],moduleCount:10,ai:-1,docs:-1,color:'#7c3aed'},
+    {id:'pro',name:'Pro',monthly:39,users:3,modules:['Dashboard','Contabilidad','Finanzas','Ventas','RRHH','Proyectos','Clientes','Documentos','Agente IA'],moduleCount:9,ai:500,docs:100,color:'#4F46E5'},
+    {id:'business',name:'Business',monthly:79,users:10,modules:['Dashboard','Contabilidad','Finanzas','Ventas','RRHH','Proyectos','Clientes','Documentos','Agente IA','Marketing IA'],moduleCount:10,ai:-1,docs:-1,color:'#4F46E5'},
   ]
   const [notifPrefs,setNotifPrefs]=useState({stock_bajo:true,clientes_riesgo:true,proyectos_urgentes:true,mensajes_pendientes:true,alertas_contabilidad:true,informe_semanal:true,email_digest:false,push:true})
   const [profileOpen,setProfileOpen]=useState(false)
@@ -699,7 +700,7 @@ function SettingsInner(){
   },[])
 
   useEffect(()=>{
-    const t=localStorage.getItem('nexum_token')
+    const t=localStorage.getItem('vela_token')
     if(!t){router.push('/login');return}
     setToken(t)
     try{const p=JSON.parse(atob(t.split('.')[1]));setUser({email:p.sub||'',name:p.name||p.sub||'Usuario',is_admin:p.is_admin})}
@@ -829,7 +830,7 @@ function SettingsInner(){
                 onMouseEnter={e=>e.currentTarget.style.background=T.soft}
                 onMouseLeave={e=>e.currentTarget.style.background='transparent'}
               >
-                <div style={{width:28,height:28,borderRadius:999,background:'linear-gradient(135deg,#0071E3,#00B4D8)',color:'#fff',display:'grid',placeItems:'center',fontWeight:600,fontSize:11}}>{initials}</div>
+                <div style={{width:28,height:28,borderRadius:999,background:'linear-gradient(135deg,#4F46E5,#A5B1FF)',color:'#fff',display:'grid',placeItems:'center',fontWeight:600,fontSize:11}}>{initials}</div>
                 <span style={{fontSize:13,fontWeight:500,color:T.text}}>{user?.name?.split(' ')[0]||'Usuario'}</span>
               </div>
               {profileOpen&&(
@@ -838,7 +839,7 @@ function SettingsInner(){
                     <button onClick={()=>setProfileOpen(false)} style={{width:'100%',padding:'9px 14px',background:'none',border:'none',cursor:'pointer',fontFamily:'inherit',fontSize:13,color:T.text,textAlign:'left'}} onMouseEnter={e=>e.currentTarget.style.background=T.sidebar} onMouseLeave={e=>e.currentTarget.style.background='none'}>Mi perfil</button>
                   </div>
                   <div style={{padding:'6px 8px 10px',borderTop:`.5px solid ${T.hairline}`}}>
-                    <button onClick={()=>{localStorage.removeItem('nexum_token');router.push('/login')}} style={{width:'100%',padding:'8px',background:T.redSoft,border:'none',borderRadius:8,color:T.red,fontSize:13,fontWeight:500,cursor:'pointer',fontFamily:'inherit'}}>Cerrar sesion</button>
+                    <button onClick={()=>{localStorage.removeItem('vela_token');router.push('/login')}} style={{width:'100%',padding:'8px',background:T.redSoft,border:'none',borderRadius:8,color:T.red,fontSize:13,fontWeight:500,cursor:'pointer',fontFamily:'inherit'}}>Cerrar sesion</button>
                   </div>
                 </div>
               )}
@@ -863,7 +864,7 @@ function SettingsInner(){
               <div style={{display:'flex',flexDirection:'column',gap:14}}>
                 <Card>
                   <div style={{fontSize:15,fontWeight:600,color:T.text,letterSpacing:-0.2,marginBottom:4}}>Tema</div>
-                  <div style={{fontSize:13,color:T.text3,marginBottom:16,lineHeight:1.5}}>Elige cómo se ve Vortu. Se guarda en este dispositivo.</div>
+                  <div style={{fontSize:13,color:T.text3,marginBottom:16,lineHeight:1.5}}>Elige cómo se ve Vela. Se guarda en este dispositivo.</div>
                   <div className="set-row" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,maxWidth:420}}>
                     {[
                       {k:'light',l:'Claro',d:'Fondo claro',
@@ -877,7 +878,7 @@ function SettingsInner(){
                           aria-pressed={active}
                           style={{textAlign:'left',padding:16,borderRadius:12,cursor:'pointer',fontFamily:'inherit',
                             border:`1px solid ${active?T.blue:T.hairline}`,
-                            background:active?'rgba(0,113,227,.06)':T.card,
+                            background:active?'rgba(79,70,229,.06)':T.card,
                             color:active?T.blue:T.text2,transition:'all .15s'}}>
                           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
                             {o.icon}
@@ -920,7 +921,7 @@ function SettingsInner(){
 
                 <Card>
                   <div style={{fontSize:15,fontWeight:600,color:T.text,letterSpacing:-0.2,marginBottom:4}}>Logo de la empresa</div>
-                  <div style={{fontSize:13,color:T.text3,marginBottom:14}}>Aparecera en facturas, reportes y documentos generados por Vortu.</div>
+                  <div style={{fontSize:13,color:T.text3,marginBottom:14}}>Aparecera en facturas, reportes y documentos generados por Vela.</div>
                   <div style={{display:'flex',alignItems:'center',gap:16}}>
                     <div style={{width:64,height:64,borderRadius:14,background:T.sidebar,border:`.5px solid ${T.hairline}`,display:'grid',placeItems:'center'}}>
                       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={T.text4} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
@@ -973,12 +974,12 @@ function SettingsInner(){
                   {[
                     {id:'starter',name:'Starter',monthly:19,users:1,ai:'50/mes',docs:'25/mes',color:'#6b7280',modules:4,sub:'Contabilidad + Ventas + Finanzas',tag:null,popular:false,highlights:[]},
                     {id:'pro',name:'Pro',monthly:39,users:3,ai:'500/mes',docs:'100/mes',color:T.cyan,modules:9,sub:'Todo lo que necesita tu pyme',tag:'Mas popular',popular:true,highlights:['Vera IA con 500 consultas','3 usuarios incluidos','CRM + Proyectos completo']},
-                    {id:'business',name:'Business',monthly:79,users:10,ai:'Sin limite',docs:'Sin limite',color:'#7c3aed',modules:10,sub:'Sin limites, escala sin preocuparte',tag:'Maximo valor',popular:false,highlights:['IA sin limite','Marketing IA completo','10 usuarios incluidos']},
+                    {id:'business',name:'Business',monthly:79,users:10,ai:'Sin limite',docs:'Sin limite',color:'#4F46E5',modules:10,sub:'Sin limites, escala sin preocuparte',tag:'Maximo valor',popular:false,highlights:['IA sin limite','Marketing IA completo','10 usuarios incluidos']},
                   ].map(plan=>{
                     const isCurrent=billingStatus?.plan===plan.id&&billingStatus?.status!=='none'
                     return (
-                      <Card key={plan.id} style={{position:'relative',border:plan.popular?`2px solid ${T.cyan}`:isCurrent?`1.5px solid ${plan.color}`:`.5px solid ${T.hairline}`,background:T.card,transform:plan.popular?'scale(1.02)':'none',boxShadow:plan.popular?'0 8px 32px rgba(0,180,216,.1)':'none',display:'flex',flexDirection:'column'}}>
-                        {plan.tag&&<div style={{position:'absolute',top:-11,left:'50%',transform:'translateX(-50%)',background:plan.popular?T.cyan:'#7c3aed',color:'#fff',fontSize:10,fontWeight:700,padding:'3px 12px',borderRadius:20,whiteSpace:'nowrap',boxShadow:`0 2px 8px ${plan.popular?'rgba(0,180,216,.3)':'rgba(124,58,237,.3)'}`}}>{plan.tag}</div>}
+                      <Card key={plan.id} style={{position:'relative',border:plan.popular?`2px solid ${T.cyan}`:isCurrent?`1.5px solid ${plan.color}`:`.5px solid ${T.hairline}`,background:T.card,transform:plan.popular?'scale(1.02)':'none',boxShadow:plan.popular?'0 8px 32px rgba(79,70,229,.1)':'none',display:'flex',flexDirection:'column'}}>
+                        {plan.tag&&<div style={{position:'absolute',top:-11,left:'50%',transform:'translateX(-50%)',background:plan.popular?T.cyan:'#4F46E5',color:'#fff',fontSize:10,fontWeight:700,padding:'3px 12px',borderRadius:20,whiteSpace:'nowrap',boxShadow:`0 2px 8px ${plan.popular?'rgba(79,70,229,.3)':'rgba(79,70,229,.3)'}`}}>{plan.tag}</div>}
                         {isCurrent&&!plan.tag&&<div style={{position:'absolute',top:-11,left:'50%',transform:'translateX(-50%)',background:plan.color,color:'#fff',fontSize:10,fontWeight:600,padding:'2px 10px',borderRadius:999,whiteSpace:'nowrap'}}>Plan actual</div>}
                         <div style={{fontSize:12,fontWeight:600,color:plan.color,letterSpacing:'.03em',textTransform:'uppercase',marginBottom:10}}>{plan.name}</div>
                         <div style={{marginBottom:2}}>
@@ -1013,7 +1014,7 @@ function SettingsInner(){
                             background:isCurrent?T.sidebar:plan.popular?T.cyan:plan.id==='business'?T.text:'transparent',
                             color:isCurrent?T.text4:plan.popular||plan.id==='business'?'#fff':T.text,
                             ...(plan.id==='starter'&&!isCurrent?{border:`.5px solid ${T.hairline}`}:{}),
-                            boxShadow:plan.popular&&!isCurrent?'0 4px 14px rgba(0,180,216,.3)':'none'}}>
+                            boxShadow:plan.popular&&!isCurrent?'0 4px 14px rgba(79,70,229,.3)':'none'}}>
                           {upgradeLoading===plan.id?'Redirigiendo a pago...':isCurrent?'Plan actual':billingStatus?.status!=='none'&&billingStatus?.plan?`Cambiar a ${plan.name}`:`Empezar con ${plan.name}`}
                         </button>
                         <div style={{textAlign:'center',fontSize:11,color:T.text4,marginTop:8}}>+€8/usuario adicional/mes</div>
@@ -1027,7 +1028,7 @@ function SettingsInner(){
                     <div style={{fontSize:14,fontWeight:600,color:T.text,marginBottom:2}}>Enterprise</div>
                     <div style={{fontSize:12,color:T.text3}}>Usuarios ilimitados · Instancia dedicada · SLA · Onboarding personalizado</div>
                   </div>
-                  <BtnSec onClick={()=>window.open('mailto:hola@nexumsolutions.com?subject=Vortu Enterprise','_blank')}>Contactar</BtnSec>
+                  <BtnSec onClick={()=>window.open('mailto:hola@vela.com?subject=Vela Enterprise','_blank')}>Contactar</BtnSec>
                 </Card>
 
                 <div style={{display:'flex',justifyContent:'center',gap:28,padding:'14px 0',fontSize:12,color:T.text4}}>
@@ -1135,7 +1136,7 @@ function SettingsInner(){
                         <button onClick={()=>confirmUpgrade(showDowngradeModal.to.id)} disabled={upgradeLoading} style={{flex:1,padding:11,borderRadius:10,fontSize:12.5,fontWeight:500,cursor:'pointer',fontFamily:'inherit',background:T.sidebar,color:T.text3,border:'.5px solid '+T.hairline}}>
                           {upgradeLoading?'...':'Cambiar a '+showDowngradeModal.to.name}
                         </button>
-                        <button onClick={()=>setShowDowngradeModal(null)} style={{flex:2,padding:11,borderRadius:10,fontSize:14,fontWeight:700,cursor:'pointer',fontFamily:'inherit',background:T.cyan,color:'#fff',border:'none',boxShadow:'0 4px 14px rgba(0,180,216,.3)'}}>
+                        <button onClick={()=>setShowDowngradeModal(null)} style={{flex:2,padding:11,borderRadius:10,fontSize:14,fontWeight:700,cursor:'pointer',fontFamily:'inherit',background:T.cyan,color:'#fff',border:'none',boxShadow:'0 4px 14px rgba(79,70,229,.3)'}}>
                           Mantener {showDowngradeModal.from.name}
                         </button>
                       </div>
@@ -1167,7 +1168,7 @@ function SettingsInner(){
                   </div>
                   <div style={{padding:'12px 16px',borderBottom:`.5px solid ${T.soft}`,display:'grid',gridTemplateColumns:'1fr auto auto auto',gap:16,alignItems:'center'}}>
                     <div style={{display:'flex',alignItems:'center',gap:10}}>
-                      <div style={{width:32,height:32,borderRadius:999,background:'linear-gradient(135deg,#0071E3,#00B4D8)',color:'#fff',display:'grid',placeItems:'center',fontSize:11,fontWeight:600,flexShrink:0}}>{initials}</div>
+                      <div style={{width:32,height:32,borderRadius:999,background:'linear-gradient(135deg,#4F46E5,#A5B1FF)',color:'#fff',display:'grid',placeItems:'center',fontSize:11,fontWeight:600,flexShrink:0}}>{initials}</div>
                       <div><div style={{fontSize:13,fontWeight:500,color:T.text}}>{user?.name||'Tu'}</div><div style={{fontSize:11,color:T.text4}}>{user?.email}</div></div>
                     </div>
                     <span style={{fontSize:11,fontWeight:500,color:T.text,background:T.sidebar,padding:'2px 10px',borderRadius:999}}>Propietario</span>
@@ -1180,7 +1181,7 @@ function SettingsInner(){
                         <div style={{width:32,height:32,borderRadius:999,background:T.sidebar,color:T.text,display:'grid',placeItems:'center',fontSize:11,fontWeight:600,flexShrink:0}}>{m.email.substring(0,2).toUpperCase()}</div>
                         <div><div style={{fontSize:13,fontWeight:500,color:T.text}}>{m.email}</div><div style={{fontSize:11,color:T.text4}}>{m.joined_at?new Date(m.joined_at).toLocaleDateString('es-ES'):'Pendiente'}</div></div>
                       </div>
-                      <span style={{fontSize:11,fontWeight:500,color:T.blue,background:'rgba(0,113,227,.08)',padding:'2px 10px',borderRadius:999}}>{m.role==='member'?'Miembro':m.role==='admin'?'Admin':'Solo lectura'}</span>
+                      <span style={{fontSize:11,fontWeight:500,color:T.blue,background:'rgba(79,70,229,.08)',padding:'2px 10px',borderRadius:999}}>{m.role==='member'?'Miembro':m.role==='admin'?'Admin':'Solo lectura'}</span>
                       <span style={{fontSize:11,fontWeight:500,color:m.status==='active'?T.green:T.amber,background:m.status==='active'?T.greenSoft:T.amberSoft,padding:'2px 10px',borderRadius:999}}>
                         {m.status==='active'?'Activo':'Pendiente'}
                       </span>
@@ -1220,10 +1221,10 @@ function SettingsInner(){
                   <div style={{fontSize:15,fontWeight:600,color:T.text,letterSpacing:-0.2,marginBottom:4}}>Canal de notificaciones</div>
                   <div style={{fontSize:13,color:T.text3,marginBottom:16}}>Como quieres recibirlas</div>
                   {[
-                    {key:'push',        label:'Notificaciones en app', desc:'Centro de notificaciones de Vortu'},
+                    {key:'push',        label:'Notificaciones en app', desc:'Centro de notificaciones de Vela'},
                     {key:'email_digest',label:'Resumen por email',     desc:'Un email diario con el resumen'},
                   ].map(c=>(
-                    <div key={c.key} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'14px',borderRadius:12,border:`.5px solid ${notifPrefs[c.key]?T.blue:T.hairline}`,background:notifPrefs[c.key]?'rgba(0,113,227,.04)':T.card,marginBottom:10,cursor:'pointer'}}
+                    <div key={c.key} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'14px',borderRadius:12,border:`.5px solid ${notifPrefs[c.key]?T.blue:T.hairline}`,background:notifPrefs[c.key]?'rgba(79,70,229,.04)':T.card,marginBottom:10,cursor:'pointer'}}
                       onClick={()=>setNotifPrefs(p=>({...p,[c.key]:!p[c.key]}))}>
                       <div>
                         <div style={{fontSize:13,fontWeight:500,color:T.text}}>{c.label}</div>
@@ -1255,7 +1256,7 @@ function SettingsInner(){
 
 
 function SecurityTab({token,T,showSaved}){
-  const API='http://127.0.0.1:8000'
+  const API=API_BASE
   const [tfa,setTfa]=useState({enabled:false,loading:true,qr:null,secret:null,code:'',verifying:false,error:null,step:null})
   const [passwords,setPasswords]=useState({current:'',new1:'',new2:''})
   const h=()=>({Authorization:`Bearer ${token}`,'Content-Type':'application/json'})

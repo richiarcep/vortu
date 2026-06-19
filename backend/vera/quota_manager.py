@@ -2,7 +2,7 @@
 Vera Quota Manager — tracking de tokens y degradación automática.
 
 Reglas:
-- Plan Vortu (base): 80k tokens/día de Sonnet → al agotar, degrada a Haiku
+- Plan Vela (base): 80k tokens/día de Sonnet → al agotar, degrada a Haiku
 - Plan Vera Plus: ilimitado
 - Reset diario a las 00:00 local
 - Notificaciones al 70% / 90% / 100%

@@ -157,5 +157,5 @@ if resp.status_code == 200:
 
 print(f"\n{B}{'='*55}{E}")
 print(f"  {G}All tests complete.{E}")
-print(f"  Profit Optimizer is working inside Vortu.")
+print(f"  Profit Optimizer is working inside Vela.")
 print(f"{B}{'='*55}{E}\n")

@@ -1,10 +1,11 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import { API_BASE } from '@/lib/api'
 
-const NAVY  = '#0B1426'
-const CYAN  = '#00B4D8'
-const BLUE  = '#2563eb'
+const NAVY  = '#0B0D2B'
+const CYAN  = '#4F46E5'
+const BLUE  = '#6366F1'
 const GREEN = '#059669'
 const AMBER = '#d97706'
 const RED   = '#dc2626'
@@ -112,14 +113,14 @@ function PlanCard({ plan, isAnnual, onChoose, loading }) {
         transform: plan.highlight ? 'scale(1.04)' : hovered ? 'translateY(-4px)' : 'none',
         transition: 'all 0.25s ease',
         boxShadow: plan.highlight
-          ? '0 24px 64px rgba(11,20,38,0.25)'
+          ? '0 24px 64px rgba(11,13,43,0.25)'
           : hovered ? '0 16px 40px rgba(0,0,0,0.1)' : '0 2px 8px rgba(0,0,0,0.04)',
         zIndex: plan.highlight ? 2 : 1,
       }}>
 
       {/* Popular badge — Social Proof */}
       {plan.highlight && (
-        <div style={{ position: 'absolute', top: '-14px', left: '50%', transform: 'translateX(-50%)', background: `linear-gradient(135deg, ${CYAN}, ${BLUE})`, color: 'white', fontSize: '11px', fontWeight: '800', padding: '4px 16px', borderRadius: '20px', whiteSpace: 'nowrap', letterSpacing: '0.05em', boxShadow: '0 4px 12px rgba(0,180,216,0.4)' }}>
+        <div style={{ position: 'absolute', top: '-14px', left: '50%', transform: 'translateX(-50%)', background: `linear-gradient(135deg, ${CYAN}, ${BLUE})`, color: 'white', fontSize: '11px', fontWeight: '800', padding: '4px 16px', borderRadius: '20px', whiteSpace: 'nowrap', letterSpacing: '0.05em', boxShadow: '0 4px 12px rgba(79,70,229,0.4)' }}>
           ⭐ MÁS POPULAR
         </div>
       )}
@@ -165,7 +166,7 @@ function PlanCard({ plan, isAnnual, onChoose, loading }) {
           fontWeight: '800',
           fontSize: '14px',
           cursor: loading === plan.id ? 'not-allowed' : 'pointer',
-          fontFamily: "'DM Sans', system-ui",
+          fontFamily: "'Inter', system-ui",
           letterSpacing: '-0.2px',
           marginBottom: '24px',
           transition: 'all 0.15s',
@@ -174,7 +175,7 @@ function PlanCard({ plan, isAnnual, onChoose, loading }) {
           alignItems: 'center',
           justifyContent: 'center',
           gap: '8px',
-          boxShadow: plan.highlight ? '0 8px 24px rgba(0,180,216,0.4)' : 'none',
+          boxShadow: plan.highlight ? '0 8px 24px rgba(79,70,229,0.4)' : 'none',
         }}>
         {loading === plan.id
           ? <><span style={{ width: '16px', height: '16px', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', borderRadius: '50%', display: 'inline-block', animation: 'spin 0.7s linear infinite' }} /> Iniciando...</>
@@ -187,7 +188,7 @@ function PlanCard({ plan, isAnnual, onChoose, loading }) {
         <div style={{ fontSize: '11px', fontWeight: '700', color: plan.highlight ? 'rgba(255,255,255,0.4)' : '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '12px' }}>Módulos incluidos</div>
         {plan.modules.map(m => (
           <div key={m} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-            <span style={{ width: '18px', height: '18px', borderRadius: '50%', background: plan.highlight ? 'rgba(0,180,216,0.2)' : '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', flexShrink: 0 }}>✓</span>
+            <span style={{ width: '18px', height: '18px', borderRadius: '50%', background: plan.highlight ? 'rgba(79,70,229,0.2)' : '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', flexShrink: 0 }}>✓</span>
             <span style={{ fontSize: '13px', color: plan.highlight ? 'rgba(255,255,255,0.85)' : '#374151' }}>{MODULE_ICONS[m]} {m}</span>
           </div>
         ))}
@@ -224,17 +225,17 @@ export default function PricingPage() {
   const [showFaq, setShowFaq] = useState(null)
 
   useEffect(() => {
-    const token = localStorage.getItem('nexum_token')
+    const token = localStorage.getItem('vela_token')
     setIsLoggedIn(!!token)
   }, [])
 
   async function handleChoosePlan(planId) {
-    const token = localStorage.getItem('nexum_token')
+    const token = localStorage.getItem('vela_token')
     if (!token) { router.push('/login?redirect=/pricing'); return }
     setLoading(planId)
     try {
       // First buy license, then subscription
-      const res = await fetch('http://127.0.0.1:8000/api/billing/license/checkout', {
+      const res = await fetch(`${API_BASE}/api/billing/license/checkout`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ plan_id: planId }),
@@ -245,11 +246,11 @@ export default function PricingPage() {
   }
 
   async function handleTrial() {
-    const token = localStorage.getItem('nexum_token')
+    const token = localStorage.getItem('vela_token')
     if (!token) { router.push('/register'); return }
     setTrialLoading(true)
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/billing/trial/start', {
+      const res = await fetch(`${API_BASE}/api/billing/trial/start`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       })
@@ -260,18 +261,18 @@ export default function PricingPage() {
   }
 
   const faqs = [
-    { q: '¿Por qué hay una licencia única además de la suscripción mensual?', a: 'La licencia te da acceso permanente a la plataforma base de Vortu. La suscripción mensual cubre la IA, actualizaciones y soporte. Si en algún momento pausas la suscripción, conservas acceso básico con tu licencia.' },
+    { q: '¿Por qué hay una licencia única además de la suscripción mensual?', a: 'La licencia te da acceso permanente a la plataforma base de Vela. La suscripción mensual cubre la IA, actualizaciones y soporte. Si en algún momento pausas la suscripción, conservas acceso básico con tu licencia.' },
     { q: '¿Puedo cambiar de plan después?', a: 'Sí, en cualquier momento desde Ajustes → Facturación. Si subes de plan, se aplica un prorrateo proporcional al tiempo restante del mes.' },
-    { q: '¿Qué pasa si supero el límite de consultas IA?', a: 'Vortu te avisa antes de llegar al límite. Puedes subir de plan o esperar al próximo ciclo de facturación. Nunca se te cobra automáticamente extra.' },
+    { q: '¿Qué pasa si supero el límite de consultas IA?', a: 'Vela te avisa antes de llegar al límite. Puedes subir de plan o esperar al próximo ciclo de facturación. Nunca se te cobra automáticamente extra.' },
     { q: '¿Cómo funciona el free trial?', a: '14 días con acceso completo al plan Business. Se requiere tarjeta de crédito para activarlo — si cancelas antes del día 14, no se te cobra nada. Si no cancelas, convierte automáticamente al plan Business.' },
     { q: '¿Los usuarios adicionales se pueden añadir en cualquier momento?', a: 'Sí. Desde Ajustes → Equipo, el administrador puede añadir usuarios a €8/mes cada uno. Se cobran de forma prorrateada el primer mes.' },
-    { q: '¿Funciona en cualquier país?', a: 'Sí. Vortu acepta tarjetas de crédito, débito y transferencias bancarias en todo el mundo a través de Stripe. Los precios se muestran en EUR.' },
+    { q: '¿Funciona en cualquier país?', a: 'Sí. Vela acepta tarjetas de crédito, débito y transferencias bancarias en todo el mundo a través de Stripe. Los precios se muestran en EUR.' },
   ]
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f4f6fb', fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+    <div style={{ minHeight: '100vh', background: '#f4f6fb', fontFamily: "'Inter', system-ui, sans-serif" }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&family=DM+Serif+Display:ital@0;1&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         @keyframes spin{to{transform:rotate(360deg)}}
         @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
         @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}
@@ -286,8 +287,7 @@ export default function PricingPage() {
             <svg width="17" height="17" viewBox="0 0 20 20" fill="none"><path d="M4 16V4L16 16V4" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
           </div>
           <div>
-            <div style={{ fontSize: '15px', fontWeight: '800', color: NAVY, lineHeight: 1 }}>Vortu</div>
-            <div style={{ fontSize: '10px', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>by Nexum</div>
+            <div style={{ fontSize: '15px', fontWeight: '800', color: NAVY, lineHeight: 1 }}>Vela</div>
           </div>
         </div>
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
@@ -309,11 +309,11 @@ export default function PricingPage() {
           <span style={{ fontSize: '13px', fontWeight: '600', color: NAVY }}>14 días gratis con acceso completo · Sin compromiso · Cancela cuando quieras</span>
         </div>
 
-        <h1 style={{ fontFamily: "'DM Serif Display', serif", fontSize: '52px', color: NAVY, letterSpacing: '-1px', lineHeight: 1.1, marginBottom: '16px', margin: '0 auto 16px' }}>
+        <h1 style={{ fontFamily: "'Inter', system-ui", fontSize: '52px', color: NAVY, letterSpacing: '-1px', lineHeight: 1.1, marginBottom: '16px', margin: '0 auto 16px' }}>
           Gestiona tu empresa con<br/><em style={{ color: CYAN }}>inteligencia artificial</em>
         </h1>
         <p style={{ fontSize: '18px', color: '#6b7280', maxWidth: '500px', margin: '0 auto 32px', lineHeight: '1.6' }}>
-          Contabilidad, ventas, proyectos, marketing y mucho más. Todo en Vortu.
+          Contabilidad, ventas, proyectos, marketing y mucho más. Todo en Vela.
         </p>
 
         {/* Social proof — números */}
@@ -356,10 +356,10 @@ export default function PricingPage() {
             <div style={{ fontSize: '28px' }}>🏢</div>
             <div>
               <div style={{ fontSize: '17px', fontWeight: '800', color: NAVY, letterSpacing: '-0.3px' }}>Enterprise</div>
-              <div style={{ fontSize: '13px', color: '#6b7280' }}>Instancia dedicada · Usuarios ilimitados · SLA garantizado · Onboarding con Nexum Solutions</div>
+              <div style={{ fontSize: '13px', color: '#6b7280' }}>Instancia dedicada · Usuarios ilimitados · SLA garantizado · Onboarding con Vela</div>
             </div>
           </div>
-          <button onClick={() => window.open('mailto:hola@nexumsolutions.com?subject=Vortu Enterprise', '_blank')} style={{ padding: '12px 28px', borderRadius: '10px', border: `2px solid ${NAVY}`, background: 'white', color: NAVY, fontWeight: '700', fontSize: '14px', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>Contactar →</button>
+          <button onClick={() => window.open('mailto:hola@vela.com?subject=Vela Enterprise', '_blank')} style={{ padding: '12px 28px', borderRadius: '10px', border: `2px solid ${NAVY}`, background: 'white', color: NAVY, fontWeight: '700', fontSize: '14px', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>Contactar →</button>
         </div>
 
         {/* Trial CTA — Endowment Effect */}
@@ -367,13 +367,13 @@ export default function PricingPage() {
           <div style={{ position: 'absolute', inset: 0, background: `radial-gradient(ellipse 60% 80% at 50% 0%, ${CYAN}20, transparent)`, pointerEvents: 'none' }} />
           <div style={{ position: 'relative' }}>
             <div style={{ fontSize: '13px', fontWeight: '700', color: CYAN, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '12px' }}>Sin tarjeta necesaria para registrarse</div>
-            <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: '36px', color: 'white', letterSpacing: '-0.5px', marginBottom: '12px', lineHeight: 1.2 }}>
+            <h2 style={{ fontFamily: "'Inter', system-ui", fontSize: '36px', color: 'white', letterSpacing: '-0.5px', marginBottom: '12px', lineHeight: 1.2 }}>
               14 días con todo Business<br/>completamente gratis
             </h2>
             <p style={{ fontSize: '15px', color: 'rgba(255,255,255,0.55)', marginBottom: '28px', maxWidth: '440px', margin: '0 auto 28px', lineHeight: '1.6' }}>
-              Experimenta Vortu al completo. Si no te convence, cancela sin preguntas. Si te queda, introduces tu tarjeta al final del trial.
+              Experimenta Vela al completo. Si no te convence, cancela sin preguntas. Si te queda, introduces tu tarjeta al final del trial.
             </p>
-            <button onClick={handleTrial} disabled={trialLoading} style={{ padding: '16px 40px', borderRadius: '12px', border: 'none', background: `linear-gradient(135deg, ${CYAN}, ${BLUE})`, color: 'white', fontWeight: '800', fontSize: '16px', cursor: 'pointer', fontFamily: 'inherit', letterSpacing: '-0.2px', boxShadow: '0 8px 32px rgba(0,180,216,0.4)', display: 'inline-flex', alignItems: 'center', gap: '10px' }}>
+            <button onClick={handleTrial} disabled={trialLoading} style={{ padding: '16px 40px', borderRadius: '12px', border: 'none', background: `linear-gradient(135deg, ${CYAN}, ${BLUE})`, color: 'white', fontWeight: '800', fontSize: '16px', cursor: 'pointer', fontFamily: 'inherit', letterSpacing: '-0.2px', boxShadow: '0 8px 32px rgba(79,70,229,0.4)', display: 'inline-flex', alignItems: 'center', gap: '10px' }}>
               {trialLoading ? <><span style={{ width: '18px', height: '18px', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', borderRadius: '50%', display: 'inline-block', animation: 'spin 0.7s linear infinite' }} />Iniciando...</> : '🚀 Empezar prueba gratuita'}
             </button>
             <div style={{ marginTop: '14px', fontSize: '12px', color: 'rgba(255,255,255,0.3)' }}>
@@ -425,12 +425,12 @@ export default function PricingPage() {
               <svg width="14" height="14" viewBox="0 0 20 20" fill="none"><path d="M4 16V4L16 16V4" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
             </div>
             <div>
-              <div style={{ fontSize: '13px', fontWeight: '800', color: NAVY }}>Vortu</div>
-              <div style={{ fontSize: '10px', color: '#9ca3af' }}>by Nexum Solutions · © 2026</div>
+              <div style={{ fontSize: '13px', fontWeight: '800', color: NAVY }}>Vela</div>
+              <div style={{ fontSize: '10px', color: '#9ca3af' }}>© 2026</div>
             </div>
           </div>
           <div style={{ fontSize: '12px', color: '#9ca3af' }}>
-            <a href="mailto:hola@nexumsolutions.com" style={{ color: '#9ca3af', textDecoration: 'none' }}>hola@nexumsolutions.com</a>
+            <a href="mailto:hola@vela.com" style={{ color: '#9ca3af', textDecoration: 'none' }}>hola@vela.com</a>
           </div>
         </div>
       </div>

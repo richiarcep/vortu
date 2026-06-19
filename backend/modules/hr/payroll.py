@@ -152,7 +152,7 @@ def generate_payslip_pdf(employee: dict) -> str:
     story = []
 
     # Header
-    story.append(Paragraph("Nexum", title_style))
+    story.append(Paragraph("Vela", title_style))
     story.append(Paragraph("Payslip", sub_style))
     story.append(Spacer(1, 8*mm))
 
@@ -217,7 +217,7 @@ def generate_payslip_pdf(employee: dict) -> str:
                                    fontSize=8,
                                    textColor=colors.HexColor("#A0A0A0"),
                                    alignment=TA_CENTER)
-    story.append(Paragraph("Generated automatically by Nexum · Confidential", footer_style))
+    story.append(Paragraph("Generated automatically by Vela · Confidential", footer_style))
 
     doc.build(story)
     return filename

@@ -5,7 +5,7 @@ import Sidebar from '@/components/Sidebar'
 import { FONT, useT, useTheme } from '@/components/ui/tokens'
 
 import { API_BASE as API } from '@/lib/api'
-const VERA_BLUE = '#0071E3'
+const VERA_BLUE = '#4F46E5'
 
 // ─────────────────────────────────────────────
 // CONFIGS
@@ -13,13 +13,13 @@ const VERA_BLUE = '#0071E3'
 const DOC_TYPES = [
   { k: 'all',         label: 'Todos',        icon: 'folder', color: null },
   { k: 'factura',     label: 'Facturas',     icon: 'invoice', color: '#059669' },
-  { k: 'contrato',    label: 'Contratos',    icon: 'contract', color: '#7c3aed' },
+  { k: 'contrato',    label: 'Contratos',    icon: 'contract', color: '#4F46E5' },
   { k: 'nomina',      label: 'Nóminas',      icon: 'people', color: '#0EA5E9' },
   { k: 'legal',       label: 'Legal',        icon: 'shield', color: '#dc2626' },
   { k: 'reporte',     label: 'Reportes',     icon: 'report', color: '#d97706' },
   { k: 'presupuesto', label: 'Presupuestos', icon: 'calc', color: '#0EA5E9' },
   { k: 'recibo',      label: 'Recibos',      icon: 'receipt', color: '#6b7280' },
-  { k: 'certificado', label: 'Certificados', icon: 'cert', color: '#7c3aed' },
+  { k: 'certificado', label: 'Certificados', icon: 'cert', color: '#4F46E5' },
   { k: 'otro',        label: 'Otros',        icon: 'doc', color: '#6b7280' },
 ]
 
@@ -30,9 +30,9 @@ const TYPE_LABELS = {
 }
 
 const TYPE_COLORS = {
-  factura: '#059669', contrato: '#7c3aed', nomina: '#0EA5E9',
+  factura: '#059669', contrato: '#4F46E5', nomina: '#0EA5E9',
   legal: '#dc2626', reporte: '#d97706', presupuesto: '#0EA5E9',
-  recibo: '#6b7280', certificado: '#7c3aed', otro: '#6b7280',
+  recibo: '#6b7280', certificado: '#4F46E5', otro: '#6b7280',
 }
 
 const MODULE_LABELS = {
@@ -97,11 +97,11 @@ function FileIcon({ ext, size = 32 }) {
     csv: { color: '#059669', label: 'CSV' },
     xlsx: { color: '#059669', label: 'XLS' },
     xls: { color: '#059669', label: 'XLS' },
-    docx: { color: '#0071E3', label: 'DOC' },
+    docx: { color: '#4F46E5', label: 'DOC' },
     txt: { color: '#6b7280', label: 'TXT' },
-    jpg: { color: '#7c3aed', label: 'IMG' },
-    jpeg: { color: '#7c3aed', label: 'IMG' },
-    png: { color: '#7c3aed', label: 'IMG' },
+    jpg: { color: '#4F46E5', label: 'IMG' },
+    jpeg: { color: '#4F46E5', label: 'IMG' },
+    png: { color: '#4F46E5', label: 'IMG' },
   }
   const cfg = map[ext?.toLowerCase()] || { color: '#6b7280', label: ext?.toUpperCase().slice(0,3) || 'DOC' }
   return (
@@ -175,7 +175,7 @@ function ApprovalModal({ analysis, onApprove, onReject, onClose }) {
         <div style={{
           padding: '20px 24px 18px',
           borderBottom: `.5px solid ${T.hairline}`,
-          background: 'linear-gradient(180deg, rgba(0,113,227,.025) 0%, transparent 100%)',
+          background: 'linear-gradient(180deg, rgba(79,70,229,.025) 0%, transparent 100%)',
           display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12,
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -183,7 +183,7 @@ function ApprovalModal({ analysis, onApprove, onReject, onClose }) {
               width: 36, height: 36, borderRadius: 10,
               background: VERA_BLUE,
               display: 'grid', placeItems: 'center',
-              boxShadow: '0 4px 12px rgba(0,113,227,.25)',
+              boxShadow: '0 4px 12px rgba(79,70,229,.25)',
             }}>
               <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
                 <path d="M8 1l1.5 5.5L15 8l-5.5 1.5L8 15l-1.5-5.5L1 8l5.5-1.5L8 1z" fill="#fff" />
@@ -331,7 +331,7 @@ function ApprovalModal({ analysis, onApprove, onReject, onClose }) {
             <div style={{
               border: `.5px solid ${T.hairline}`,
               borderRadius: 12, padding: 14, marginBottom: 8,
-              background: 'linear-gradient(135deg, rgba(0,113,227,.03), rgba(124,58,237,.03))',
+              background: 'linear-gradient(135deg, rgba(79,70,229,.03), rgba(79,70,229,.03))',
               display: 'flex', alignItems: 'flex-start', gap: 12,
             }}>
               <div style={{
@@ -360,7 +360,7 @@ function ApprovalModal({ analysis, onApprove, onReject, onClose }) {
                     {analysis.semantic_tags.map(t => (
                       <span key={t} style={{
                         padding: '2px 7px', borderRadius: 5,
-                        background: 'rgba(0,113,227,.08)', color: VERA_BLUE,
+                        background: 'rgba(79,70,229,.08)', color: VERA_BLUE,
                         fontSize: 10, fontWeight: 500,
                       }}>#{t}</span>
                     ))}
@@ -469,18 +469,18 @@ function ApprovalModal({ analysis, onApprove, onReject, onClose }) {
                 Asiento contable (PGC)
               </div>
               <div style={{
-                border: '.5px solid rgba(124,58,237,.3)',
+                border: '.5px solid rgba(79,70,229,.3)',
                 borderRadius: 12, overflow: 'hidden',
-                background: 'rgba(124,58,237,.02)',
+                background: 'rgba(79,70,229,.02)',
               }}>
                 <div style={{
                   padding: '10px 14px',
-                  background: 'rgba(124,58,237,.06)',
-                  borderBottom: '.5px solid rgba(124,58,237,.15)',
+                  background: 'rgba(79,70,229,.06)',
+                  borderBottom: '.5px solid rgba(79,70,229,.15)',
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                 }}>
                   <div>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#7c3aed', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#4F46E5', textTransform: 'uppercase', letterSpacing: 0.5 }}>
                       Libro diario
                     </div>
                     <div style={{ fontSize: 10.5, color: T.text4, marginTop: 2 }}>
@@ -508,7 +508,7 @@ function ApprovalModal({ analysis, onApprove, onReject, onClose }) {
                   <tbody>
                     {journalEntry.lines.map((l, i) => (
                       <tr key={i} style={{ borderTop: '.5px solid rgba(0,0,0,.04)' }}>
-                        <td style={{ padding: '8px 10px', fontFamily: 'monospace', fontWeight: 700, color: '#7c3aed', fontSize: 11 }}>{l.account_code}</td>
+                        <td style={{ padding: '8px 10px', fontFamily: 'monospace', fontWeight: 700, color: '#4F46E5', fontSize: 11 }}>{l.account_code}</td>
                         <td style={{ padding: '8px 10px', color: T.text2 }}>
                           <div style={{ fontWeight: 500 }}>{l.description}</div>
                           <div style={{ fontSize: 10, color: T.text4, marginTop: 1 }}>{l.account_name}</div>
@@ -521,7 +521,7 @@ function ApprovalModal({ analysis, onApprove, onReject, onClose }) {
                         </td>
                       </tr>
                     ))}
-                    <tr style={{ background: 'rgba(124,58,237,.05)', borderTop: '.5px solid rgba(124,58,237,.2)' }}>
+                    <tr style={{ background: 'rgba(79,70,229,.05)', borderTop: '.5px solid rgba(79,70,229,.2)' }}>
                       <td colSpan={2} style={{ padding: '8px 10px', fontWeight: 700, fontSize: 10.5, color: T.text2, textTransform: 'uppercase', letterSpacing: 0.4 }}>Totales</td>
                       <td style={{ padding: '8px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 700, color: T.text }}>
                         {fmtEuro(journalEntry.lines.reduce((s, l) => s + (l.debit || 0), 0))}
@@ -604,7 +604,7 @@ function ApprovalModal({ analysis, onApprove, onReject, onClose }) {
             fontSize: 12.5, fontWeight: 600, cursor: submitting ? 'wait' : 'pointer',
             fontFamily: 'inherit',
             display: 'flex', alignItems: 'center', gap: 6,
-            boxShadow: '0 2px 8px rgba(0,113,227,.25)',
+            boxShadow: '0 2px 8px rgba(79,70,229,.25)',
           }}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
               <polyline points="20 6 9 17 4 12"/>
@@ -738,8 +738,8 @@ function DocPreview({ doc, token, onClose, onDelete }) {
             {/* Resumen Vera */}
             {d.summary && (
               <div style={{
-                background: 'linear-gradient(135deg, rgba(0,113,227,.04), rgba(124,58,237,.04))',
-                border: '.5px solid rgba(0,113,227,.15)',
+                background: 'linear-gradient(135deg, rgba(79,70,229,.04), rgba(79,70,229,.04))',
+                border: '.5px solid rgba(79,70,229,.15)',
                 borderRadius: 10, padding: 12,
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
@@ -785,7 +785,7 @@ function DocPreview({ doc, token, onClose, onDelete }) {
                   {d.semantic_tags.map(t => (
                     <span key={t} style={{
                       padding: '2px 8px', borderRadius: 5,
-                      background: 'rgba(0,113,227,.08)', color: VERA_BLUE,
+                      background: 'rgba(79,70,229,.08)', color: VERA_BLUE,
                       fontSize: 10.5, fontWeight: 500,
                     }}>#{t}</span>
                   ))}
@@ -854,7 +854,7 @@ export default function DocumentosPage() {
   const fileInputRef = useRef(null)
 
   useEffect(() => {
-    const t = typeof window !== 'undefined' ? localStorage.getItem('nexum_token') : null
+    const t = typeof window !== 'undefined' ? localStorage.getItem('vela_token') : null
     if (!t) { router.push('/login'); return }
     setToken(t)
     loadAll(t)
@@ -1125,7 +1125,7 @@ export default function DocumentosPage() {
                           display: 'grid',
                           gridTemplateColumns: '40px 1fr 140px 130px 80px 90px',
                           gap: 16, padding: '12px 16px',
-                          background: isSelected ? 'rgba(0,113,227,.05)' : T.card,
+                          background: isSelected ? 'rgba(79,70,229,.05)' : T.card,
                           borderBottom: `.5px solid ${T.hairline}`,
                           borderLeft: isSelected ? `2px solid ${VERA_BLUE}` : '2px solid transparent',
                           cursor: 'pointer',
@@ -1179,7 +1179,7 @@ export default function DocumentosPage() {
                             <span title="Asiento contable creado en PGC" style={{
                               display: 'inline-flex', alignItems: 'center', gap: 3,
                               padding: '2px 7px', borderRadius: 999,
-                              background: 'rgba(124,58,237,.1)', color: '#7c3aed',
+                              background: 'rgba(79,70,229,.1)', color: '#4F46E5',
                               fontSize: 10, fontWeight: 700,
                             }}>
                               <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>

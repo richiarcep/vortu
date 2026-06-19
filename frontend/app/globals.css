@@ -1,8 +1,8 @@
-@import url("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=JetBrains+Mono:wght@400;500;600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap");
 @import "tailwindcss";
 
 /* ============================================================
-   Vortu — base global styles + theming + accesibilidad
+   Vela — base global styles + theming + accesibilidad
    Las páginas usan tokens JS (components/ui/tokens.jsx) para
    los colores; aquí solo va la base, el tema del lienzo y a11y.
    ============================================================ */
@@ -18,12 +18,12 @@ html { -webkit-text-size-adjust: 100%; }
   --app-ink: #0F172A;
   --scrollbar: rgba(15,23,42,.18);
   --scrollbar-hover: rgba(15,23,42,.30);
-  --focus-ring: #0071E3;
+  --focus-ring: #4F46E5;
   color-scheme: light;
 
-  /* Fuente de cuerpo (sistema) + display editorial (Norte) para títulos/marca. Mono para cifras. */
-  --font-ui: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', system-ui, sans-serif;
-  --font-display: 'Bricolage Grotesque', var(--font-ui);
+  /* Fuente principal Vela = Inter (cuerpo y display). Mono para cifras. */
+  --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', system-ui, sans-serif;
+  --font-display: 'Inter', var(--font-ui);
   --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
   /* Sombra en capas */
   --shadow-card: 0 1px 2px rgba(15,23,42,.04), 0 8px 24px -12px rgba(15,23,42,.12);
@@ -38,11 +38,11 @@ html { -webkit-text-size-adjust: 100%; }
 }
 
 [data-theme="dark"] {
-  --app-bg: #0F141B;
+  --app-bg: #0B0D22;
   --app-ink: #E6EDF3;
   --scrollbar: rgba(255,255,255,.16);
   --scrollbar-hover: rgba(255,255,255,.30);
-  --focus-ring: #3B82F6;
+  --focus-ring: #6366F1;
   --shadow-card: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.5);
   color-scheme: dark;
 }

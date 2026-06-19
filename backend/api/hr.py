@@ -560,7 +560,7 @@ def hr_dashboard(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """KPIs clave de HR estilo Vortu (dashboard simple)."""
+    """KPIs clave de HR estilo Vela (dashboard simple)."""
     employees = db.query(Employee).filter(
         Employee.company_id == current_user.company_id,
         Employee.is_active == True
@@ -696,7 +696,7 @@ EMPLEADOS EN RIESGO (>50% feedback negativo):
 
     router = VeraRouter(db)
     full_context = build_full_context(db, current_user.company_id, question)
-    full_system_prompt = f"""Eres Vera, IA central de gestión empresarial de Vortu.
+    full_system_prompt = f"""Eres Vera, IA central de gestión empresarial de Vela.
 
 {hr_context}
 

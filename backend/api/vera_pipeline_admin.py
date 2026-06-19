@@ -79,12 +79,13 @@ def update_pipeline(plan: str, module: str,
     # Audit
     try:
         db.execute(text("""
-            INSERT INTO vera_nexum_audit (admin_user_id, action, target_type, target_id, details, created_at)
-            VALUES (:uid, :a, :t, :tid, :d, datetime('now'))
+            INSERT INTO vera_network_audit (user_id, user_email, endpoint, action, question, response_preview)
+            VALUES (:uid, :email, :ep, :a, :q, :preview)
         """), {
-            "uid": user.id, "a": "pipeline_updated", "t": "pipeline",
-            "tid": f"{plan}/{module}",
-            "d": json.dumps({"plan": plan, "module": module}),
+            "uid": user.id, "email": getattr(user, "email", None),
+            "ep": "/admin/pipeline", "a": "pipeline_updated",
+            "q": f"{plan}/{module}",
+            "preview": json.dumps({"plan": plan, "module": module}),
         })
         db.commit()
     except Exception:

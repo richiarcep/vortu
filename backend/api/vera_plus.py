@@ -1,6 +1,6 @@
 """
 Vera Plus — info pública y gestión de solicitudes.
-Endpoints públicos para cliente + endpoints admin para Nexum.
+Endpoints públicos para cliente + endpoints admin para Vela.
 """
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -161,12 +161,12 @@ def request_plus(
     return {
         "ok": True,
         "request_id": new_id,
-        "message": "Solicitud recibida. El equipo de Vortu te contactará en menos de 24h.",
+        "message": "Solicitud recibida. El equipo de Vela te contactará en menos de 24h.",
     }
 
 
 # ─────────────────────────────────────────────────────────────
-# ADMIN/NEXUM: listar y resolver solicitudes
+# ADMIN/VELA: listar y resolver solicitudes
 # ─────────────────────────────────────────────────────────────
 @router.get("/requests")
 def list_requests(

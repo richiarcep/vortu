@@ -33,7 +33,7 @@ def get_or_create_customer(email, name, user_id):
     existing = stripe.Customer.search(query=f'email:"{email}"', limit=1)
     if existing.data:
         return existing.data[0].id
-    customer = stripe.Customer.create(email=email, name=name, metadata={"vortu_user_id": str(user_id)})
+    customer = stripe.Customer.create(email=email, name=name, metadata={"vela_user_id": str(user_id)})
     return customer.id
 
 def create_subscription_checkout(db, user_id, email, name, plan_id):
@@ -46,9 +46,9 @@ def create_subscription_checkout(db, user_id, email, name, plan_id):
         mode="subscription",
         line_items=[{"price": STRIPE_PRICES[plan_id], "quantity": 1}],
         subscription_data={
-            "metadata": {"vortu_user_id": str(user_id), "plan_id": plan_id}
+            "metadata": {"vela_user_id": str(user_id), "plan_id": plan_id}
         },
-        metadata={"vortu_user_id": str(user_id), "plan_id": plan_id, "type": "subscription"},
+        metadata={"vela_user_id": str(user_id), "plan_id": plan_id, "type": "subscription"},
         success_url=f"{settings.FRONTEND_URL}/settings?tab=subscription&success=1",
         cancel_url=f"{settings.FRONTEND_URL}/settings?tab=subscription",
         locale="es",
@@ -166,16 +166,16 @@ def handle_webhook(db, payload, sig_header):
     try:
         obj = _stripe_to_dict(event["data"]["object"])
         if event["type"] == "checkout.session.completed":
-            # ─── Vera Plus checkout (atajo: detectar antes que la lógica Vortu) ───
+            # ─── Vera Plus checkout (atajo: detectar antes que la lógica Vela) ───
             _session_check = event["data"]["object"]
             if _session_check.get("metadata", {}).get("product") == "vera_plus":
-                _company_id = int(_session_check["metadata"].get("vortu_company_id", 0))
+                _company_id = int(_session_check["metadata"].get("vela_company_id", 0))
                 _sub_id = _session_check.get("subscription")
                 if _company_id and _sub_id:
                     activate_vera_plus(db, _company_id, _sub_id)
                     db.commit()
                     return {"received": True, "type": "vera_plus_activated", "company_id": _company_id}
-            # ─── (Lógica original de subscriptions Vortu) ────────────
+            # ─── (Lógica original de subscriptions Vela) ────────────
             _handle_checkout_completed(db, obj)
         elif event["type"] == "customer.subscription.updated":
             _handle_subscription_updated(db, obj)
@@ -215,7 +215,7 @@ def _handle_checkout_completed(db, session):
     meta = session.get("metadata") or {}
     if not isinstance(meta, dict):
         meta = {}
-    user_id = int(meta.get("vortu_user_id", 0))
+    user_id = int(meta.get("vela_user_id", 0))
     plan_id = meta.get("plan_id", "starter")
     checkout_type = meta.get("type", "subscription")
     if not user_id:
@@ -276,7 +276,7 @@ def _handle_checkout_completed(db, session):
                 customer=session.get("customer"),
                 items=[{"price": STRIPE_PRICES[plan_id]}],
                 trial_period_days=30,
-                metadata={"vortu_user_id": str(user_id), "plan_id": plan_id},
+                metadata={"vela_user_id": str(user_id), "plan_id": plan_id},
             )
             sub.stripe_subscription_id = stripe_sub["id"]
         except Exception as e:
@@ -311,7 +311,7 @@ def _handle_checkout_completed(db, session):
 def _handle_subscription_updated(db, stripe_sub):
     if not isinstance(stripe_sub, dict): stripe_sub = _stripe_to_dict(stripe_sub)
     meta = stripe_sub.get("metadata", {})
-    user_id = int(meta.get("vortu_user_id", 0))
+    user_id = int(meta.get("vela_user_id", 0))
     if not user_id:
         return
     sub = db.query(Subscription).filter(Subscription.user_id == user_id).first()
@@ -330,7 +330,7 @@ def _handle_subscription_updated(db, stripe_sub):
 
 def _handle_subscription_deleted(db, stripe_sub):
     meta = stripe_sub.get("metadata", {})
-    user_id = int(meta.get("vortu_user_id", 0))
+    user_id = int(meta.get("vela_user_id", 0))
     if not user_id:
         return
     sub = db.query(Subscription).filter(Subscription.user_id == user_id).first()
@@ -462,14 +462,14 @@ def create_vera_plus_checkout(db, user_id, email, name, company_id):
         line_items=[{"price": STRIPE_PRICES["vera_plus"], "quantity": 1}],
         subscription_data={
             "metadata": {
-                "vortu_user_id": str(user_id),
-                "vortu_company_id": str(company_id),
+                "vela_user_id": str(user_id),
+                "vela_company_id": str(company_id),
                 "product": "vera_plus",
             }
         },
         metadata={
-            "vortu_user_id": str(user_id),
-            "vortu_company_id": str(company_id),
+            "vela_user_id": str(user_id),
+            "vela_company_id": str(company_id),
             "product": "vera_plus",
             "type": "vera_plus_subscription",
         },
@@ -491,7 +491,7 @@ def activate_vera_plus(db, company_id, stripe_subscription_id):
     # Audit
     try:
         db.execute(text("""
-            INSERT INTO vera_nexum_audit (
+            INSERT INTO vera_network_audit (
                 user_id, user_email, endpoint, action, question,
                 response_preview, model_used
             ) VALUES (

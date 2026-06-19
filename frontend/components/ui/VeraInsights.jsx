@@ -9,7 +9,7 @@ const toneColor = {
   good:    '#34c759',
   amber:   '#ff9500',
   red:     '#ff3b30',
-  neutral: '#0071e3',
+  neutral: '#4F46E5',
 }
 
 /**
@@ -34,7 +34,7 @@ export default function VeraInsights({ modulo, title, subtitle }) {
 
   async function load(force = false) {
     if (typeof window === 'undefined') return
-    const token = localStorage.getItem('nexum_token')
+    const token = localStorage.getItem('vela_token')
     if (!token) return
 
     if (force) setRefreshing(true)
@@ -80,7 +80,7 @@ export default function VeraInsights({ modulo, title, subtitle }) {
           alignItems: 'center',
           justifyContent: 'space-between',
           borderBottom: expanded ? `.5px solid ${T.hairline}` : 'none',
-          background: 'linear-gradient(180deg, rgba(0,113,227,.025), transparent)',
+          background: 'linear-gradient(180deg, rgba(79,70,229,.025), transparent)',
           cursor: 'pointer',
           userSelect: 'none',
         }}
@@ -88,7 +88,7 @@ export default function VeraInsights({ modulo, title, subtitle }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{
             width: 26, height: 26, borderRadius: 7,
-            background: 'linear-gradient(135deg, #0071E3, #00B4D8)',
+            background: 'linear-gradient(135deg, #4F46E5, #A5B1FF)',
             display: 'grid', placeItems: 'center',
           }}>
             <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
@@ -114,7 +114,7 @@ export default function VeraInsights({ modulo, title, subtitle }) {
                 padding: '5px 10px', borderRadius: 7,
                 border: `.5px solid rgba(0,61,143,.18)`,
                 background: refreshing ? 'transparent' : 'rgba(0,61,143,.05)',
-                color: '#003D8F', fontSize: 11, fontWeight: 600,
+                color: '#3730A3', fontSize: 11, fontWeight: 600,
                 cursor: refreshing ? 'wait' : 'pointer',
                 fontFamily: 'inherit',
                 display: 'inline-flex', alignItems: 'center', gap: 4,
@@ -134,9 +134,9 @@ export default function VeraInsights({ modulo, title, subtitle }) {
               onClick={(e) => { e.stopPropagation(); openVeraDrawer({ modulo }) }}
               style={{
                 padding: '5px 12px', borderRadius: 7,
-                border: `.5px solid rgba(0,113,227,.18)`,
-                background: 'rgba(0,113,227,.05)',
-                color: '#0071e3', fontSize: 11.5, fontWeight: 500,
+                border: `.5px solid rgba(79,70,229,.18)`,
+                background: 'rgba(79,70,229,.05)',
+                color: '#4F46E5', fontSize: 11.5, fontWeight: 500,
                 cursor: 'pointer', fontFamily: 'inherit',
                 display: 'inline-flex', alignItems: 'center', gap: 4,
                 whiteSpace: 'nowrap',
@@ -224,7 +224,7 @@ export default function VeraInsights({ modulo, title, subtitle }) {
           }}>
             <span>Análisis generado por {data.model || 'Vera'}</span>
             {!canRefresh && (
-              <a href="/vera-plus" style={{ color: '#003D8F', textDecoration: 'none', fontWeight: 600 }}>
+              <a href="/vera-plus" style={{ color: '#3730A3', textDecoration: 'none', fontWeight: 600 }}>
                 Plus actualiza bajo demanda →
               </a>
             )}

@@ -1,5 +1,5 @@
 """
-Schema de Neo4j para Vortu.
+Schema de Neo4j para Vela.
 Define constraints, índices y estructura del grafo.
 """
 from .neo4j_store import graph_store

@@ -8,7 +8,7 @@ Aplica al frontend/app/marketing/page.jsx:
 3. Fix campo: el endpoint devuelve {analisis}, no {analysis}
 """
 import os
-p = os.path.expanduser('~/Desktop/vortu/frontend/app/marketing/page.jsx')
+p = os.path.expanduser('~/Desktop/vela/frontend/app/marketing/page.jsx')
 s = open(p).read()
 
 # 1. BANDERA SVG (reusable) — añadir helper al inicio

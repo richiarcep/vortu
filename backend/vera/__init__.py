@@ -1,5 +1,5 @@
 """
-Vera — Orquestador IA central de Vortu.
+Vera — Orquestador IA central de Vela.
 
 Reglas:
 1. Único cerebro IA del sistema. Ningún módulo llama Claude directo.

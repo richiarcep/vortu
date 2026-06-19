@@ -8,7 +8,7 @@ import sqlite3
 import random
 from datetime import datetime, timedelta, date
 
-DB = '/Users/eduardofuentes/Desktop/vortu/backend/nexum.db'
+DB = '/Users/eduardofuentes/Desktop/vela/backend/vela.db'
 COMPANY_ID = 1
 
 conn = sqlite3.connect(DB)

@@ -24,7 +24,7 @@ def geocode_by_name(nombre: str, ciudad: str = "") -> dict:
     url = f"https://nominatim.openstreetmap.org/search?q={encoded}&format=json&limit=1&countrycodes=es"
     
     try:
-        req = urllib.request.Request(url, headers={'User-Agent': 'NexumProspector/1.0'})
+        req = urllib.request.Request(url, headers={'User-Agent': 'VelaProspector/1.0'})
         with urllib.request.urlopen(req, timeout=5) as response:
             data = json.loads(response.read().decode())
             

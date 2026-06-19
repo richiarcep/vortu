@@ -7,30 +7,30 @@ import VeraDrawer from '@/components/ui/VeraDrawer'
 import { HeaderActions } from '@/components/ui/primitives'
 
 import { API_BASE as API } from '@/lib/api'
-const VERA_BLUE = '#0071E3'
+const VERA_BLUE = '#4F46E5'
 
 // ─────────────────────────────────────────────────────────
 // CONFIGS
 // ─────────────────────────────────────────────────────────
 const DEPT_CFG = {
-  diseno:     { label: 'Diseño',     color: '#7c3aed', bg: 'rgba(124,58,237,.1)' },
+  diseno:     { label: 'Diseño',     color: '#4F46E5', bg: 'rgba(79,70,229,.1)' },
   ventas:     { label: 'Ventas',     color: '#059669', bg: 'rgba(5,150,105,.1)' },
   almacen:    { label: 'Almacén',    color: '#d97706', bg: 'rgba(217,119,6,.1)' },
   marketing:  { label: 'Marketing',  color: '#0EA5E9', bg: 'rgba(14,165,233,.1)' },
   admin:      { label: 'Admin',      color: '#6b7280', bg: 'rgba(107,114,128,.1)' },
-  tecnologia: { label: 'Tecnología', color: '#0071E3', bg: 'rgba(0,113,227,.1)' },
+  tecnologia: { label: 'Tecnología', color: '#4F46E5', bg: 'rgba(79,70,229,.1)' },
 }
 const CONTRACT_CFG = {
   indefinido: { label: 'Indefinido', color: '#059669', bg: 'rgba(5,150,105,.1)', dot: '#059669' },
   temporal:   { label: 'Temporal',   color: '#d97706', bg: 'rgba(217,119,6,.1)', dot: '#F59E0B' },
   practicas:  { label: 'Prácticas',  color: '#0EA5E9', bg: 'rgba(14,165,233,.1)', dot: '#0EA5E9' },
-  becario:    { label: 'Becario',    color: '#7c3aed', bg: 'rgba(124,58,237,.1)', dot: '#7c3aed' },
+  becario:    { label: 'Becario',    color: '#4F46E5', bg: 'rgba(79,70,229,.1)', dot: '#4F46E5' },
   autonomo:   { label: 'Autónomo',   color: '#6b7280', bg: 'rgba(107,114,128,.1)', dot: '#9CA3AF' },
 }
 const VACATION_CFG = {
-  vacation: { label: 'Vacaciones', color: '#0071E3', bg: 'rgba(0,113,227,.1)', dot: '#0071E3' },
+  vacation: { label: 'Vacaciones', color: '#4F46E5', bg: 'rgba(79,70,229,.1)', dot: '#4F46E5' },
   sick:     { label: 'Baja',       color: '#dc2626', bg: 'rgba(220,38,38,.1)', dot: '#dc2626' },
-  personal: { label: 'Personal',   color: '#7c3aed', bg: 'rgba(124,58,237,.1)', dot: '#7c3aed' },
+  personal: { label: 'Personal',   color: '#4F46E5', bg: 'rgba(79,70,229,.1)', dot: '#4F46E5' },
   parental: { label: 'Maternidad', color: '#059669', bg: 'rgba(5,150,105,.1)', dot: '#059669' },
 }
 const STATUS_CFG = {
@@ -40,7 +40,7 @@ const STATUS_CFG = {
 }
 // Tipo de vínculo del empleado (alineado con el backend: employee_type).
 const EMPLOYEE_TYPE_CFG = {
-  permanente: { label: 'Plantilla',  color: T.blue,  bg: 'rgba(0,113,227,.1)', dot: T.blue },
+  permanente: { label: 'Plantilla',  color: T.blue,  bg: 'rgba(79,70,229,.1)', dot: T.blue },
   temporal:   { label: 'Temporal',   color: T.amber, bg: T.amberSoft,          dot: T.amber },
   voluntario: { label: 'Voluntario', color: T.green, bg: T.greenSoft,          dot: T.green },
 }
@@ -53,13 +53,13 @@ const TYPE_FILTERS = [
 // Estados/prioridad de las tareas de grupo (espejo de los enums del backend).
 const TASK_STATUS_CFG = {
   pendiente:   { label: 'Pendiente',   color: T.text3, bg: 'rgba(0,0,0,.05)',    dot: '#9CA3AF' },
-  en_progreso: { label: 'En progreso', color: T.blue,  bg: 'rgba(0,113,227,.1)', dot: T.blue },
+  en_progreso: { label: 'En progreso', color: T.blue,  bg: 'rgba(79,70,229,.1)', dot: T.blue },
   completada:  { label: 'Completada',  color: T.green, bg: T.greenSoft,          dot: T.green },
   bloqueada:   { label: 'Bloqueada',   color: T.red,   bg: T.redSoft,            dot: T.red },
 }
 const TASK_PRIORITY_CFG = {
   baja:    { label: 'Baja',    color: T.text3, bg: 'rgba(0,0,0,.05)' },
-  media:   { label: 'Media',   color: T.blue,  bg: 'rgba(0,113,227,.1)' },
+  media:   { label: 'Media',   color: T.blue,  bg: 'rgba(79,70,229,.1)' },
   alta:    { label: 'Alta',    color: T.amber, bg: T.amberSoft },
   urgente: { label: 'Urgente', color: T.red,   bg: T.redSoft },
 }
@@ -75,7 +75,7 @@ const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'O
 // HELPERS
 // ─────────────────────────────────────────────────────────
 function avatarColor(name) {
-  const colors = ['#0071E3', '#7c3aed', '#059669', '#dc2626', '#d97706', '#0EA5E9', '#8B5CF6']
+  const colors = ['#4F46E5', '#4F46E5', '#059669', '#dc2626', '#d97706', '#0EA5E9', '#6366F1']
   let hash = 0
   for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash)
   return colors[Math.abs(hash) % colors.length]
@@ -137,7 +137,7 @@ function Tab({ active, onClick, label, badge }) {
       {badge != null && badge > 0 && (
         <span style={{
           fontSize: 10, padding: '1px 5px', borderRadius: 999,
-          background: active ? 'rgba(0,113,227,.12)' : 'rgba(0,0,0,.08)',
+          background: active ? 'rgba(79,70,229,.12)' : 'rgba(0,0,0,.08)',
           color: active ? VERA_BLUE : T.text3,
           fontVariantNumeric: 'tabular-nums', minWidth: 16, textAlign: 'center',
         }}>{badge}</span>
@@ -220,7 +220,7 @@ function VeraInsight({ dashboard, onAsk }) {
         <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>Lo que necesita tu atención</div>
         <button onClick={onAsk} style={{
           marginLeft: 'auto', padding: '5px 12px', borderRadius: 6,
-          background: 'rgba(0,113,227,.08)', color: VERA_BLUE,
+          background: 'rgba(79,70,229,.08)', color: VERA_BLUE,
           border: 'none', cursor: 'pointer',
           fontSize: 11.5, fontWeight: 500, fontFamily: 'inherit',
         }}>Pregunta a Vera →</button>
@@ -1448,7 +1448,7 @@ export default function HRPage() {
   const [notificationsOpen, setNotificationsOpen] = useState(false)
 
   useEffect(() => {
-    const t = typeof window !== 'undefined' ? localStorage.getItem('nexum_token') : null
+    const t = typeof window !== 'undefined' ? localStorage.getItem('vela_token') : null
     if (!t) { router.push('/login'); return }
     setToken(t)
     loadAll(t)
@@ -1641,8 +1641,8 @@ export default function HRPage() {
                 {pendingVacations > 0 && (
                   <div onClick={() => { setNotificationsOpen(false); setTab('vacaciones') }} style={{
                     padding: '10px 12px', borderRadius: 8,
-                    background: 'rgba(0,113,227,.04)',
-                    border: '.5px solid rgba(0,113,227,.15)',
+                    background: 'rgba(79,70,229,.04)',
+                    border: '.5px solid rgba(79,70,229,.15)',
                     cursor: 'pointer',
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>

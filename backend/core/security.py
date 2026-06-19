@@ -86,5 +86,5 @@ def get_admin_user(
     else:
         user = db.query(User).filter(User.email == str(user_id)).first()
     if user is None or not user.is_admin:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acceso solo para administradores de Nexum")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acceso solo para administradores de Vela")
     return user

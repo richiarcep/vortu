@@ -10,7 +10,7 @@ from core.security import get_current_user
 from models.user import User
 from models.sales import Product, Sale, SaleItem
 from modules.sales.qr_generator import (
-    generate_nexum_qr_svg, generate_nexum_code, generate_label_svg
+    generate_vela_qr_svg, generate_vela_code, generate_label_svg
 )
 from modules.sales.reports import (
     get_product_stats, get_sales_dashboard, get_daily_report
@@ -67,7 +67,7 @@ def serialize_product(p: Product) -> dict:
         "description":         p.description,
         "category":            p.category,
         "barcode":             p.barcode,
-        "nexum_code":          p.nexum_code,
+        "vela_code":          p.vela_code,
         "sale_price":          p.sale_price,
         "sale_price_with_iva": price_with_iva,
         "cost_price":          p.cost_price,
@@ -128,8 +128,8 @@ def create_product(
     db.add(product)
     db.flush()
 
-    # Generate Nexum code after getting the ID
-    product.nexum_code = generate_nexum_code(current_user.company_id, product.id)
+    # Generate Vela code after getting the ID
+    product.vela_code = generate_vela_code(current_user.company_id, product.id)
     db.commit()
     db.refresh(product)
     return serialize_product(product)
@@ -177,14 +177,14 @@ def find_product(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Looks up a product by barcode OR nexum_code.
+    Looks up a product by barcode OR vela_code.
     Called instantly when the scanner reads a code.
     """
     product = db.query(Product).filter(
         Product.company_id == current_user.company_id,
         Product.is_active == True,
     ).filter(
-        (Product.barcode == code) | (Product.nexum_code == code)
+        (Product.barcode == code) | (Product.vela_code == code)
     ).first()
 
     if not product:
@@ -250,8 +250,8 @@ def get_product_qr(
     if not product:
         raise HTTPException(status_code=404, detail="Producto no encontrado")
 
-    svg = generate_nexum_qr_svg(
-        nexum_code=product.nexum_code or f"NX-{product_id}",
+    svg = generate_vela_qr_svg(
+        vela_code=product.vela_code or f"NX-{product_id}",
         product_name=product.name,
         size=size,
     )
@@ -275,7 +275,7 @@ def get_product_label_pdf(
         raise HTTPException(status_code=404, detail="Producto no encontrado")
 
     pdf_bytes = generate_product_label_pdf(db, product, copies=copies)
-    filename  = f"etiqueta_{product.nexum_code or product_id}.pdf"
+    filename  = f"etiqueta_{product.vela_code or product_id}.pdf"
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
@@ -411,7 +411,7 @@ def get_stock_alerts(
                 "name":      p.name,
                 "stock":     p.stock_quantity,
                 "threshold": p.low_stock_threshold,
-                "nexum_code": p.nexum_code,
+                "vela_code": p.vela_code,
             }
             for p in products
         ]

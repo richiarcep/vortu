@@ -95,10 +95,10 @@ business_snapshots,Analytics / ML,Snapshot mensual de KPIs por empresa — dise�
 business_snapshots,Analytics / ML,Snapshot mensual de KPIs por empresa — diseñado para ML. Cada fila es un ejemplo de entrenamiento con 60+ features y labels.,Snapshot,label_riesgo_negocio,VARCHAR(20),,,Label ML: bajo|medio|alto|critico,
 business_snapshots,Analytics / ML,Snapshot mensual de KPIs por empresa — diseñado para ML. Cada fila es un ejemplo de entrenamiento con 60+ features y labels.,Snapshot,ai_health_score,FLOAT,,,Score global del negocio calculado por Claude (1-10),
 business_snapshots,Analytics / ML,Snapshot mensual de KPIs por empresa — diseñado para ML. Cada fila es un ejemplo de entrenamiento con 60+ features y labels.,Snapshot,generated_at,DATETIME,,,Fecha de generación del snapshot,
-companies,Core,Empresas registradas en Vortu — nodo central de toda la arquitectura,Company,id,INTEGER,SI,,Identificador único — usado como pg_id en Neo4j,SI
-companies,Core,Empresas registradas en Vortu — nodo central de toda la arquitectura,Company,name,VARCHAR,,,Nombre de la empresa,
-companies,Core,Empresas registradas en Vortu — nodo central de toda la arquitectura,Company,email,VARCHAR,,,Email principal (único),
-companies,Core,Empresas registradas en Vortu — nodo central de toda la arquitectura,Company,created_at,DATETIME,,,Fecha de registro,
+companies,Core,Empresas registradas en Vela — nodo central de toda la arquitectura,Company,id,INTEGER,SI,,Identificador único — usado como pg_id en Neo4j,SI
+companies,Core,Empresas registradas en Vela — nodo central de toda la arquitectura,Company,name,VARCHAR,,,Nombre de la empresa,
+companies,Core,Empresas registradas en Vela — nodo central de toda la arquitectura,Company,email,VARCHAR,,,Email principal (único),
+companies,Core,Empresas registradas en Vela — nodo central de toda la arquitectura,Company,created_at,DATETIME,,,Fecha de registro,
 contacts,Clientes,Clientes/contactos de cada empresa — CRM con sentiment tracking,Contact,id,INTEGER,SI,,Identificador único,SI
 contacts,Clientes,Clientes/contactos de cada empresa — CRM con sentiment tracking,Contact,company_id,INTEGER,,companies.id,Empresa propietaria,SI
 contacts,Clientes,Clientes/contactos de cada empresa — CRM con sentiment tracking,Contact,name,VARCHAR(200),,,Nombre del contacto,
@@ -160,36 +160,36 @@ projects,Proyectos,Proyectos de clientes o internos con health score IA y gesti�
 projects,Proyectos,Proyectos de clientes o internos con health score IA y gestión de tareas,Project,health_score,FLOAT,,,Score de salud calculado por Claude (1-10),SI
 projects,Proyectos,Proyectos de clientes o internos con health score IA y gestión de tareas,Project,completion_percentage,FLOAT,,,Porcentaje de completado (0-100),
 projects,Proyectos,Proyectos de clientes o internos con health score IA y gestión de tareas,Project,created_at,DATETIME,,,Fecha de creación,
-prospector_leads,Backoffice / Prospector,Leads encontrados por el Nexum Prospector — scraping + análisis IA + mensajes personalizados,,id,INTEGER,SI,,Identificador único,
-prospector_leads,Backoffice / Prospector,Leads encontrados por el Nexum Prospector — scraping + análisis IA + mensajes personalizados,,search_id,INTEGER,,prospector_searches.id,Búsqueda que generó este lead,
-prospector_leads,Backoffice / Prospector,Leads encontrados por el Nexum Prospector — scraping + análisis IA + mensajes personalizados,,source,VARCHAR(50),,,Fuente: google_maps|instagram|facebook|linkedin,
-prospector_leads,Backoffice / Prospector,Leads encontrados por el Nexum Prospector — scraping + análisis IA + mensajes personalizados,,nombre,VARCHAR(300),,,Nombre del negocio,
-prospector_leads,Backoffice / Prospector,Leads encontrados por el Nexum Prospector — scraping + análisis IA + mensajes personalizados,,categoria,VARCHAR(200),,,Categoría de negocio,
-prospector_leads,Backoffice / Prospector,Leads encontrados por el Nexum Prospector — scraping + análisis IA + mensajes personalizados,,ciudad,VARCHAR(200),,,Ciudad del negocio,
-prospector_leads,Backoffice / Prospector,Leads encontrados por el Nexum Prospector — scraping + análisis IA + mensajes personalizados,,telefono,VARCHAR(100),,,Teléfono de contacto,
-prospector_leads,Backoffice / Prospector,Leads encontrados por el Nexum Prospector — scraping + análisis IA + mensajes personalizados,,website,VARCHAR(500),,,URL del sitio web,
-prospector_leads,Backoffice / Prospector,Leads encontrados por el Nexum Prospector — scraping + análisis IA + mensajes personalizados,,instagram,VARCHAR(300),,,URL del perfil de Instagram,
-prospector_leads,Backoffice / Prospector,Leads encontrados por el Nexum Prospector — scraping + análisis IA + mensajes personalizados,,rating,FLOAT,,,Rating en Google Maps (1-5),
-prospector_leads,Backoffice / Prospector,Leads encontrados por el Nexum Prospector — scraping + análisis IA + mensajes personalizados,,reviews,INTEGER,,,Número de reseñas en Google Maps,
-prospector_leads,Backoffice / Prospector,Leads encontrados por el Nexum Prospector — scraping + análisis IA + mensajes personalizados,,score,FLOAT,,,Score de relevancia calculado por Claude (1-10),
-prospector_leads,Backoffice / Prospector,Leads encontrados por el Nexum Prospector — scraping + análisis IA + mensajes personalizados,,razon_score,TEXT,,,Explicación del score por Claude,
-prospector_leads,Backoffice / Prospector,Leads encontrados por el Nexum Prospector — scraping + análisis IA + mensajes personalizados,,canal_recomendado,VARCHAR(50),,,Canal de contacto recomendado por Claude,
-prospector_leads,Backoffice / Prospector,Leads encontrados por el Nexum Prospector — scraping + análisis IA + mensajes personalizados,,pain_point,TEXT,,,Pain point principal detectado por Claude,
-prospector_leads,Backoffice / Prospector,Leads encontrados por el Nexum Prospector — scraping + análisis IA + mensajes personalizados,,mensaje_generado,TEXT,,,Mensaje personalizado generado por Claude,
-prospector_leads,Backoffice / Prospector,Leads encontrados por el Nexum Prospector — scraping + análisis IA + mensajes personalizados,,estado,VARCHAR(30),,,Estado: pendiente|aprobado|enviado|descartado,
-prospector_leads,Backoffice / Prospector,Leads encontrados por el Nexum Prospector — scraping + análisis IA + mensajes personalizados,,lat,REAL,,,Latitud GPS para el mapa,
-prospector_leads,Backoffice / Prospector,Leads encontrados por el Nexum Prospector — scraping + análisis IA + mensajes personalizados,,lng,REAL,,,Longitud GPS para el mapa,
-prospector_leads,Backoffice / Prospector,Leads encontrados por el Nexum Prospector — scraping + análisis IA + mensajes personalizados,,maps_url,VARCHAR(500),,,URL de Google Maps del negocio,
-prospector_leads,Backoffice / Prospector,Leads encontrados por el Nexum Prospector — scraping + análisis IA + mensajes personalizados,,created_at,DATETIME,,,Fecha de creación,
-prospector_searches,Backoffice / Prospector,Búsquedas realizadas por el Nexum Prospector con su estado y resultados,,id,INTEGER,SI,,Identificador único,
-prospector_searches,Backoffice / Prospector,Búsquedas realizadas por el Nexum Prospector con su estado y resultados,,prompt,TEXT,,,Prompt de búsqueda del admin (ej: restaurantes),
-prospector_searches,Backoffice / Prospector,Búsquedas realizadas por el Nexum Prospector con su estado y resultados,,location,VARCHAR(200),,,Ciudad o ubicación de búsqueda,
-prospector_searches,Backoffice / Prospector,Búsquedas realizadas por el Nexum Prospector con su estado y resultados,,status,VARCHAR(20),,,Estado: pending|running|done|error,
-prospector_searches,Backoffice / Prospector,Búsquedas realizadas por el Nexum Prospector con su estado y resultados,,total_leads,INTEGER,,,Total de leads encontrados,
-prospector_searches,Backoffice / Prospector,Búsquedas realizadas por el Nexum Prospector con su estado y resultados,,leads_contactar,INTEGER,,,Leads con score >= 6 para contactar,
-prospector_searches,Backoffice / Prospector,Búsquedas realizadas por el Nexum Prospector con su estado y resultados,,created_at,DATETIME,,,Fecha de inicio,
-prospector_searches,Backoffice / Prospector,Búsquedas realizadas por el Nexum Prospector con su estado y resultados,,completed_at,DATETIME,,,Fecha de finalización,
-prospector_searches,Backoffice / Prospector,Búsquedas realizadas por el Nexum Prospector con su estado y resultados,,created_by,VARCHAR(200),,,Email del admin que lanzó la búsqueda,
+prospector_leads,Backoffice / Prospector,Leads encontrados por el Vela Prospector — scraping + análisis IA + mensajes personalizados,,id,INTEGER,SI,,Identificador único,
+prospector_leads,Backoffice / Prospector,Leads encontrados por el Vela Prospector — scraping + análisis IA + mensajes personalizados,,search_id,INTEGER,,prospector_searches.id,Búsqueda que generó este lead,
+prospector_leads,Backoffice / Prospector,Leads encontrados por el Vela Prospector — scraping + análisis IA + mensajes personalizados,,source,VARCHAR(50),,,Fuente: google_maps|instagram|facebook|linkedin,
+prospector_leads,Backoffice / Prospector,Leads encontrados por el Vela Prospector — scraping + análisis IA + mensajes personalizados,,nombre,VARCHAR(300),,,Nombre del negocio,
+prospector_leads,Backoffice / Prospector,Leads encontrados por el Vela Prospector — scraping + análisis IA + mensajes personalizados,,categoria,VARCHAR(200),,,Categoría de negocio,
+prospector_leads,Backoffice / Prospector,Leads encontrados por el Vela Prospector — scraping + análisis IA + mensajes personalizados,,ciudad,VARCHAR(200),,,Ciudad del negocio,
+prospector_leads,Backoffice / Prospector,Leads encontrados por el Vela Prospector — scraping + análisis IA + mensajes personalizados,,telefono,VARCHAR(100),,,Teléfono de contacto,
+prospector_leads,Backoffice / Prospector,Leads encontrados por el Vela Prospector — scraping + análisis IA + mensajes personalizados,,website,VARCHAR(500),,,URL del sitio web,
+prospector_leads,Backoffice / Prospector,Leads encontrados por el Vela Prospector — scraping + análisis IA + mensajes personalizados,,instagram,VARCHAR(300),,,URL del perfil de Instagram,
+prospector_leads,Backoffice / Prospector,Leads encontrados por el Vela Prospector — scraping + análisis IA + mensajes personalizados,,rating,FLOAT,,,Rating en Google Maps (1-5),
+prospector_leads,Backoffice / Prospector,Leads encontrados por el Vela Prospector — scraping + análisis IA + mensajes personalizados,,reviews,INTEGER,,,Número de reseñas en Google Maps,
+prospector_leads,Backoffice / Prospector,Leads encontrados por el Vela Prospector — scraping + análisis IA + mensajes personalizados,,score,FLOAT,,,Score de relevancia calculado por Claude (1-10),
+prospector_leads,Backoffice / Prospector,Leads encontrados por el Vela Prospector — scraping + análisis IA + mensajes personalizados,,razon_score,TEXT,,,Explicación del score por Claude,
+prospector_leads,Backoffice / Prospector,Leads encontrados por el Vela Prospector — scraping + análisis IA + mensajes personalizados,,canal_recomendado,VARCHAR(50),,,Canal de contacto recomendado por Claude,
+prospector_leads,Backoffice / Prospector,Leads encontrados por el Vela Prospector — scraping + análisis IA + mensajes personalizados,,pain_point,TEXT,,,Pain point principal detectado por Claude,
+prospector_leads,Backoffice / Prospector,Leads encontrados por el Vela Prospector — scraping + análisis IA + mensajes personalizados,,mensaje_generado,TEXT,,,Mensaje personalizado generado por Claude,
+prospector_leads,Backoffice / Prospector,Leads encontrados por el Vela Prospector — scraping + análisis IA + mensajes personalizados,,estado,VARCHAR(30),,,Estado: pendiente|aprobado|enviado|descartado,
+prospector_leads,Backoffice / Prospector,Leads encontrados por el Vela Prospector — scraping + análisis IA + mensajes personalizados,,lat,REAL,,,Latitud GPS para el mapa,
+prospector_leads,Backoffice / Prospector,Leads encontrados por el Vela Prospector — scraping + análisis IA + mensajes personalizados,,lng,REAL,,,Longitud GPS para el mapa,
+prospector_leads,Backoffice / Prospector,Leads encontrados por el Vela Prospector — scraping + análisis IA + mensajes personalizados,,maps_url,VARCHAR(500),,,URL de Google Maps del negocio,
+prospector_leads,Backoffice / Prospector,Leads encontrados por el Vela Prospector — scraping + análisis IA + mensajes personalizados,,created_at,DATETIME,,,Fecha de creación,
+prospector_searches,Backoffice / Prospector,Búsquedas realizadas por el Vela Prospector con su estado y resultados,,id,INTEGER,SI,,Identificador único,
+prospector_searches,Backoffice / Prospector,Búsquedas realizadas por el Vela Prospector con su estado y resultados,,prompt,TEXT,,,Prompt de búsqueda del admin (ej: restaurantes),
+prospector_searches,Backoffice / Prospector,Búsquedas realizadas por el Vela Prospector con su estado y resultados,,location,VARCHAR(200),,,Ciudad o ubicación de búsqueda,
+prospector_searches,Backoffice / Prospector,Búsquedas realizadas por el Vela Prospector con su estado y resultados,,status,VARCHAR(20),,,Estado: pending|running|done|error,
+prospector_searches,Backoffice / Prospector,Búsquedas realizadas por el Vela Prospector con su estado y resultados,,total_leads,INTEGER,,,Total de leads encontrados,
+prospector_searches,Backoffice / Prospector,Búsquedas realizadas por el Vela Prospector con su estado y resultados,,leads_contactar,INTEGER,,,Leads con score >= 6 para contactar,
+prospector_searches,Backoffice / Prospector,Búsquedas realizadas por el Vela Prospector con su estado y resultados,,created_at,DATETIME,,,Fecha de inicio,
+prospector_searches,Backoffice / Prospector,Búsquedas realizadas por el Vela Prospector con su estado y resultados,,completed_at,DATETIME,,,Fecha de finalización,
+prospector_searches,Backoffice / Prospector,Búsquedas realizadas por el Vela Prospector con su estado y resultados,,created_by,VARCHAR(200),,,Email del admin que lanzó la búsqueda,
 sales,Ventas,Ventas registradas en el TPV — transacciones con método de pago,Sale,id,INTEGER,SI,,Identificador único,SI
 sales,Ventas,Ventas registradas en el TPV — transacciones con método de pago,Sale,company_id,INTEGER,,companies.id,Empresa propietaria,SI
 sales,Ventas,Ventas registradas en el TPV — transacciones con método de pago,Sale,sale_date,DATE,,,Fecha de la venta,SI
@@ -216,11 +216,11 @@ tasks,Proyectos,"Tareas de proyectos con estado, prioridad y asignación de empl
 tasks,Proyectos,"Tareas de proyectos con estado, prioridad y asignación de empleados",Task,assigned_to,INTEGER,,employees.id,Empleado asignado a la tarea,SI
 tasks,Proyectos,"Tareas de proyectos con estado, prioridad y asignación de empleados",Task,due_date,DATE,,,Fecha límite de la tarea,
 tasks,Proyectos,"Tareas de proyectos con estado, prioridad y asignación de empleados",Task,created_at,DATETIME,,,Fecha de creación,
-users,Core,Usuarios de la plataforma Vortu — autenticación y roles,User,id,INTEGER,SI,,Identificador único — incluido en JWT como 'sub',SI
-users,Core,Usuarios de la plataforma Vortu — autenticación y roles,User,email,VARCHAR,,,Email único — usado como username para login,SI
-users,Core,Usuarios de la plataforma Vortu — autenticación y roles,User,hashed_password,VARCHAR,,,Password hasheado con bcrypt — nunca en texto plano,
-users,Core,Usuarios de la plataforma Vortu — autenticación y roles,User,full_name,VARCHAR,,,Nombre completo del usuario,SI
-users,Core,Usuarios de la plataforma Vortu — autenticación y roles,User,is_active,BOOLEAN,,,Si la cuenta está activa,
-users,Core,Usuarios de la plataforma Vortu — autenticación y roles,User,is_admin,BOOLEAN,,,Si es admin de Nexum — acceso al backoffice,
-users,Core,Usuarios de la plataforma Vortu — autenticación y roles,User,company_id,INTEGER,,companies.id,Empresa a la que pertenece,SI
-users,Core,Usuarios de la plataforma Vortu — autenticación y roles,User,created_at,DATETIME,,,Fecha de registro,
+users,Core,Usuarios de la plataforma Vela — autenticación y roles,User,id,INTEGER,SI,,Identificador único — incluido en JWT como 'sub',SI
+users,Core,Usuarios de la plataforma Vela — autenticación y roles,User,email,VARCHAR,,,Email único — usado como username para login,SI
+users,Core,Usuarios de la plataforma Vela — autenticación y roles,User,hashed_password,VARCHAR,,,Password hasheado con bcrypt — nunca en texto plano,
+users,Core,Usuarios de la plataforma Vela — autenticación y roles,User,full_name,VARCHAR,,,Nombre completo del usuario,SI
+users,Core,Usuarios de la plataforma Vela — autenticación y roles,User,is_active,BOOLEAN,,,Si la cuenta está activa,
+users,Core,Usuarios de la plataforma Vela — autenticación y roles,User,is_admin,BOOLEAN,,,Si es admin de Vela — acceso al backoffice,
+users,Core,Usuarios de la plataforma Vela — autenticación y roles,User,company_id,INTEGER,,companies.id,Empresa a la que pertenece,SI
+users,Core,Usuarios de la plataforma Vela — autenticación y roles,User,created_at,DATETIME,,,Fecha de registro,

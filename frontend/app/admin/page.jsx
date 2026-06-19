@@ -2,8 +2,9 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import VeraStudio from '@/components/admin/VeraStudio'
-import VeraNexum from '@/components/admin/VeraNexum'
+import VeraNetwork from '@/components/admin/VeraNetwork'
 import { FONT, I, useT, useTheme } from '@/components/ui/tokens'
+import { API_BASE } from '@/lib/api'
 
 // Iconos SVG inline (Lucide-style, stroke currentColor) para reemplazar emojis.
 const Svg = ({ children, size = 16, sw = 1.8, style }) => (
@@ -46,14 +47,14 @@ const Ico = {
   warning: (p) => <Svg {...p}><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0zM12 9v4M12 17h.01" /></Svg>,
 }
 
-const API   = 'http://127.0.0.1:8000'
-const NAVY  = '#0B1426'
+const API   = API_BASE
+const NAVY  = '#0B0D2B'
 const GREEN = '#059669'
 const AMBER = '#d97706'
 const RED   = '#dc2626'
-const BLUE  = '#2563eb'
+const BLUE  = '#4F46E5'
 const CYAN  = '#10b981'
-const PURPLE = '#7c3aed'
+const PURPLE = '#4F46E5'
 const GOLD = '#B8860B'
 
 // ── Admin Sidebar ──────────────────────────────────────────────────────────────
@@ -68,7 +69,7 @@ function AdminSidebar({ active }) {
     { label: 'Memoria IA',    href: '/admin?tab=memory',     icon: '◈' },
     { label: 'Flujo datos',   href: '/admin?tab=flowchart',  icon: '◎' },
     { label: 'Vera Routing',  href: '/admin?tab=vera-routing', icon: '✦' },
-    { label: 'Vera Nexum',    href: '/admin?tab=vera-nexum',   icon: '★' },
+    { label: 'Vera Network Agent',    href: '/admin?tab=vera-network',   icon: '★' },
     { label: 'Prospector',    href: '/admin?tab=prospector', icon: '◉' },
     { label: 'Billing',       href: '/admin?tab=billing',    icon: '▤' },
   ]
@@ -80,7 +81,7 @@ function AdminSidebar({ active }) {
             <svg width="17" height="17" viewBox="0 0 20 20" fill="none"><path d="M4 16V4L16 16V4" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
           </div>
           <div>
-            <div style={{ color: 'white', fontWeight: '800', fontSize: '15px', letterSpacing: '-0.4px', lineHeight: 1 }}>Nexum</div>
+            <div style={{ color: 'white', fontWeight: '800', fontSize: '15px', letterSpacing: '-0.4px', lineHeight: 1 }}>Vela</div>
             <div style={{ color: '#10b981', fontSize: '10px', letterSpacing: '0.06em', textTransform: 'uppercase', marginTop: '1px' }}>Backoffice</div>
           </div>
         </div>
@@ -97,7 +98,7 @@ function AdminSidebar({ active }) {
         })}
       </nav>
       <div style={{ padding: '16px 20px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-        <a href="/dashboard" style={{ display: 'flex', alignItems: 'center', gap: '8px', textDecoration: 'none', color: 'rgba(255,255,255,0.4)', fontSize: '12px' }}>← Volver a Vortu</a>
+        <a href="/dashboard" style={{ display: 'flex', alignItems: 'center', gap: '8px', textDecoration: 'none', color: 'rgba(255,255,255,0.4)', fontSize: '12px' }}>← Volver a Vela</a>
       </div>
     </div>
   )
@@ -159,7 +160,7 @@ function DataFlowchart() {
     { id: 'hr',      x: 600, y: 160, label: 'RR.HH. & Nóminas',   icon: '👥', color: PURPLE, w: 150 },
     { id: 'acc',     x: 780, y: 160, label: 'Contabilidad',        icon: '📒', color: '#dc2626', w: 150 },
     { id: 'snapshot',x: 380, y: 310, label: 'Business Snapshot',   icon: '📊', color: CYAN,   w: 160 },
-    { id: 'claude',  x: 380, y: 440, label: 'Claude AI',           icon: '🤖', color: '#7c3aed', w: 160 },
+    { id: 'claude',  x: 380, y: 440, label: 'Claude AI',           icon: '🤖', color: '#4F46E5', w: 160 },
     { id: 'memory',  x: 650, y: 440, label: 'AI Memory',           icon: '💾', color: GREEN,  w: 140 },
     { id: 'output',  x: 100, y: 440, label: 'Outputs',             icon: '✨', color: AMBER,  w: 140 },
   ]
@@ -177,7 +178,7 @@ function DataFlowchart() {
 
   return (
     <div style={{ background: T.card, borderRadius: '16px', border: `0.5px solid ${T.hairline}`, padding: '24px', overflow: 'auto' }}>
-      <div style={{ fontSize: '15px', fontWeight: '700', color: T.text, marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}><Ico.flow size={18} />Flujo de datos — Vortu</div>
+      <div style={{ fontSize: '15px', fontWeight: '700', color: T.text, marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}><Ico.flow size={18} />Flujo de datos — Vela</div>
       <svg width="980" height="540" style={{ display: 'block', minWidth: '980px' }}>
         <defs>
           <marker id="arrow" markerWidth="8" markerHeight="8" refX="8" refY="3" orient="auto">
@@ -236,7 +237,7 @@ function MemoryTab({ companies, selectedCompany, setSelectedCompany, token, API 
   const [activeTab, setActiveTab] = useState('auto')
   const [stats, setStats] = useState({ total: 0, auto_count: 0, manual_count: 0, last_auto_update: null, context_version: 0 })
 
-  const NAVY = '#0B1426', GREEN = '#059669', AMBER = '#d97706', RED = '#dc2626', BLUE = '#2563eb', PURPLE = '#7c3aed', CYAN = '#00B4D8'
+  const NAVY = '#0B0D2B', GREEN = '#059669', AMBER = '#d97706', RED = '#dc2626', BLUE = '#4F46E5', PURPLE = '#4F46E5', CYAN = '#4F46E5'
   const h = () => ({ 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' })
 
   const catColor = c => ({ ventas: BLUE, clientes: GREEN, finanzas: AMBER, proyectos: PURPLE, rrhh: CYAN, general: '#6b7280' }[c] || '#6b7280')
@@ -434,7 +435,7 @@ function BillingTab({ token, API }) {
   const [updating, setUpdating] = useState(null)
   const [msg, setMsg] = useState(null)
 
-  const NAVY = '#0B1426', GREEN = '#059669', AMBER = '#d97706', RED = '#dc2626', BLUE = '#2563eb', PURPLE = '#7c3aed'
+  const NAVY = '#0B0D2B', GREEN = '#059669', AMBER = '#d97706', RED = '#dc2626', BLUE = '#4F46E5', PURPLE = '#4F46E5'
   const h = () => ({ 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' })
 
   const faseColor = f => ({ beta: PURPLE, early_adopter: AMBER, paid: GREEN }[f] || '#6b7280')
@@ -596,7 +597,7 @@ function ProspectorTab({ token, API }) {
   const [showMap, setShowMap] = useState(false)
   const [mapLoaded, setMapLoaded] = useState(false)
 
-  const NAVY = '#0B1426', GREEN = '#059669', AMBER = '#d97706', RED = '#dc2626', BLUE = '#2563eb', PURPLE = '#7c3aed', CYAN = '#00B4D8'
+  const NAVY = '#0B0D2B', GREEN = '#059669', AMBER = '#d97706', RED = '#dc2626', BLUE = '#4F46E5', PURPLE = '#4F46E5', CYAN = '#4F46E5'
   const h = () => ({ 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' })
 
   useEffect(() => {
@@ -841,7 +842,7 @@ function ProspectorTab({ token, API }) {
                           })))};
                           const map = L.map('map');
                           L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap'}).addTo(map);
-                          const colors = {'pendiente':'#6b7280','aprobado':'#059669','enviado':'#2563eb','descartado':'#dc2626'};
+                          const colors = {'pendiente':'#6b7280','aprobado':'#059669','enviado':'#4F46E5','descartado':'#dc2626'};
                           leads.forEach(l => {
                             const color = l.score >= 8 ? '#059669' : l.score >= 6 ? '#d97706' : '#dc2626';
                             const marker = L.circleMarker([l.lat, l.lng], {radius:8, fillColor:color, color:'white', weight:2, fillOpacity:0.9}).addTo(map);
@@ -945,8 +946,8 @@ function AIInsights({ token }) {
   const [analysis, setAnalysis] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
-  const API = 'http://127.0.0.1:8000'
-  const NAVY = '#0B1426', GREEN = '#059669', AMBER = '#d97706', RED = '#dc2626', BLUE = '#2563eb'
+  const API = API_BASE
+  const NAVY = '#0B0D2B', GREEN = '#059669', AMBER = '#d97706', RED = '#dc2626', BLUE = '#4F46E5'
 
   async function analyze() {
     setLoading(true)
@@ -985,7 +986,7 @@ function AIInsights({ token }) {
       {!analysis && !loading && !error && (
         <div style={{ textAlign: 'center', padding: '32px', color: T.text4, background: T.soft, borderRadius: '10px', border: `1px dashed ${T.hairline}` }}>
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px', color: T.text3 }}><Ico.robot size={28} /></div>
-          <div style={{ fontSize: '13px' }}>Pulsa "Analizar ahora" para que Claude analice los datos de Nexum y detecte oportunidades de negocio.</div>
+          <div style={{ fontSize: '13px' }}>Pulsa "Analizar ahora" para que Claude analice los datos de Vela y detecte oportunidades de negocio.</div>
         </div>
       )}
 
@@ -1080,7 +1081,7 @@ export default function AdminPage() {
   const [snapshotFilter, setSnapshotFilter] = useState('all')
 
   useEffect(() => {
-    const t = localStorage.getItem('nexum_token')
+    const t = localStorage.getItem('vela_token')
     if (!t) { router.push('/login'); return }
     setToken(t)
     // Read tab from URL
@@ -1219,8 +1220,8 @@ export default function AdminPage() {
   }
 
   const card = { background: T.card, borderRadius: '16px', border: `0.5px solid ${T.hairline}` }
-  const input = { width: '100%', padding: '9px 12px', borderRadius: '9px', border: `1.5px solid ${T.hairline}`, fontSize: '13px', fontFamily: "'DM Sans', system-ui", outline: 'none', color: T.text, background: T.card }
-  const btn = { padding: '9px 18px', borderRadius: '9px', border: 'none', background: NAVY, color: 'white', fontWeight: '700', fontSize: '13px', cursor: 'pointer', fontFamily: "'DM Sans', system-ui" }
+  const input = { width: '100%', padding: '9px 12px', borderRadius: '9px', border: `1.5px solid ${T.hairline}`, fontSize: '13px', fontFamily: "'Inter', system-ui", outline: 'none', color: T.text, background: T.card }
+  const btn = { padding: '9px 18px', borderRadius: '9px', border: 'none', background: NAVY, color: 'white', fontWeight: '700', fontSize: '13px', cursor: 'pointer', fontFamily: "'Inter', system-ui" }
 
   const filteredCompanies = companies.filter(c =>
     !searchQ || c.name?.toLowerCase().includes(searchQ.toLowerCase()) || c.email?.toLowerCase().includes(searchQ.toLowerCase())
@@ -1230,9 +1231,9 @@ export default function AdminPage() {
   )
 
   return (
-    <div style={{ display: 'flex', minHeight: '100dvh', background: T.bg, fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+    <div style={{ display: 'flex', minHeight: '100dvh', background: T.bg, fontFamily: "'Inter', system-ui, sans-serif" }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
         @keyframes spin{to{transform:rotate(360deg)}}
         *{box-sizing:border-box;} input:focus,select:focus,textarea:focus{border-color:${T.blue}!important;outline:none;}
@@ -1455,7 +1456,7 @@ export default function AdminPage() {
                   const csv = [cols.join(','), ...rows].join('\n')
                   const blob = new Blob([csv], { type: 'text/csv' })
                   const url = URL.createObjectURL(blob)
-                  const a = document.createElement('a'); a.href = url; a.download = `nexum_snapshots_${new Date().toISOString().substring(0,10)}.csv`; a.click()
+                  const a = document.createElement('a'); a.href = url; a.download = `vela_snapshots_${new Date().toISOString().substring(0,10)}.csv`; a.click()
                   URL.revokeObjectURL(url)
                 }} aria-label="Exportar snapshots a CSV" style={{ ...btn, background: T.greenSoft, color: GREEN, border: `1px solid ${T.greenSoft}`, display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}>
                   <Ico.download size={14} /> Exportar CSV
@@ -1607,10 +1608,10 @@ export default function AdminPage() {
 
           {/* ── FLOWCHART ── */}
           {tab === 'vera-routing' && (
-            <VeraStudio token={typeof window !== 'undefined' ? localStorage.getItem('nexum_token') : null} />
+            <VeraStudio token={typeof window !== 'undefined' ? localStorage.getItem('vela_token') : null} />
             )}
-            {tab === 'vera-nexum' && (
-              <VeraNexum token={typeof window !== 'undefined' ? localStorage.getItem('nexum_token') : null} />
+            {tab === 'vera-network' && (
+              <VeraNetwork token={typeof window !== 'undefined' ? localStorage.getItem('vela_token') : null} />
           )}
           {tab === 'flowchart' && (
             <div style={{ animation: 'fadeUp 0.3s ease' }}>

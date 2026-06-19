@@ -60,7 +60,7 @@ def generate_qr(data: dict) -> BytesIO:
     qr = qrcode.QRCode(version=2,
                         error_correction=qrcode.constants.ERROR_CORRECT_H,
                         box_size=3, border=1)
-    qr.add_data(f"NEXUM-RPT|{payload}|SIG:{sig}")
+    qr.add_data(f"VELA-RPT|{payload}|SIG:{sig}")
     qr.make(fit=True)
     img = qr.make_image(fill_color="#534AB7", back_color="white")
     buf = BytesIO()
@@ -91,14 +91,14 @@ def sec_hdr(label, cw, bg, fg=WHITE):
 def page_header(story, company_data, report_title, report_subtitle,
                 accent_color, doc_id_str, fecha, cw):
     qr_buf = generate_qr({
-        "app": "nexum", "tipo": report_title,
+        "app": "vela", "tipo": report_title,
         "cid": company_data["id"], "doc": doc_id_str,
         "fecha": str(fecha)
     })
     qr_img = Image(qr_buf, width=20*mm, height=20*mm)
 
     left = [
-        Paragraph("Nexum", S("logo", fontName="Helvetica-Bold",
+        Paragraph("Vela", S("logo", fontName="Helvetica-Bold",
                                fontSize=14, textColor=accent_color)),
         Paragraph(company_data.get("name", ""),
                    S("cn", fontName="Helvetica-Bold", fontSize=9, textColor=INK)),
@@ -141,13 +141,13 @@ def page_header(story, company_data, report_title, report_subtitle,
 
 def page_footer(story, doc_id_str, cw):
     ft_data = [[
-        Paragraph(f"Nexum · {datetime.now().strftime('%d/%m/%Y %H:%M')}",
+        Paragraph(f"Vela · {datetime.now().strftime('%d/%m/%Y %H:%M')}",
                    S("fl", fontName="Helvetica", fontSize=6,
                       textColor=MUTED, alignment=TA_LEFT)),
         Paragraph(f"ID: {doc_id_str}",
                    S("fc", fontName="Courier-Bold", fontSize=6,
                       textColor=PURPLE, alignment=TA_CENTER)),
-        Paragraph("Generado automáticamente con IA · Nexum",
+        Paragraph("Generado automáticamente con IA · Vela",
                    S("fr", fontName="Helvetica", fontSize=6,
                       textColor=MUTED, alignment=TA_RIGHT)),
     ]]
@@ -293,7 +293,7 @@ def build_ai_page(story, analysis: dict, accent_color, cw):
 
     # Main verdict banner
     banner_data = [[
-        Paragraph("ANÁLISIS DE INTELIGENCIA ARTIFICIAL · NEXUM",
+        Paragraph("ANÁLISIS DE INTELIGENCIA ARTIFICIAL · VELA",
                    S("bh", fontName="Helvetica-Bold", fontSize=7,
                       textColor=colors.HexColor("#B0AFEE"), alignment=TA_CENTER)),
         Paragraph(analysis.get("titulo_principal", ""),

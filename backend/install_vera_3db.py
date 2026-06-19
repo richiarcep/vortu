@@ -3,9 +3,9 @@
 import os, base64, shutil
 from datetime import datetime
 
-VORTU = os.path.expanduser('~/Desktop/vortu/backend')
-VERA_DIR = os.path.join(VORTU, 'vera')
-API_DIR = os.path.join(VORTU, 'api')
+VELA = os.path.expanduser('~/Desktop/vela/backend')
+VERA_DIR = os.path.join(VELA, 'vera')
+API_DIR = os.path.join(VELA, 'api')
 
 if not os.path.exists(VERA_DIR):
     print("ERROR: vera/ no existe"); exit(1)

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Instalador del sistema multi-LLM para Vortu."""
+"""Instalador del sistema multi-LLM para Vela."""
 import os, base64, shutil
 from datetime import datetime
 
-VERA_DIR = os.path.expanduser('~/Desktop/vortu/backend/vera')
+VERA_DIR = os.path.expanduser('~/Desktop/vela/backend/vera')
 BACKUP_DIR = os.path.join(VERA_DIR, '_backup_' + datetime.now().strftime('%Y%m%d_%H%M%S'))
 
 if not os.path.exists(VERA_DIR):

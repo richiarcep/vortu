@@ -19,7 +19,7 @@ class BusinessSnapshot(Base):
     # ── PERFIL DEL NEGOCIO (features categóricas) ──────────────────────────
     sector                  = Column(String(100))
     empresa_size            = Column(String(20))    # micro | pequeña | mediana | grande
-    meses_en_vortu          = Column(Integer, default=0)
+    meses_en_vela          = Column(Integer, default=0)
     num_empleados           = Column(Integer, default=0)
     num_empleados_rango     = Column(String(20))    # 1-5 | 6-20 | 21-50 | 50+
 
@@ -82,7 +82,7 @@ class BusinessSnapshot(Base):
     label_riesgo_negocio    = Column(String(20))            # bajo | medio | alto | critico
     label_tendencia         = Column(String(20))            # creciendo | estable | bajando
     label_salud_financiera  = Column(String(20))            # saludable | ajustado | problemas | crisis
-    label_churn_riesgo      = Column(Boolean)               # ¿canceló Vortu en los 3 meses siguientes?
+    label_churn_riesgo      = Column(Boolean)               # ¿canceló Vela en los 3 meses siguientes?
     label_upgrade_plan      = Column(Boolean)               # ¿subió de plan en los 2 meses siguientes?
 
     # ── AI SCORE (calculado por Claude) ────────────────────────────────────
@@ -173,7 +173,7 @@ class BusinessAIMemory(Base):
 
 
 class ProspectorSearch(Base):
-    """Busqueda del Nexum Prospector."""
+    """Busqueda del Vela Prospector."""
     __tablename__ = "prospector_searches"
 
     id           = Column(Integer, primary_key=True, index=True)
@@ -188,7 +188,7 @@ class ProspectorSearch(Base):
 
 
 class ProspectorLead(Base):
-    """Lead encontrado por el Nexum Prospector."""
+    """Lead encontrado por el Vela Prospector."""
     __tablename__ = "prospector_leads"
 
     id                = Column(Integer, primary_key=True, index=True)

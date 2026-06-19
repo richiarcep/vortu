@@ -4,7 +4,7 @@ import JurisdictionGuard from "@/components/JurisdictionGuard";
 import { ThemeProvider } from "@/components/ui/tokens";
 
 export const metadata: Metadata = {
-  title: "Vortu by Nexum",
+  title: "Vela",
   description: "Gestión empresarial inteligente para pymes y autónomos",
 };
 
@@ -14,7 +14,7 @@ export const viewport: Viewport = {
 };
 
 // Fija el tema antes del primer pintado para evitar el parpadeo (FOUC).
-const themeInit = `(function(){try{var t=localStorage.getItem('vortu_theme');if(t!=='light'&&t!=='dark'){t=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}document.documentElement.setAttribute('data-theme',t);document.documentElement.style.colorScheme=t;}catch(e){}})();`;
+const themeInit = `(function(){try{var t=localStorage.getItem('vela_theme');if(t!=='light'&&t!=='dark'){t=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}document.documentElement.setAttribute('data-theme',t);document.documentElement.style.colorScheme=t;}catch(e){}})();`;
 
 export default function RootLayout({
   children,

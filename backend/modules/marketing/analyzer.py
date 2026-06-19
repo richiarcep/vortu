@@ -1,6 +1,6 @@
 # modules/marketing/analyzer.py
 """
-Analyzes the company using internal Vortu data + optional uploaded documents
+Analyzes the company using internal Vela data + optional uploaded documents
 and produces a full marketing intelligence report via Claude.
 """
 import json

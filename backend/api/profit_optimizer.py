@@ -26,7 +26,7 @@ class ProductCreate(BaseModel):
     line_id:           int
     name:              str
     selling_price:     float = Field(gt=0)
-    vortu_product_id:  Optional[int]   = None
+    vela_product_id:  Optional[int]   = None
     supply_limit:      int             = 0
     labour_cost_m3:    float = 0.0
     labour_cost_m2:    float = 0.0
@@ -122,7 +122,7 @@ def get_products(line_id: int, db=Depends(get_db), current_user=Depends(get_curr
             "material": [p.material_cost_m3, p.material_cost_m2, p.material_cost_m1],
             "logistics":[p.logistics_cost_m3,p.logistics_cost_m2,p.logistics_cost_m1],
         },
-        "is_active":p.is_active,"vortu_product_id":p.vortu_product_id,
+        "is_active":p.is_active,"vela_product_id":p.vela_product_id,
     } for p in products]
 
 

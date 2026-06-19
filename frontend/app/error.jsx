@@ -26,11 +26,11 @@ export default function Error({ error, reset }) {
         <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
           <button onClick={() => reset()} style={{
             padding: '9px 18px', borderRadius: 999, border: 'none', cursor: 'pointer',
-            background: '#0071E3', color: '#fff', fontSize: 14, fontWeight: 500, fontFamily: 'inherit',
+            background: '#4F46E5', color: '#fff', fontSize: 14, fontWeight: 500, fontFamily: 'inherit',
           }}>Reintentar</button>
           <button onClick={() => { window.location.href = '/dashboard' }} style={{
             padding: '9px 18px', borderRadius: 999, cursor: 'pointer',
-            background: 'transparent', color: '#0071E3', fontSize: 14, fontWeight: 500,
+            background: 'transparent', color: '#4F46E5', fontSize: 14, fontWeight: 500,
             border: '.5px solid rgba(0,0,0,0.15)', fontFamily: 'inherit',
           }}>Ir al inicio</button>
         </div>

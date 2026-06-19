@@ -7,7 +7,7 @@ import { useT, FONT } from '@/components/ui/tokens'
 import { API_BASE as API } from '@/lib/api'
 
 // Hero card oscuro intencional (idéntico en claro y oscuro) — no es token de paleta
-const NAVY = '#0B1426'
+const NAVY = '#0B0D2B'
 
 const PAISES = [
   {
@@ -15,7 +15,7 @@ const PAISES = [
     desc:'VeriFactu — AEAT',
     detalle:'PGC Real Decreto 1514/2007 · IVA 21/10/4% · IRPF',
     disponible:true,
-    color:'#0071E3',
+    color:'#4F46E5',
   },
   {
     code:'SV', name:'El Salvador', flag:'🇸🇻',
@@ -63,7 +63,7 @@ export default function OnboardingPage() {
   const [user,     setUser]     = useState(null)
 
   useEffect(() => {
-    const token = localStorage.getItem('nexum_token')
+    const token = localStorage.getItem('vela_token')
     if (!token) { router.push('/login'); return }
     fetch(`${API}/api/auth/me`, {
       headers: { Authorization: `Bearer ${token}` }
@@ -80,7 +80,7 @@ export default function OnboardingPage() {
     if (!selected) return
     setLoading(true)
     setError('')
-    const token = localStorage.getItem('nexum_token')
+    const token = localStorage.getItem('vela_token')
     try {
       const res = await fetch(`${API}/api/auth/set-country`, {
         method: 'POST',
@@ -117,9 +117,9 @@ export default function OnboardingPage() {
       <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:48}}>
         <div style={{
           width:40,height:40,borderRadius:10,
-          background:'linear-gradient(135deg,#00B4D8,#2563eb)',
+          background:'linear-gradient(135deg,#4F46E5,#A5B1FF)',
           display:'flex',alignItems:'center',justifyContent:'center',
-          boxShadow:'0 4px 12px rgba(0,180,216,0.3)',
+          boxShadow:'0 4px 12px rgba(79,70,229,0.3)',
         }}>
           <svg width="20" height="17" viewBox="0 0 26 22" fill="none">
             <rect x="1"  y="12" width="6" height="10" rx="1.5" fill="rgba(255,255,255,0.6)"/>
@@ -128,8 +128,8 @@ export default function OnboardingPage() {
           </svg>
         </div>
         <div>
-          <div style={{fontSize:18,fontWeight:700,color:T.text,letterSpacing:'-0.4px'}}>Vortu</div>
-          <div style={{fontSize:11,color:T.text4,letterSpacing:'0.06em',textTransform:'uppercase'}}>by Nexum Solutions</div>
+          <div style={{fontSize:18,fontWeight:700,color:T.text,letterSpacing:'-0.4px'}}>Vela</div>
+          <div style={{fontSize:11,color:T.text4,letterSpacing:'0.06em',textTransform:'uppercase'}}>Vela</div>
         </div>
       </div>
 
@@ -145,7 +145,7 @@ export default function OnboardingPage() {
         {/* Top */}
         <div style={{
           background:NAVY, padding:'36px 40px',
-          backgroundImage:'radial-gradient(ellipse 60% 80% at 100% 50%, rgba(0,180,216,0.12) 0%, transparent 70%)',
+          backgroundImage:'radial-gradient(ellipse 60% 80% at 100% 50%, rgba(79,70,229,0.12) 0%, transparent 70%)',
         }}>
           <div style={{fontSize:11,fontWeight:700,color:'rgba(255,255,255,0.4)',letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:10}}>
             Paso 2 de 3
@@ -182,7 +182,7 @@ export default function OnboardingPage() {
                       ? `1.5px solid ${p.color}`
                       : `.5px solid ${T.hairline}`,
                     background: isSelected
-                      ? `rgba(${p.color === '#0071E3' ? '0,113,227' : '52,199,89'},.06)`
+                      ? `rgba(${p.color === '#4F46E5' ? '61,43,255' : '52,199,89'},.06)`
                       : p.disponible ? T.card : T.sidebar,
                     padding:'20px 18px',
                     cursor: p.disponible ? 'pointer' : 'not-allowed',
@@ -230,8 +230,8 @@ export default function OnboardingPage() {
           {/* Detalle del país seleccionado */}
           {pais && pais.disponible && (
             <div style={{
-              background: pais.code === 'ES' ? 'rgba(0,113,227,.06)' : T.greenSoft,
-              border: `.5px solid ${pais.code === 'ES' ? 'rgba(0,113,227,.2)' : 'rgba(52,199,89,.2)'}`,
+              background: pais.code === 'ES' ? 'rgba(79,70,229,.06)' : T.greenSoft,
+              border: `.5px solid ${pais.code === 'ES' ? 'rgba(79,70,229,.2)' : 'rgba(52,199,89,.2)'}`,
               borderRadius:12, padding:'14px 18px',
               display:'flex', alignItems:'center', gap:12, marginBottom:24,
             }}>
@@ -302,7 +302,7 @@ export default function OnboardingPage() {
       </div>
 
       <div style={{marginTop:24,fontSize:12,color:T.text4}}>
-        Vortu by Nexum Solutions · © 2026
+        Vela · © 2026
       </div>
     </div>
   )

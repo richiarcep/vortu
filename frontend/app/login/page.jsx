@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useT, useTheme } from '@/components/ui/tokens'
+import { API_BASE } from '@/lib/api'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -25,7 +26,7 @@ export default function LoginPage() {
       const form = new URLSearchParams()
       form.append('username', email)
       form.append('password', password)
-      const res = await fetch('http://127.0.0.1:8000/api/auth/login', {
+      const res = await fetch(`${API_BASE}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: form.toString()
@@ -38,7 +39,7 @@ export default function LoginPage() {
         setLoading(false)
         return
       }
-      localStorage.setItem('nexum_token', data.access_token)
+      localStorage.setItem('vela_token', data.access_token)
       router.push('/dashboard')
     } catch {
       setError('Error de conexión. Verifica que el servidor esté activo.')
@@ -54,14 +55,14 @@ export default function LoginPage() {
     setVerifying2FA(true)
     setError('')
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/auth/2fa/verify-login', {
+      const res = await fetch(`${API_BASE}/api/auth/2fa/verify-login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${tempToken}` },
         body: JSON.stringify({ code: totpCode })
       })
       const data = await res.json()
       if (!res.ok) { setError(data.detail || 'Codigo incorrecto'); return }
-      localStorage.setItem('nexum_token', data.access_token)
+      localStorage.setItem('vela_token', data.access_token)
       router.push('/dashboard')
     } catch {
       setError('Error de conexion')
@@ -72,24 +73,24 @@ export default function LoginPage() {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&family=DM+Serif+Display:ital@0;1&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-        body { font-family: 'DM Sans', system-ui, sans-serif; }
+        body { font-family: 'Inter', system-ui, sans-serif; }
 
         .login-root {
           min-height: 100dvh;
           display: flex;
           background: ${theme === 'dark' ? T.bg : '#f4f6fb'};
-          font-family: 'DM Sans', system-ui, sans-serif;
+          font-family: 'Inter', system-ui, sans-serif;
         }
 
         /* ── Left panel ── */
         .left-panel {
           width: 520px;
           flex-shrink: 0;
-          background: #0B1426;
+          background: #0B0D2B;
           display: flex;
           flex-direction: column;
           padding: 48px;
@@ -103,8 +104,8 @@ export default function LoginPage() {
           position: absolute;
           inset: 0;
           background:
-            radial-gradient(ellipse 60% 50% at 10% 20%, rgba(0,180,216,0.12) 0%, transparent 60%),
-            radial-gradient(ellipse 50% 60% at 90% 80%, rgba(37,99,235,0.15) 0%, transparent 60%);
+            radial-gradient(ellipse 60% 50% at 10% 20%, rgba(79,70,229,0.12) 0%, transparent 60%),
+            radial-gradient(ellipse 50% 60% at 90% 80%, rgba(79,70,229,0.15) 0%, transparent 60%);
           pointer-events: none;
         }
 
@@ -122,34 +123,34 @@ export default function LoginPage() {
 
         .left-content { position: relative; z-index: 1; flex: 1; display: flex; flex-direction: column; }
 
-        /* Vortu logo area */
-        .vortu-logo {
+        /* Vela logo area */
+        .vela-logo {
           display: flex;
           align-items: center;
           gap: 14px;
           margin-bottom: 64px;
         }
 
-        .vortu-icon {
+        .vela-icon {
           width: 48px;
           height: 48px;
           border-radius: 12px;
-          background: linear-gradient(135deg, #00B4D8, #2563eb);
+          background: linear-gradient(135deg, #6366F1, #4F46E5);
           display: flex;
           align-items: center;
           justify-content: center;
           flex-shrink: 0;
-          box-shadow: 0 8px 24px rgba(0,180,216,0.3);
+          box-shadow: 0 8px 24px rgba(79,70,229,0.3);
         }
 
-        .vortu-name {
+        .vela-name {
           font-size: 24px;
           font-weight: 800;
           color: white;
           letter-spacing: -0.6px;
           line-height: 1;
         }
-        .vortu-sub {
+        .vela-sub {
           font-size: 11px;
           color: rgba(255,255,255,0.35);
           letter-spacing: 0.08em;
@@ -157,9 +158,23 @@ export default function LoginPage() {
           margin-top: 3px;
         }
 
+        /* ── Velero Vela navegando (animación) ── */
+        .sail-scene { width: 100%; max-width: 300px; margin: -6px 0 34px; }
+        .sail-scene svg { width: 100%; height: auto; display: block; overflow: visible; }
+        .sail-boat { transform-box: fill-box; transform-origin: 50% 86%; animation: sailBob 4.4s ease-in-out infinite; }
+        .sail-wave-a { animation: sailWave 7s linear infinite; }
+        .sail-wave-b { animation: sailWave 9s linear infinite; }
+        .sail-star  { transform-box: fill-box; transform-origin: center; animation: sailTwinkle 3.2s ease-in-out infinite; }
+        @keyframes sailBob { 0%,100% { transform: translateY(0) rotate(-1.8deg); } 50% { transform: translateY(-6px) rotate(1.8deg); } }
+        @keyframes sailWave { from { transform: translateX(0); } to { transform: translateX(-40px); } }
+        @keyframes sailTwinkle { 0%,100% { opacity: .25; } 50% { opacity: 1; } }
+        @media (prefers-reduced-motion: reduce) {
+          .sail-boat, .sail-wave-a, .sail-wave-b, .sail-star { animation: none !important; }
+        }
+
         /* Hero text */
         .hero-headline {
-          font-family: 'DM Serif Display', serif;
+          font-family: 'Inter', system-ui;
           font-size: 42px;
           color: white;
           line-height: 1.15;
@@ -168,7 +183,7 @@ export default function LoginPage() {
         }
         .hero-headline em {
           font-style: italic;
-          background: linear-gradient(90deg, #00B4D8, #60a5fa);
+          background: linear-gradient(90deg, #4F46E5, #A5B1FF);
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           background-clip: text;
@@ -219,8 +234,8 @@ export default function LoginPage() {
           font-weight: 600;
         }
 
-        /* Nexum footer */
-        .nexum-footer {
+        /* Vela footer */
+        .vela-footer {
           margin-top: 48px;
           padding-top: 24px;
           border-top: 1px solid rgba(255,255,255,0.06);
@@ -229,24 +244,24 @@ export default function LoginPage() {
           gap: 10px;
         }
 
-        .nexum-logo-mark {
+        .vela-logo-mark {
           display: flex;
           align-items: center;
           gap: 8px;
         }
 
         /* N logomark SVG inline */
-        .nexum-n {
+        .vela-n {
           width: 28px;
           height: 28px;
         }
 
-        .nexum-label {
+        .vela-label {
           font-size: 11px;
           color: rgba(255,255,255,0.25);
           letter-spacing: 0.06em;
         }
-        .nexum-label strong {
+        .vela-label strong {
           color: rgba(255,255,255,0.45);
           font-weight: 600;
         }
@@ -326,13 +341,13 @@ export default function LoginPage() {
           background: ${theme === 'dark' ? T.card : 'white'};
           font-size: 14px;
           color: ${T.text};
-          font-family: 'DM Sans', system-ui;
+          font-family: 'Inter', system-ui;
           outline: none;
           transition: border-color 0.15s, box-shadow 0.15s;
         }
         .field-input:focus {
-          border-color: ${theme === 'dark' ? T.blue : '#0B1426'};
-          box-shadow: 0 0 0 3px ${theme === 'dark' ? 'rgba(10,132,255,0.18)' : 'rgba(11,20,38,0.06)'};
+          border-color: ${theme === 'dark' ? T.blue : '#0B0D2B'};
+          box-shadow: 0 0 0 3px ${theme === 'dark' ? 'rgba(10,132,255,0.18)' : 'rgba(11,13,43,0.06)'};
         }
         .field-input::placeholder { color: ${T.text4}; }
 
@@ -373,12 +388,12 @@ export default function LoginPage() {
           padding: 13px;
           border-radius: 10px;
           border: none;
-          background: ${theme === 'dark' ? T.blue : '#0B1426'};
+          background: ${theme === 'dark' ? T.blue : '#0B0D2B'};
           color: white;
           font-size: 14px;
           font-weight: 700;
           cursor: pointer;
-          font-family: 'DM Sans', system-ui;
+          font-family: 'Inter', system-ui;
           letter-spacing: -0.2px;
           display: flex;
           align-items: center;
@@ -390,9 +405,9 @@ export default function LoginPage() {
           margin-bottom: 16px;
         }
         .submit-btn:hover:not(:disabled) {
-          background: ${theme === 'dark' ? '#3395FF' : '#162038'};
+          background: ${theme === 'dark' ? '#3395FF' : '#1A1740'};
           transform: translateY(-1px);
-          box-shadow: 0 8px 24px rgba(11,20,38,0.25);
+          box-shadow: 0 8px 24px rgba(11,13,43,0.25);
         }
         .submit-btn:active:not(:disabled) {
           transform: translateY(0);
@@ -426,10 +441,10 @@ export default function LoginPage() {
           color: ${T.text3};
         }
         .register-row a {
-          color: ${theme === 'dark' ? T.text : '#0B1426'};
+          color: ${theme === 'dark' ? T.text : '#0B0D2B'};
           font-weight: 700;
           text-decoration: none;
-          border-bottom: 1px solid ${theme === 'dark' ? T.text : '#0B1426'};
+          border-bottom: 1px solid ${theme === 'dark' ? T.text : '#0B0D2B'};
           padding-bottom: 1px;
           transition: opacity 0.15s;
         }
@@ -457,20 +472,52 @@ export default function LoginPage() {
         <div className="left-panel">
           <div className="left-content">
 
-            {/* Vortu logo */}
-            <div className="vortu-logo">
-              <div className="vortu-icon">
-                {/* Bar chart icon matching Vortu logo */}
-                <svg width="26" height="22" viewBox="0 0 26 22" fill="none">
-                  <rect x="1" y="12" width="6" height="10" rx="1.5" fill="rgba(255,255,255,0.6)"/>
-                  <rect x="10" y="6" width="6" height="16" rx="1.5" fill="rgba(255,255,255,0.8)"/>
-                  <rect x="19" y="1" width="6" height="21" rx="1.5" fill="white"/>
+            {/* Vela logo */}
+            <div className="vela-logo">
+              <div className="vela-icon">
+                {/* Velero Vela */}
+                <svg width="30" height="28" viewBox="0 0 32 30" fill="none">
+                  <path d="M18 3C15 9.5 13.3 16 14 21L27 21C23.5 13.5 21 7 18 3Z" fill="#fff"/>
+                  <path d="M5.5 24Q16 29.5 27.5 23Q22 27 15.5 27Q9 27 5.5 24Z" fill="rgba(255,255,255,0.82)"/>
                 </svg>
               </div>
               <div>
-                <div className="vortu-name">Vortu</div>
-                <div className="vortu-sub">by Nexum Solutions</div>
+                <div className="vela-name">Vela</div>
               </div>
+            </div>
+
+            {/* Velero Vela navegando (animado) */}
+            <div className="sail-scene" aria-hidden="true">
+              <svg viewBox="0 0 300 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <linearGradient id="loginSail" x1="120" y1="20" x2="190" y2="105" gradientUnits="userSpaceOnUse">
+                    <stop stopColor="#6366F1"/>
+                    <stop offset="1" stopColor="#A5B1FF"/>
+                  </linearGradient>
+                </defs>
+
+                {/* Constelación titilando */}
+                <path d="M44 36 L74 22 L84 46 Z" stroke="#A5B1FF" strokeWidth="1.2" opacity="0.5" fill="none"/>
+                <circle className="sail-star" cx="44" cy="36" r="2" fill="#A5B1FF"/>
+                <circle className="sail-star" style={{ animationDelay: '.6s' }} cx="84" cy="46" r="2" fill="#A5B1FF"/>
+                <circle className="sail-star" style={{ animationDelay: '1.2s' }} cx="74" cy="22" r="2.4" fill="#fff"/>
+                <circle className="sail-star" style={{ animationDelay: '1.8s' }} cx="30" cy="60" r="1.5" fill="#A5B1FF"/>
+                <circle className="sail-star" style={{ animationDelay: '2.4s' }} cx="102" cy="64" r="1.5" fill="#A5B1FF"/>
+
+                {/* Olas (dos capas en movimiento) */}
+                <path className="sail-wave-a" opacity="0.55" stroke="#6366F1" strokeWidth="2" fill="none" strokeLinecap="round"
+                  d="M-40 120 q10 -5 20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0"/>
+                <path className="sail-wave-b" opacity="0.4" stroke="#A5B1FF" strokeWidth="2" fill="none" strokeLinecap="round"
+                  d="M-40 131 q10 -4 20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0"/>
+
+                {/* Velero (cabecea sobre las olas) */}
+                <g className="sail-boat">
+                  <line x1="150" y1="34" x2="150" y2="104" stroke="#A5B1FF" strokeWidth="1.5" strokeLinecap="round"/>
+                  <path d="M150 34 C144 54 140 80 141 104 L188 104 C179 78 165 54 150 34 Z" fill="url(#loginSail)"/>
+                  <path d="M146 50 C141 68 138 88 139 104 L120 104 C127 86 137 66 146 50 Z" fill="#A5B1FF" opacity="0.7"/>
+                  <path d="M116 108 Q150 124 186 107 Q174 119 150 119 Q130 119 116 108 Z" fill="#6366F1"/>
+                </g>
+              </svg>
             </div>
 
             {/* Hero */}
@@ -489,7 +536,7 @@ export default function LoginPage() {
                 { icon: '📒', title: 'Contabilidad automática', desc: 'Partida doble y PGC español con IA' },
                 { icon: '📊', title: 'Análisis financiero en tiempo real', desc: 'P&L, ratios y proyecciones inteligentes' },
                 { icon: '🤖', title: 'Agente IA 24/7', desc: 'Monitoriza anomalías y genera alertas' },
-                { icon: '🛒', title: 'Punto de venta integrado', desc: 'Códigos Nexum y escáner de barras' },
+                { icon: '🛒', title: 'Punto de venta integrado', desc: 'Códigos Vela y escáner de barras' },
               ].map(f => (
                 <div className="feature-item" key={f.title}>
                   <div className="feature-dot">{f.icon}</div>
@@ -498,25 +545,20 @@ export default function LoginPage() {
               ))}
             </div>
 
-            {/* Nexum Solutions footer */}
-            <div className="nexum-footer">
-              {/* Nexum N logomark */}
-              <svg className="nexum-n" viewBox="0 0 28 28" fill="none">
-                <circle cx="5" cy="5" r="3" stroke="url(#ng)" strokeWidth="1.5"/>
-                <circle cx="23" cy="5" r="3" stroke="url(#ng)" strokeWidth="1.5"/>
-                <circle cx="5" cy="23" r="3" stroke="url(#ng)" strokeWidth="1.5"/>
-                <circle cx="23" cy="23" r="3" stroke="url(#ng)" strokeWidth="1.5"/>
-                <line x1="5" y1="5" x2="5" y2="23" stroke="url(#ng)" strokeWidth="1.5"/>
-                <line x1="23" y1="5" x2="23" y2="23" stroke="url(#ng)" strokeWidth="1.5"/>
-                <line x1="5" y1="5" x2="23" y2="23" stroke="url(#ng)" strokeWidth="1.5"/>
+            {/* Vela footer */}
+            <div className="vela-footer">
+              {/* Velero Vela */}
+              <svg className="vela-n" viewBox="0 0 28 28" fill="none">
+                <path d="M16 4C13.5 9 12 14 12.5 18.5L24 18.5C21 12.5 19 7.5 16 4Z" fill="url(#ng)"/>
+                <path d="M5 21Q14 26 24 20.5Q19.5 24 14.5 24Q9 24 5 21Z" fill="#6366F1"/>
                 <defs>
-                  <linearGradient id="ng" x1="5" y1="5" x2="23" y2="23" gradientUnits="userSpaceOnUse">
-                    <stop stopColor="#00B4D8"/>
-                    <stop offset="1" stopColor="#0B1426"/>
+                  <linearGradient id="ng" x1="12" y1="4" x2="24" y2="19" gradientUnits="userSpaceOnUse">
+                    <stop stopColor="#6366F1"/>
+                    <stop offset="1" stopColor="#A5B1FF"/>
                   </linearGradient>
                 </defs>
               </svg>
-              <div className="nexum-label">Un producto de <strong>Nexum Solutions</strong> · © 2026</div>
+              <div className="vela-label">Un producto de <strong>Vela</strong> · © 2026</div>
             </div>
 
           </div>
@@ -529,7 +571,7 @@ export default function LoginPage() {
             <div className="form-header">
               <div className="form-eyebrow">Bienvenido de vuelta</div>
               <h2 className="form-title">Accede a tu panel</h2>
-              <p className="form-subtitle">Introduce tus credenciales para continuar gestionando tu empresa con Vortu.</p>
+              <p className="form-subtitle">Introduce tus credenciales para continuar gestionando tu empresa con Vela.</p>
             </div>
 
             <form onSubmit={handleLogin}>
@@ -598,7 +640,7 @@ export default function LoginPage() {
 
             <div className="divider-row">
               <div className="divider-line" />
-              <span className="divider-text">¿Nuevo en Vortu?</span>
+              <span className="divider-text">¿Nuevo en Vela?</span>
               <div className="divider-line" />
             </div>
 
@@ -607,7 +649,7 @@ export default function LoginPage() {
             </div>
 
             <div className="form-footer">
-              Vortu by Nexum Solutions · Todos los derechos reservados · 2026
+              Vela · Todos los derechos reservados · 2026
             </div>
           </div>
         </div>

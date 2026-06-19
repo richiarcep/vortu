@@ -3,7 +3,7 @@
 import os, base64, shutil
 from datetime import datetime
 
-API_DIR = os.path.expanduser('~/Desktop/vortu/backend/api')
+API_DIR = os.path.expanduser('~/Desktop/vela/backend/api')
 target = os.path.join(API_DIR, 'vera_v2.py')
 
 if os.path.exists(target):

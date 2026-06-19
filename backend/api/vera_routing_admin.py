@@ -548,7 +548,7 @@ def list_plans(
     db: Session = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
-    """Lista los 2 planes de Vera (Vortu + Plus) con sus capacidades."""
+    """Lista los 2 planes de Vera (Vela + Plus) con sus capacidades."""
     rows = db.execute(text("""
         SELECT id, plan_key, display_name, price_eur_monthly, description,
                tokens_daily_limit, primary_model, fallback_model, memory_days,

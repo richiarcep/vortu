@@ -4,11 +4,11 @@ Pulir Vera:
 2. Mejor formato de mensajes (más aire)
 3. Botón Copiar al hover sobre mensaje de Vera
 4. Botón Regenerar respuesta
-5. Mover "Vera Plus by Vortu" a columna izquierda
+5. Mover "Vera Plus by Vela" a columna izquierda
 """
 import os
 
-p = os.path.expanduser('~/Desktop/vortu/frontend/app/vera/page.jsx')
+p = os.path.expanduser('~/Desktop/vela/frontend/app/vera/page.jsx')
 s = open(p).read()
 
 # 1. Añadir keyframe pulse + helper para copiar
@@ -218,7 +218,7 @@ new_msg_end = """                        {m.role === 'user' ? (
 s = s.replace(old_msg_end, new_msg_end)
 print("OK botones copiar/regenerar añadidos a mensajes")
 
-# 7. Mover el footer "Vera Plus by Vortu" de columna derecha a columna izquierda
+# 7. Mover el footer "Vera Plus by Vela" de columna derecha a columna izquierda
 old_footer = """            <div style={{
               paddingTop: 12,
               borderTop: `.5px solid ${T.hairline}`,
@@ -228,7 +228,7 @@ old_footer = """            <div style={{
                 fontSize: 10.5, color: T.text4, fontWeight: 500,
                 letterSpacing: 0.3,
               }}>
-                {isPlus ? 'Vera Plus' : 'Vera'} <span style={{ color: T.text4, opacity: 0.6, margin: '0 4px' }}>·</span> by Vortu
+                {isPlus ? 'Vera Plus' : 'Vera'} <span style={{ color: T.text4, opacity: 0.6, margin: '0 4px' }}>·</span> by Vela
               </div>
               <div style={{
                 fontSize: 9.5, color: T.text4, opacity: 0.7,
@@ -271,7 +271,7 @@ footer_jsx = """
                 fontSize: 10.5, color: T.text4, fontWeight: 500,
                 letterSpacing: 0.3,
               }}>
-                {isPlus ? 'Vera Plus' : 'Vera'} <span style={{ opacity: 0.5, margin: '0 4px' }}>·</span> by Vortu
+                {isPlus ? 'Vera Plus' : 'Vera'} <span style={{ opacity: 0.5, margin: '0 4px' }}>·</span> by Vela
               </div>
               <div style={{
                 fontSize: 9.5, color: T.text4, opacity: 0.7,

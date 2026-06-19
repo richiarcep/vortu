@@ -6,8 +6,8 @@ import { API_BASE as API } from '@/lib/api'
 import { FONT, useT, useTheme } from '@/components/ui/tokens'
 
 // ─── Theme (matches /vera) ────────────────────────────────────
-const VERA_BLUE = '#0071E3'
-const VERA_PLUS_BLUE = '#003D8F'
+const VERA_BLUE = '#4F46E5'
+const VERA_PLUS_BLUE = '#3730A3'
 const GOLD = '#B8860B'
 
 // ─── Iconos (Lucide-style, inline SVG, decorativos) ───────────
@@ -86,7 +86,7 @@ export default function VeraPlusPage() {
     async function loadInfo() {
       setLoading(true)
       try {
-        const token = localStorage.getItem('nexum_token')
+        const token = localStorage.getItem('vela_token')
         if (!token) {
           router.push('/login')
           return
@@ -113,7 +113,7 @@ export default function VeraPlusPage() {
     setActivating(true)
     setError(null)
     try {
-      const token = localStorage.getItem('nexum_token')
+      const token = localStorage.getItem('vela_token')
       const r = await fetch(`${API}/api/vera/plus/checkout`, {
         method: 'POST',
         headers: {
@@ -315,7 +315,7 @@ export default function VeraPlusPage() {
           {[
             { icon: <IconBolt />, title: 'Activación instantánea', text: 'Tras el pago, Vera Plus se activa automáticamente. No esperas a nadie.' },
             { icon: <IconLock />, title: 'Pago seguro', text: 'Procesado por Stripe. Nunca vemos los datos de tu tarjeta.' },
-            { icon: <IconUndo />, title: 'Cancela cuando quieras', text: 'Sin permanencia ni penalizaciones. Vuelves a Vortu base con 1 click.' },
+            { icon: <IconUndo />, title: 'Cancela cuando quieras', text: 'Sin permanencia ni penalizaciones. Vuelves a Vela base con 1 click.' },
           ].map((item, i) => (
             <div key={i} style={{
               background: T.card, borderRadius: 12,

@@ -144,7 +144,7 @@ function VeraInsight({ insight, loading, onOpenChat, onRegenerate }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{
             width: 28, height: 28, borderRadius: 8,
-            background: 'linear-gradient(135deg,#0071E3,#00B4D8)',
+            background: 'linear-gradient(135deg,#4F46E5,#A5B1FF)',
             display: 'grid', placeItems: 'center',
           }}>
             <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
@@ -162,8 +162,8 @@ function VeraInsight({ insight, loading, onOpenChat, onRegenerate }) {
         </div>
         <button onClick={onOpenChat} style={{
           padding: '5px 12px', borderRadius: 7,
-          border: `.5px solid rgba(0,113,227,.18)`,
-          background: 'rgba(0,113,227,.05)', color: T.blue,
+          border: `.5px solid rgba(79,70,229,.18)`,
+          background: 'rgba(79,70,229,.05)', color: T.blue,
           fontSize: 12, fontWeight: 500, cursor: 'pointer',
           fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 5,
         }}>
@@ -188,9 +188,9 @@ function VeraInsight({ insight, loading, onOpenChat, onRegenerate }) {
       {insight && !loading && (
         <div style={{
           padding: '16px 18px',
-          background: 'linear-gradient(180deg, rgba(0,113,227,.025), rgba(0,113,227,.01))',
+          background: 'linear-gradient(180deg, rgba(79,70,229,.025), rgba(79,70,229,.01))',
           borderRadius: 10,
-          border: `.5px solid rgba(0,113,227,.1)`,
+          border: `.5px solid rgba(79,70,229,.1)`,
           fontSize: 13, color: T.text2, lineHeight: 1.65,
           whiteSpace: 'pre-wrap',
         }}>
@@ -249,7 +249,7 @@ export default function Ventas() {
   })
   const [showProductForm, setShowProductForm] = useState(false)
 
-  const getToken = () => localStorage.getItem('nexum_token')
+  const getToken = () => localStorage.getItem('vela_token')
 
   useEffect(() => {
     const t = getToken()
@@ -460,7 +460,7 @@ export default function Ventas() {
 
   const filteredProducts = products.filter(p =>
     p.name?.toLowerCase().includes(search.toLowerCase()) ||
-    p.nexum_code?.toLowerCase().includes(search.toLowerCase()) ||
+    p.vela_code?.toLowerCase().includes(search.toLowerCase()) ||
     p.barcode?.toLowerCase().includes(search.toLowerCase())
   )
 
@@ -545,7 +545,7 @@ export default function Ventas() {
                     <button key={p.key} type="button" onClick={() => setPayment(p.key)} style={{
                       padding: '9px 6px', borderRadius: 9,
                       border: `.5px solid ${payment === p.key ? T.blue : T.hairline}`,
-                      background: payment === p.key ? 'rgba(0,113,227,.06)' : T.sidebar,
+                      background: payment === p.key ? 'rgba(79,70,229,.06)' : T.sidebar,
                       color: payment === p.key ? T.blue : T.text2,
                       fontSize: 12, fontWeight: payment === p.key ? 500 : 400,
                       cursor: 'pointer', fontFamily: 'inherit', transition: 'all .15s',
@@ -559,8 +559,8 @@ export default function Ventas() {
                 {clienteSelected ? (
                   <div style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '10px 12px', background: 'rgba(0,113,227,.06)',
-                    border: `.5px solid rgba(0,113,227,.2)`, borderRadius: 8,
+                    padding: '10px 12px', background: 'rgba(79,70,229,.06)',
+                    border: `.5px solid rgba(79,70,229,.2)`, borderRadius: 8,
                   }}>
                     <div>
                       <div style={{ fontSize: 13, fontWeight: 500, color: T.text }}>{clienteSelected.name}</div>
@@ -946,7 +946,7 @@ export default function Ventas() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <div style={{
                         width: 28, height: 28, borderRadius: 8,
-                        background: 'rgba(0,113,227,.08)',
+                        background: 'rgba(79,70,229,.08)',
                         display: 'grid', placeItems: 'center',
                       }}>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={T.blue} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1001,13 +1001,13 @@ export default function Ventas() {
 
                   <div style={{
                     padding: '12px 14px',
-                    background: 'linear-gradient(180deg, rgba(0,113,227,.04), rgba(0,113,227,.01))',
+                    background: 'linear-gradient(180deg, rgba(79,70,229,.04), rgba(79,70,229,.01))',
                     borderRadius: 10,
-                    border: `.5px solid rgba(0,113,227,.12)`,
+                    border: `.5px solid rgba(79,70,229,.12)`,
                     marginBottom: 12,
                   }}>
                     <div style={{ fontSize: 12, color: T.text2, lineHeight: 1.5 }}>
-                      Verifactu es obligatorio en España desde 2026 para empresas. Vortu lo genera automáticamente al activar el toggle en cada venta.
+                      Verifactu es obligatorio en España desde 2026 para empresas. Vela lo genera automáticamente al activar el toggle en cada venta.
                     </div>
                   </div>
 
@@ -1179,7 +1179,7 @@ export default function Ventas() {
                         <tr key={p.id} style={{ borderBottom: `.5px solid ${T.soft}` }}>
                           <td style={{ padding: '10px 14px', fontSize: 13, fontWeight: 500, color: T.text }}>{p.name}</td>
                           <td style={{ padding: '10px 14px', fontSize: 12, color: T.text3 }}>{p.category || '—'}</td>
-                          <td style={{ padding: '10px 14px', fontSize: 11, color: T.text4, fontFamily: 'monospace' }}>{p.nexum_code || '—'}</td>
+                          <td style={{ padding: '10px 14px', fontSize: 11, color: T.text4, fontFamily: 'monospace' }}>{p.vela_code || '—'}</td>
                           <td style={{
                             padding: '10px 14px', fontSize: 13, color: T.text, fontWeight: 600,
                             textAlign: 'right', fontVariantNumeric: 'tabular-nums',

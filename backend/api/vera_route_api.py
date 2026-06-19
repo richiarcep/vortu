@@ -55,7 +55,7 @@ def _get_active_system_prompt(db: Session, key: str = "vera_core") -> str:
         SELECT content FROM system_prompts
         WHERE key = :key AND is_active = 1
     """), {"key": key}).fetchone()
-    return row[0] if row else "Eres Vera, asistente de Vortu."
+    return row[0] if row else "Eres Vera, asistente de Vela."
 
 
 def _log_routing(db: Session, user: User, req: RouteRequest, result: Dict):

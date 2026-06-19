@@ -17,7 +17,7 @@ export default function JurisdictionGuard({ children }) {
       return
     }
 
-    const token = localStorage.getItem('nexum_token')
+    const token = localStorage.getItem('vela_token')
     if (!token) {
       // Sin token: dejar que cada módulo maneje su propio redirect a /login
       setReady(true)
@@ -32,7 +32,7 @@ export default function JurisdictionGuard({ children }) {
           // Token inválido/expirado (401/403) o cualquier otro fallo de
           // validación: fallar de forma segura → limpiar token y mandar a login.
           if (r.status === 401 || r.status === 403) {
-            localStorage.removeItem('nexum_token')
+            localStorage.removeItem('vela_token')
           }
           router.replace('/login')
           return null
@@ -68,7 +68,7 @@ export default function JurisdictionGuard({ children }) {
           <div style={{
             width: 32, height: 32,
             border: '2px solid rgba(0,0,0,0.08)',
-            borderTopColor: '#0071E3',
+            borderTopColor: '#4F46E5',
             borderRadius: '50%',
             animation: 'spin .7s linear infinite',
             margin: '0 auto 12px',

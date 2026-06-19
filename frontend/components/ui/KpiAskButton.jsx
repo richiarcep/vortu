@@ -43,7 +43,7 @@ export default function KpiAskButton({ kpi, modulo, suggestions, children }) {
         {/* Tooltip */}
         {btnHover && (
           <div style={{
-            background: '#003D8F',
+            background: '#3730A3',
             color: '#fff',
             fontSize: 10,
             fontWeight: 700,
@@ -73,7 +73,7 @@ export default function KpiAskButton({ kpi, modulo, suggestions, children }) {
             height: 22,
             borderRadius: 6,
             background: btnHover
-              ? 'linear-gradient(135deg, #003D8F, #0071E3)'
+              ? 'linear-gradient(135deg, #3730A3, #4F46E5)'
               : 'rgba(0,61,143,.08)',
             border: 'none',
             cursor: 'pointer',
@@ -86,7 +86,7 @@ export default function KpiAskButton({ kpi, modulo, suggestions, children }) {
           <svg width="11" height="11" viewBox="0 0 16 16" fill="none">
             <path
               d="M8 1l1.5 5.5L15 8l-5.5 1.5L8 15l-1.5-5.5L1 8l5.5-1.5L8 1z"
-              fill={btnHover ? '#fff' : '#003D8F'}
+              fill={btnHover ? '#fff' : '#3730A3'}
             />
           </svg>
         </button>

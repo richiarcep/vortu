@@ -5,8 +5,8 @@ Instalador: endpoints multi-LLM en backend/api/.
 import os, base64, shutil
 from datetime import datetime
 
-API_DIR = os.path.expanduser('~/Desktop/vortu/backend/api')
-MAIN_PY = os.path.expanduser('~/Desktop/vortu/backend/main.py')
+API_DIR = os.path.expanduser('~/Desktop/vela/backend/api')
+MAIN_PY = os.path.expanduser('~/Desktop/vela/backend/main.py')
 
 if not os.path.exists(API_DIR):
     print(f"ERROR: No existe {API_DIR}")

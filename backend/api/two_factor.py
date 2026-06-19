@@ -41,7 +41,7 @@ def setup_2fa(
     totp = pyotp.TOTP(secret)
     uri = totp.provisioning_uri(
         name=current_user.email,
-        issuer_name="Vortu by Nexum"
+        issuer_name="Vela"
     )
     
     # Generate QR code as base64

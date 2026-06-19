@@ -6,7 +6,7 @@ Fix completo de Vera:
 """
 import os
 
-p = os.path.expanduser('~/Desktop/vortu/frontend/app/vera/page.jsx')
+p = os.path.expanduser('~/Desktop/vela/frontend/app/vera/page.jsx')
 s = open(p).read()
 
 # Añadir searchQuery state

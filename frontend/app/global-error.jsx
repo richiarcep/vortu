@@ -26,7 +26,7 @@ export default function GlobalError({ error, reset }) {
             </p>
             <button onClick={() => reset()} style={{
               padding: '9px 18px', borderRadius: 999, border: 'none', cursor: 'pointer',
-              background: '#0071E3', color: '#fff', fontSize: 14, fontWeight: 500, fontFamily: 'inherit',
+              background: '#4F46E5', color: '#fff', fontSize: 14, fontWeight: 500, fontFamily: 'inherit',
             }}>Recargar</button>
           </div>
         </div>

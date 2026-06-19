@@ -93,7 +93,7 @@ def generate_project_report_pdf(
     cover = Table([[
         Paragraph("N", S("logo", fontName="Helvetica-Bold", fontSize=28, textColor=WHITE)),
         Table([[
-            Paragraph("NEXUM", S("n", fontName="Helvetica-Bold", fontSize=11, textColor=WHITE)),
+            Paragraph("VELA", S("n", fontName="Helvetica-Bold", fontSize=11, textColor=WHITE)),
             Paragraph(f"Informe de Proyecto · {today.strftime('%d %b %Y')}", S("d", fontName="Helvetica", fontSize=8, textColor=colors.HexColor("#94A3B8"))),
         ]], colWidths=[60*mm, W - MARGIN*2 - 80*mm]),
     ]], colWidths=[20*mm, W - MARGIN*2 - 20*mm])
@@ -266,7 +266,7 @@ def generate_project_report_pdf(
         canvas.saveState()
         canvas.setFillColor(MUTED)
         canvas.setFont("Helvetica", 7)
-        canvas.drawCentredString(W/2, 12*mm, f"Nexum · Informe de Proyecto · {project.name} · Página {doc.page}")
+        canvas.drawCentredString(W/2, 12*mm, f"Vela · Informe de Proyecto · {project.name} · Página {doc.page}")
         canvas.restoreState()
 
     doc.build(E, onFirstPage=on_page, onLaterPages=on_page)

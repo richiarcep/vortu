@@ -1,9 +1,9 @@
 """
-setup_db.py — Orquestador de base de datos Vortu
+setup_db.py — Orquestador de base de datos Vela
 =================================================
 Reconstruye SIEMPRE la misma base de datos desde cero, en orden:
-  1. Backup del nexum.db actual (por seguridad)
-  2. Borra nexum.db
+  1. Backup del vela.db actual (por seguridad)
+  2. Borra vela.db
   3. Crea todas las tablas (create_tables de la app)
   4. Aplica migración: columna country en companies
   5. Corre seed_demo.py (datos núcleo: ventas, contabilidad, etc.)
@@ -16,7 +16,7 @@ import os, sys, shutil, subprocess, random
 from datetime import date, datetime, timedelta
 
 sys.path.insert(0, '.')
-DB = "nexum.db"
+DB = "vela.db"
 
 
 def confirm():

@@ -155,7 +155,7 @@ function VeraInsight({ insight, loading, onOpenChat, onRegenerate }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{
             width: 28, height: 28, borderRadius: 8,
-            background: 'linear-gradient(135deg,#0071E3,#00B4D8)',
+            background: 'linear-gradient(135deg,#4F46E5,#A5B1FF)',
             display: 'grid', placeItems: 'center', flexShrink: 0,
           }}>
             <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
@@ -173,13 +173,13 @@ function VeraInsight({ insight, loading, onOpenChat, onRegenerate }) {
         </div>
         <button onClick={onOpenChat} style={{
           padding: '5px 12px', borderRadius: 7,
-          border: `.5px solid rgba(0,113,227,.18)`,
-          background: 'rgba(0,113,227,.05)', color: T.blue,
+          border: `.5px solid rgba(79,70,229,.18)`,
+          background: 'rgba(79,70,229,.05)', color: T.blue,
           fontSize: 12, fontWeight: 500, cursor: 'pointer',
           fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 5,
         }}
-          onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,113,227,.1)'}
-          onMouseLeave={e => e.currentTarget.style.background = 'rgba(0,113,227,.05)'}
+          onMouseEnter={e => e.currentTarget.style.background = 'rgba(79,70,229,.1)'}
+          onMouseLeave={e => e.currentTarget.style.background = 'rgba(79,70,229,.05)'}
         >
           Abrir chat
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -200,9 +200,9 @@ function VeraInsight({ insight, loading, onOpenChat, onRegenerate }) {
       {insight && !loading && (
         <div style={{
           padding: '16px 18px',
-          background: 'linear-gradient(180deg, rgba(0,113,227,.025), rgba(0,113,227,.01))',
+          background: 'linear-gradient(180deg, rgba(79,70,229,.025), rgba(79,70,229,.01))',
           borderRadius: 10,
-          border: `.5px solid rgba(0,113,227,.1)`,
+          border: `.5px solid rgba(79,70,229,.1)`,
           fontSize: 13, color: T.text2, lineHeight: 1.65,
           whiteSpace: 'pre-wrap',
         }}>
@@ -363,7 +363,7 @@ export default function Contabilidad() {
   const [veraInsight, setVeraInsight] = useState(null)
   const [veraInsightLoading, setVeraInsightLoading] = useState(false)
 
-  const getToken = () => localStorage.getItem('nexum_token')
+  const getToken = () => localStorage.getItem('vela_token')
 
   const categoriasIngreso = [
     { clave: 'ventas', nombre: 'Ventas' },
@@ -1090,8 +1090,8 @@ export default function Contabilidad() {
                       </div>
                       <div style={{
                         padding: '14px',
-                        background: 'linear-gradient(180deg, rgba(0,113,227,.04), rgba(0,113,227,.01))',
-                        borderRadius: 12, border: `.5px solid rgba(0,113,227,.1)`,
+                        background: 'linear-gradient(180deg, rgba(79,70,229,.04), rgba(79,70,229,.01))',
+                        borderRadius: 12, border: `.5px solid rgba(79,70,229,.1)`,
                       }}>
                         <div style={{
                           fontSize: 11, fontWeight: 500, color: T.blue,
@@ -1141,8 +1141,8 @@ export default function Contabilidad() {
                       </div>
                       <div style={{
                         padding: '14px',
-                        background: 'linear-gradient(180deg, rgba(0,113,227,.04), rgba(0,113,227,.01))',
-                        borderRadius: 12, border: `.5px solid rgba(0,113,227,.1)`,
+                        background: 'linear-gradient(180deg, rgba(79,70,229,.04), rgba(79,70,229,.01))',
+                        borderRadius: 12, border: `.5px solid rgba(79,70,229,.1)`,
                       }}>
                         <div style={{
                           fontSize: 11, fontWeight: 500, color: T.blue,
@@ -1185,8 +1185,8 @@ export default function Contabilidad() {
                     </div>
                     <div style={{
                       padding: '14px',
-                      background: 'linear-gradient(180deg, rgba(0,113,227,.04), rgba(0,113,227,.01))',
-                      borderRadius: 12, border: `.5px solid rgba(0,113,227,.1)`,
+                      background: 'linear-gradient(180deg, rgba(79,70,229,.04), rgba(79,70,229,.01))',
+                      borderRadius: 12, border: `.5px solid rgba(79,70,229,.1)`,
                     }}>
                       <div style={{
                         fontSize: 11, fontWeight: 500, color: T.blue,
@@ -1218,7 +1218,7 @@ export default function Contabilidad() {
                     padding: '14px 16px',
                     border: `.5px solid ${mode === m.key ? T.blue : T.hairline}`,
                     borderRadius: 12,
-                    background: mode === m.key ? 'rgba(0,113,227,.04)' : T.card,
+                    background: mode === m.key ? 'rgba(79,70,229,.04)' : T.card,
                     cursor: 'pointer', textAlign: 'left',
                     transition: 'all .15s', fontFamily: 'inherit',
                   }}>
@@ -1502,7 +1502,7 @@ export default function Contabilidad() {
                           </svg>
                           <span style={{
                             fontSize: 12, fontWeight: 600, color: T.blue,
-                            background: 'rgba(0,113,227,.08)',
+                            background: 'rgba(79,70,229,.08)',
                             padding: '2px 8px', borderRadius: 999, flexShrink: 0,
                           }}>{account.account_code}</span>
                           <span style={{ fontSize: 13, fontWeight: 500, color: T.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{account.account_name}</span>

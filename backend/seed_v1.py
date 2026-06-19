@@ -19,7 +19,7 @@ from sqlalchemy.orm import sessionmaker
 sys.path.insert(0, os.getcwd())
 from country.es import CHART_OF_ACCOUNTS, TAX_RULES
 
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./nexum.db")
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./vela.db")
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 Session = sessionmaker(bind=engine)
 db = Session()
@@ -31,7 +31,7 @@ START = TODAY - timedelta(days=730)
 IVA = Decimal("0.21")
 
 print("\n" + "="*60)
-print("  VORTU SEED v1 — Moda Barcelonesa SL (España, 24 meses)")
+print("  VELA SEED v1 — Moda Barcelonesa SL (España, 24 meses)")
 print("="*60 + "\n")
 
 print("[1/6] Limpiando empresa anterior...")

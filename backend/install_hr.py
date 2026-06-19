@@ -7,7 +7,7 @@ Añade al backend:
    - PUT  /api/hr/vacations/{id}     — aprobar/rechazar
    - GET  /api/hr/contracts          — contratos + alertas vencimiento
    - GET  /api/hr/payslips           — nóminas con filtros
-   - GET  /api/hr/dashboard          — KPIs HR para Vortu dashboard
+   - GET  /api/hr/dashboard          — KPIs HR para Vela dashboard
    - POST /api/hr/vera/analyze       — Vera analiza estado HR completo
 """
 import os
@@ -15,7 +15,7 @@ import os
 # ─────────────────────────────────────────────────────────
 # 1. CREAR modules/hr/extended.py con los nuevos modelos
 # ─────────────────────────────────────────────────────────
-extended_path = os.path.expanduser('~/Desktop/vortu/backend/modules/hr/extended.py')
+extended_path = os.path.expanduser('~/Desktop/vela/backend/modules/hr/extended.py')
 
 extended_code = '''from sqlalchemy import Column, Integer, String, Float, Date, DateTime, Boolean, ForeignKey, Text
 from sqlalchemy.sql import func
@@ -84,7 +84,7 @@ print(f"OK Creado {extended_path}")
 # ─────────────────────────────────────────────────────────
 # 2. AÑADIR endpoints nuevos a api/hr.py
 # ─────────────────────────────────────────────────────────
-hr_api_path = os.path.expanduser('~/Desktop/vortu/backend/api/hr.py')
+hr_api_path = os.path.expanduser('~/Desktop/vela/backend/api/hr.py')
 s = open(hr_api_path).read()
 
 # Marcador para no duplicar
@@ -332,7 +332,7 @@ def hr_dashboard(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """KPIs clave de HR estilo Vortu (dashboard simple)."""
+    """KPIs clave de HR estilo Vela (dashboard simple)."""
     employees = db.query(Employee).filter(
         Employee.company_id == current_user.company_id,
         Employee.is_active == True
@@ -491,7 +491,7 @@ EMPLEADOS EN RIESGO (>50% feedback negativo):
 # ─────────────────────────────────────────────────────────
 # 3. ASEGURAR que los modelos se importan en main.py
 # ─────────────────────────────────────────────────────────
-main_path = os.path.expanduser('~/Desktop/vortu/backend/main.py')
+main_path = os.path.expanduser('~/Desktop/vela/backend/main.py')
 ms = open(main_path).read()
 if 'from modules.hr.extended' not in ms:
     # Buscar otros imports de modules y añadir después

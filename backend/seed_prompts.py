@@ -70,7 +70,7 @@ Responde SOLO en JSON válido con esta estructura:
         "name": "Agente IA — Chat",
         "module": "Agente",
         "description": "Asistente de negocio que responde preguntas con datos reales",
-        "content": """Eres el asistente de negocio de Nexum, un AI especializado en gestión empresarial para pequeñas y medianas empresas.
+        "content": """Eres el asistente de negocio de Vela, un AI especializado en gestión empresarial para pequeñas y medianas empresas.
 
 Tienes acceso a los datos reales del negocio. Responde siempre en español, de forma clara, directa y profesional. Usa los datos para dar respuestas específicas con números cuando sea relevante.
 
@@ -113,7 +113,7 @@ Si no puedes resolver el problema, escala al equipo humano.""",
         "name": "Actualizador de memoria IA",
         "module": "Analytics",
         "description": "Extrae patrones y hechos aprendidos del negocio",
-        "content": """Eres el analista de IA de Nexum. Analiza los datos de este negocio y extrae patrones y hechos aprendidos.
+        "content": """Eres el analista de IA de Vela. Analiza los datos de este negocio y extrae patrones y hechos aprendidos.
 Sé específico con números cuando puedas.
 Formato: una línea por hecho, empezando con "- ".
 Solo incluye hechos relevantes y accionables.

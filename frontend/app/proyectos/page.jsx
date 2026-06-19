@@ -7,7 +7,7 @@ import VeraDrawer from '@/components/ui/VeraDrawer'
 import { Skeleton, EmptyState, HeaderActions } from '@/components/ui/primitives'
 
 import { API_BASE as API } from '@/lib/api'
-const VERA_BLUE = '#0071E3'
+const VERA_BLUE = '#4F46E5'
 
 // ─────────────────────────────────────────────────────────
 // CONFIGS
@@ -21,8 +21,8 @@ const STATUS_CFG = {
 
 const TASK_STATUS = {
   todo:        { label: 'Por hacer',   color: '#6b7280', bg: '#f3f4f6' },
-  in_progress: { label: 'En progreso', color: '#0071E3', bg: 'rgba(0,113,227,.1)' },
-  review:      { label: 'En revisión', color: '#7c3aed', bg: 'rgba(124,58,237,.1)' },
+  in_progress: { label: 'En progreso', color: '#4F46E5', bg: 'rgba(79,70,229,.1)' },
+  review:      { label: 'En revisión', color: '#4F46E5', bg: 'rgba(79,70,229,.1)' },
   done:        { label: 'Hecho',       color: '#059669', bg: 'rgba(5,150,105,.1)' },
 }
 
@@ -54,7 +54,7 @@ function healthColor(score) {
   return { color: '#dc2626', bg: 'rgba(220,38,38,.1)', label: 'Crítico' }
 }
 function avatarColor(name) {
-  const colors = ['#0071E3', '#7c3aed', '#059669', '#dc2626', '#d97706', '#0EA5E9']
+  const colors = ['#4F46E5', '#4F46E5', '#059669', '#dc2626', '#d97706', '#0EA5E9']
   let hash = 0
   for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash)
   return colors[Math.abs(hash) % colors.length]
@@ -120,7 +120,7 @@ function Tab({ active, onClick, label, badge }) {
       {badge != null && badge > 0 && (
         <span style={{
           fontSize: 10, padding: '1px 5px', borderRadius: 999,
-          background: active ? 'rgba(0,113,227,.12)' : 'rgba(0,0,0,.08)',
+          background: active ? 'rgba(79,70,229,.12)' : 'rgba(0,0,0,.08)',
           color: active ? VERA_BLUE : T.text3,
           fontVariantNumeric: 'tabular-nums', minWidth: 16, textAlign: 'center',
         }}>{badge}</span>
@@ -724,7 +724,7 @@ function CalendarioTab({ projects }) {
                 minHeight: 88, padding: 6,
                 borderRight: `.5px solid ${T.hairline}`,
                 borderBottom: `.5px solid ${T.hairline}`,
-                background: isToday ? 'rgba(0,113,227,.04)' : 'transparent',
+                background: isToday ? 'rgba(79,70,229,.04)' : 'transparent',
               }}>
                 {d && (
                   <div style={{
@@ -861,9 +861,9 @@ function ProjectDrawer({ project, onClose, token, employees }) {
               {/* Análisis IA */}
               {(p.last_ai_analysis || analysis) && (
                 <div style={{
-                  background: 'linear-gradient(135deg, rgba(0,113,227,.04), rgba(124,58,237,.04))',
+                  background: 'linear-gradient(135deg, rgba(79,70,229,.04), rgba(79,70,229,.04))',
                   borderRadius: 12, padding: 14,
-                  border: '.5px solid rgba(0,113,227,.15)',
+                  border: '.5px solid rgba(79,70,229,.15)',
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -973,7 +973,7 @@ export default function ProjectsPage() {
   }
 
   useEffect(() => {
-    const t = typeof window !== 'undefined' ? localStorage.getItem('nexum_token') : null
+    const t = typeof window !== 'undefined' ? localStorage.getItem('vela_token') : null
     if (!t) { router.push('/login'); return }
     setToken(t)
     loadAll(t)

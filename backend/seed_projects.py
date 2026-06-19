@@ -8,7 +8,7 @@ import random
 import json
 
 random.seed(42)
-DB = '/Users/eduardofuentes/Desktop/vortu/backend/nexum.db'
+DB = '/Users/eduardofuentes/Desktop/vela/backend/vela.db'
 COMPANY_ID = 1
 
 conn = sqlite3.connect(DB)
@@ -57,7 +57,7 @@ PROJECTS = [
         "budget": 25000,
         "health_score": 88,
         "completion_percentage": 35,
-        "last_ai_analysis": "Excelente arranque. Los copies aprobados están alineados con el tono Vortu. Próximo riesgo: bottleneck en diseño de assets.",
+        "last_ai_analysis": "Excelente arranque. Los copies aprobados están alineados con el tono Vela. Próximo riesgo: bottleneck en diseño de assets.",
         "priority_dept": "marketing",
     },
     {
@@ -113,8 +113,8 @@ PROJECTS = [
         "priority_dept": "ventas",
     },
     {
-        "name": "Migración ERP a Vortu",
-        "description": "Migración completa de Holded a Vortu: facturación, contabilidad, CRM, RRHH, integración con TPV de tienda.",
+        "name": "Migración ERP a Vela",
+        "description": "Migración completa de Holded a Vela: facturación, contabilidad, CRM, RRHH, integración con TPV de tienda.",
         "client_name": "Interno",
         "status": "completed",
         "start_date": today - timedelta(days=120),
@@ -190,7 +190,7 @@ TASK_TEMPLATES = {
         ("Contratación 3 vendedores", "Selección + onboarding", "todo", "urgent", 20),
         ("Stock inicial tienda", "Reparto desde almacén central", "todo", "high", 16),
         ("Plan marketing inauguración", "Evento, prensa, influencers", "todo", "high", 24),
-        ("Setup TPV + Vortu integración", "Hardware + software", "todo", "high", 8),
+        ("Setup TPV + Vela integración", "Hardware + software", "todo", "high", 8),
     ],
     "Colección Primavera 2026": [
         ("Investigación tendencias SS26", "Trend reports + competidores", "done", "medium", 16),
@@ -214,9 +214,9 @@ TASK_TEMPLATES = {
         ("Spec técnica app móvil", "Documentar features y flows", "todo", "medium", 16),
         ("Diseño visual programa", "Material gráfico + UI app", "todo", "low", 20),
     ],
-    "Migración ERP a Vortu": [
+    "Migración ERP a Vela": [
         ("Export datos Holded", "Exportar facturas, clientes, productos", "done", "high", 8),
-        ("Import a Vortu", "Importación con mapeo de campos", "done", "high", 12),
+        ("Import a Vela", "Importación con mapeo de campos", "done", "high", 12),
         ("Validación integridad datos", "QA exhaustivo de datos migrados", "done", "high", 16),
         ("Formación equipo", "4 sesiones de 2h al equipo", "done", "medium", 8),
         ("Cierre cuenta Holded", "Cancelación servicio antiguo", "done", "low", 2),

@@ -1,5 +1,5 @@
 """
-Nexum Prospector — Analisis IA de leads con Claude.
+Vela Prospector — Analisis IA de leads con Claude.
 Puntua cada lead del 1-10 y detecta el mejor canal de contacto.
 """
 import json
@@ -53,15 +53,15 @@ def _analyze_batch(leads: list, search_prompt: str) -> list:
         "descripcion": (l.get("descripcion") or "")[:100],
     } for i, l in enumerate(leads)], ensure_ascii=False, indent=2)
     
-    prompt = f"""Eres el analista de ventas de Nexum Solutions, una plataforma SaaS de gestion empresarial con IA para pymes españolas.
+    prompt = f"""Eres el analista de ventas de Vela, una plataforma SaaS de gestion empresarial con IA para pymes españolas.
 
 CONTEXTO DE BUSQUEDA: "{search_prompt}"
 
-Nexum Vortu ayuda a pymes españolas con: contabilidad, finanzas, RRHH, proyectos, clientes, ventas, marketing IA.
+Vela Vela ayuda a pymes españolas con: contabilidad, finanzas, RRHH, proyectos, clientes, ventas, marketing IA.
 Precio: desde 9 EUR/mes. Target ideal: pymes de 2-20 empleados que ya tienen cierta actividad digital.
 
 Analiza estos leads y para cada uno determina:
-1. Score de relevancia 1-10 (10 = cliente ideal para Vortu)
+1. Score de relevancia 1-10 (10 = cliente ideal para Vela)
 2. Razon principal del score
 3. Canal de contacto recomendado
 4. Si merece contacto directo
@@ -69,7 +69,7 @@ Analiza estos leads y para cada uno determina:
 Criterios de score alto:
 - Negocio activo con reviews y rating
 - Tiene web o presencia digital (mas probable que paguen SaaS)
-- Categoria relacionada con necesidades que Vortu resuelve
+- Categoria relacionada con necesidades que Vela resuelve
 - Tamaño aparente de pyme (no multinacional ni microempresa sin potencial)
 
 LEADS A ANALIZAR:

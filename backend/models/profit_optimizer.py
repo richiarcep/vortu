@@ -24,7 +24,7 @@ class OptimizerProduct(Base):
     id               = Column(Integer, primary_key=True, index=True)
     company_id       = Column(Integer, nullable=False, index=True)
     line_id          = Column(Integer, ForeignKey("profit_optimizer_lines.id"), nullable=False)
-    vortu_product_id = Column(Integer, nullable=True)
+    vela_product_id = Column(Integer, nullable=True)
     name             = Column(String(100), nullable=False)
     selling_price    = Column(Float, nullable=False)
     labour_cost_m3   = Column(Float, nullable=False, default=0.0)

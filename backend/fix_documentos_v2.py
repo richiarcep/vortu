@@ -5,7 +5,7 @@ Fix frontend documentos: rediseñar modal aprobación con 2 destinos
 """
 import os
 
-p = os.path.expanduser('~/Desktop/vortu/frontend/app/documentos/page.jsx')
+p = os.path.expanduser('~/Desktop/vela/frontend/app/documentos/page.jsx')
 s = open(p).read()
 
 # REEMPLAZAR todo el componente ApprovalModal con la nueva versión

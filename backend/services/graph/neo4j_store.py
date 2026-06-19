@@ -1,5 +1,5 @@
 """
-Integración Neo4j para Vortu.
+Integración Neo4j para Vela.
 Maneja nodos y relaciones entre entidades del negocio.
 """
 from neo4j import GraphDatabase
@@ -22,7 +22,7 @@ class Neo4jStore:
                 uri,
                 auth=(
                     getattr(settings, 'NEO4J_USER', 'neo4j'),
-                    getattr(settings, 'NEO4J_PASSWORD', 'nexum2026')
+                    getattr(settings, 'NEO4J_PASSWORD', '')
                 )
             )
         return self._driver

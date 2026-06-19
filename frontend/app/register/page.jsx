@@ -62,7 +62,7 @@ export default function RegisterPage() {
         router.push('/login')
         return
       }
-      localStorage.setItem('nexum_token', loginData.access_token)
+      localStorage.setItem('vela_token', loginData.access_token)
       router.push('/onboarding')
     } catch {
       setError('Error de conexión. Verifica que el servidor esté activo.')
@@ -74,22 +74,22 @@ export default function RegisterPage() {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&family=DM+Serif+Display:ital@0;1&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'DM Sans', system-ui, sans-serif; }
+        body { font-family: 'Inter', system-ui, sans-serif; }
 
         .register-root {
           min-height: 100dvh;
           display: flex;
           background: ${theme === 'dark' ? T.bg : '#f4f6fb'};
-          font-family: 'DM Sans', system-ui, sans-serif;
+          font-family: 'Inter', system-ui, sans-serif;
         }
 
         /* ── Left panel ── */
         .left-panel {
           width: 520px;
           flex-shrink: 0;
-          background: #0B1426;
+          background: #0B0D2B;
           display: flex;
           flex-direction: column;
           padding: 48px;
@@ -101,8 +101,8 @@ export default function RegisterPage() {
           position: absolute;
           inset: 0;
           background:
-            radial-gradient(ellipse 60% 50% at 10% 20%, rgba(0,180,216,0.12) 0%, transparent 60%),
-            radial-gradient(ellipse 50% 60% at 90% 80%, rgba(37,99,235,0.15) 0%, transparent 60%);
+            radial-gradient(ellipse 60% 50% at 10% 20%, rgba(79,70,229,0.12) 0%, transparent 60%),
+            radial-gradient(ellipse 50% 60% at 90% 80%, rgba(79,70,229,0.15) 0%, transparent 60%);
           pointer-events: none;
         }
         .left-panel::after {
@@ -117,24 +117,24 @@ export default function RegisterPage() {
         }
         .left-content { position: relative; z-index: 1; flex: 1; display: flex; flex-direction: column; }
 
-        .vortu-logo { display: flex; align-items: center; gap: 14px; margin-bottom: 64px; }
-        .vortu-icon {
+        .vela-logo { display: flex; align-items: center; gap: 14px; margin-bottom: 64px; }
+        .vela-icon {
           width: 48px; height: 48px; border-radius: 12px;
-          background: linear-gradient(135deg, #00B4D8, #2563eb);
+          background: linear-gradient(135deg, #4F46E5, #6366F1);
           display: flex; align-items: center; justify-content: center;
-          flex-shrink: 0; box-shadow: 0 8px 24px rgba(0,180,216,0.3);
+          flex-shrink: 0; box-shadow: 0 8px 24px rgba(79,70,229,0.3);
         }
-        .vortu-name { font-size: 24px; font-weight: 800; color: white; letter-spacing: -0.6px; line-height: 1; }
-        .vortu-sub  { font-size: 11px; color: rgba(255,255,255,0.35); letter-spacing: 0.08em; text-transform: uppercase; margin-top: 3px; }
+        .vela-name { font-size: 24px; font-weight: 800; color: white; letter-spacing: -0.6px; line-height: 1; }
+        .vela-sub  { font-size: 11px; color: rgba(255,255,255,0.35); letter-spacing: 0.08em; text-transform: uppercase; margin-top: 3px; }
 
         .hero-headline {
-          font-family: 'DM Serif Display', serif;
+          font-family: 'Inter', system-ui;
           font-size: 38px; color: white; line-height: 1.15;
           letter-spacing: -0.5px; margin-bottom: 20px;
         }
         .hero-headline em {
           font-style: italic;
-          background: linear-gradient(90deg, #00B4D8, #60a5fa);
+          background: linear-gradient(90deg, #4F46E5, #A5B1FF);
           -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
         }
         .hero-desc { font-size: 14px; color: rgba(255,255,255,0.5); line-height: 1.7; max-width: 340px; margin-bottom: 40px; }
@@ -143,21 +143,21 @@ export default function RegisterPage() {
         .step-item { display: flex; align-items: flex-start; gap: 14px; }
         .step-num {
           width: 28px; height: 28px; border-radius: 999px;
-          background: rgba(0,180,216,0.2); border: 1px solid rgba(0,180,216,0.4);
+          background: rgba(79,70,229,0.2); border: 1px solid rgba(79,70,229,0.4);
           display: flex; align-items: center; justify-content: center;
-          font-size: 12px; font-weight: 700; color: #00B4D8; flex-shrink: 0; margin-top: 1px;
+          font-size: 12px; font-weight: 700; color: #4F46E5; flex-shrink: 0; margin-top: 1px;
         }
         .step-text { font-size: 13px; color: rgba(255,255,255,0.55); line-height: 1.5; }
         .step-text strong { color: rgba(255,255,255,0.85); font-weight: 600; }
 
-        .nexum-footer {
+        .vela-footer {
           margin-top: 48px; padding-top: 24px;
           border-top: 1px solid rgba(255,255,255,0.06);
           display: flex; align-items: center; gap: 10px;
         }
-        .nexum-n { width: 28px; height: 28px; }
-        .nexum-label { font-size: 11px; color: rgba(255,255,255,0.25); letter-spacing: 0.06em; }
-        .nexum-label strong { color: rgba(255,255,255,0.45); font-weight: 600; }
+        .vela-n { width: 28px; height: 28px; }
+        .vela-label { font-size: 11px; color: rgba(255,255,255,0.25); letter-spacing: 0.06em; }
+        .vela-label strong { color: rgba(255,255,255,0.45); font-weight: 600; }
 
         /* ── Right panel ── */
         .right-panel {
@@ -192,10 +192,10 @@ export default function RegisterPage() {
         .field-input {
           width: 100%; padding: 12px 14px; border-radius: 10px;
           border: 1.5px solid ${theme === 'dark' ? T.hairline : '#e5e9f0'}; background: ${theme === 'dark' ? T.card : 'white'};
-          font-size: 14px; color: ${T.text}; font-family: 'DM Sans', system-ui;
+          font-size: 14px; color: ${T.text}; font-family: 'Inter', system-ui;
           outline: none; transition: border-color 0.15s, box-shadow 0.15s;
         }
-        .field-input:focus { border-color: ${theme === 'dark' ? T.blue : '#0B1426'}; box-shadow: 0 0 0 3px ${theme === 'dark' ? 'rgba(10,132,255,0.18)' : 'rgba(11,20,38,0.06)'}; }
+        .field-input:focus { border-color: ${theme === 'dark' ? T.blue : '#0B0D2B'}; box-shadow: 0 0 0 3px ${theme === 'dark' ? 'rgba(10,132,255,0.18)' : 'rgba(11,13,43,0.06)'}; }
         .field-input::placeholder { color: ${T.text4}; }
 
         .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
@@ -222,14 +222,14 @@ export default function RegisterPage() {
         }
         .submit-btn {
           width: 100%; padding: 13px; border-radius: 10px; border: none;
-          background: ${theme === 'dark' ? T.blue : '#0B1426'}; color: white; font-size: 14px; font-weight: 700;
-          cursor: pointer; font-family: 'DM Sans', system-ui; letter-spacing: -0.2px;
+          background: ${theme === 'dark' ? T.blue : '#0B0D2B'}; color: white; font-size: 14px; font-weight: 700;
+          cursor: pointer; font-family: 'Inter', system-ui; letter-spacing: -0.2px;
           display: flex; align-items: center; justify-content: center; gap: 8px;
           transition: all 0.2s; margin-bottom: 16px;
         }
         .submit-btn:hover:not(:disabled) {
-          background: ${theme === 'dark' ? '#3395FF' : '#162038'}; transform: translateY(-1px);
-          box-shadow: 0 8px 24px rgba(11,20,38,0.25);
+          background: ${theme === 'dark' ? '#3395FF' : '#161A52'}; transform: translateY(-1px);
+          box-shadow: 0 8px 24px rgba(11,13,43,0.25);
         }
         .submit-btn:disabled { opacity: 0.6; cursor: not-allowed; }
         .spinner {
@@ -241,8 +241,8 @@ export default function RegisterPage() {
 
         .login-row { text-align: center; font-size: 13px; color: ${T.text3}; }
         .login-row a {
-          color: ${theme === 'dark' ? T.text : '#0B1426'}; font-weight: 700; text-decoration: none;
-          border-bottom: 1px solid ${theme === 'dark' ? T.text : '#0B1426'}; padding-bottom: 1px; transition: opacity 0.15s;
+          color: ${theme === 'dark' ? T.text : '#0B0D2B'}; font-weight: 700; text-decoration: none;
+          border-bottom: 1px solid ${theme === 'dark' ? T.text : '#0B0D2B'}; padding-bottom: 1px; transition: opacity 0.15s;
         }
         .login-row a:hover { opacity: 0.6; }
 
@@ -264,8 +264,8 @@ export default function RegisterPage() {
         <div className="left-panel">
           <div className="left-content">
 
-            <div className="vortu-logo">
-              <div className="vortu-icon">
+            <div className="vela-logo">
+              <div className="vela-icon">
                 <svg width="26" height="22" viewBox="0 0 26 22" fill="none">
                   <rect x="1"  y="12" width="6" height="10" rx="1.5" fill="rgba(255,255,255,0.6)"/>
                   <rect x="10" y="6"  width="6" height="16" rx="1.5" fill="rgba(255,255,255,0.8)"/>
@@ -273,8 +273,7 @@ export default function RegisterPage() {
                 </svg>
               </div>
               <div>
-                <div className="vortu-name">Vortu</div>
-                <div className="vortu-sub">by Nexum Solutions</div>
+                <div className="vela-name">Vela</div>
               </div>
             </div>
 
@@ -300,8 +299,8 @@ export default function RegisterPage() {
               ))}
             </div>
 
-            <div className="nexum-footer">
-              <svg className="nexum-n" viewBox="0 0 28 28" fill="none">
+            <div className="vela-footer">
+              <svg className="vela-n" viewBox="0 0 28 28" fill="none">
                 <circle cx="5"  cy="5"  r="3" stroke="url(#ng)" strokeWidth="1.5"/>
                 <circle cx="23" cy="5"  r="3" stroke="url(#ng)" strokeWidth="1.5"/>
                 <circle cx="5"  cy="23" r="3" stroke="url(#ng)" strokeWidth="1.5"/>
@@ -311,12 +310,12 @@ export default function RegisterPage() {
                 <line x1="5"  y1="5"  x2="23" y2="23" stroke="url(#ng)" strokeWidth="1.5"/>
                 <defs>
                   <linearGradient id="ng" x1="5" y1="5" x2="23" y2="23" gradientUnits="userSpaceOnUse">
-                    <stop stopColor="#00B4D8"/>
-                    <stop offset="1" stopColor="#0B1426"/>
+                    <stop stopColor="#4F46E5"/>
+                    <stop offset="1" stopColor="#0B0D2B"/>
                   </linearGradient>
                 </defs>
               </svg>
-              <div className="nexum-label">Un producto de <strong>Nexum Solutions</strong> · © 2026</div>
+              <div className="vela-label">Un producto de <strong>Vela</strong> · © 2026</div>
             </div>
 
           </div>
@@ -406,7 +405,7 @@ export default function RegisterPage() {
               )}
 
               <p className="terms">
-                Al registrarte aceptas los <a href="#" style={{color:theme==='dark'?T.text:'#0B1426',fontWeight:600}}>Términos de servicio</a> y la <a href="#" style={{color:theme==='dark'?T.text:'#0B1426',fontWeight:600}}>Política de privacidad</a> de Vortu.
+                Al registrarte aceptas los <a href="#" style={{color:theme==='dark'?T.text:'#0B0D2B',fontWeight:600}}>Términos de servicio</a> y la <a href="#" style={{color:theme==='dark'?T.text:'#0B0D2B',fontWeight:600}}>Política de privacidad</a> de Vela.
               </p>
 
               <button className="submit-btn" type="submit" disabled={loading}>
@@ -424,7 +423,7 @@ export default function RegisterPage() {
             </div>
 
             <div className="form-footer">
-              Vortu by Nexum Solutions · Todos los derechos reservados · 2026
+              Vela · Todos los derechos reservados · 2026
             </div>
 
           </div>

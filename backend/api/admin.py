@@ -58,7 +58,7 @@ def get_overview(
     db: Session = Depends(get_db),
     admin: User = Depends(get_admin_user)
 ):
-    """Stats globales de Vortu para el backoffice."""
+    """Stats globales de Vela para el backoffice."""
     total_companies = db.query(func.count(Company.id)).scalar() or 0
     total_users = db.query(func.count(User.id)).scalar() or 0
     active_users = db.query(func.count(User.id)).filter(User.is_active == True).scalar() or 0
@@ -268,7 +268,7 @@ def update_company_plan(
     return {"message": f"Plan actualizado a {body.plan_id}", "company_id": company_id}
 
 # ──────────────────────────────────────────────────────────────────
-# ★ Vera Plus — toggle de companies.plan (independiente de subscriptions Vortu)
+# ★ Vera Plus — toggle de companies.plan (independiente de subscriptions Vela)
 # ──────────────────────────────────────────────────────────────────
 class VeraPlanUpdate(BaseModel):
     vera_plan: str  # 'base' | 'plus'
@@ -283,7 +283,7 @@ def update_company_vera_plan(
 ):
     """
     Activa o desactiva Vera Plus para una empresa.
-    Independiente de la subscription Vortu (no toca subscriptions.plan_id).
+    Independiente de la subscription Vela (no toca subscriptions.plan_id).
     Sólo cambia companies.plan entre 'base' y 'plus'.
     """
     if body.vera_plan not in ("base", "plus"):
@@ -303,7 +303,7 @@ def update_company_vera_plan(
     # Audit log (si la tabla existe)
     try:
         db.execute(text("""
-            INSERT INTO vera_nexum_audit (
+            INSERT INTO vera_network_audit (
                 user_id, user_email, endpoint, action, question,
                 response_preview, model_used
             ) VALUES (
@@ -475,7 +475,7 @@ Respondes SOLO en JSON válido sin markdown.""",
         "name": "Agente IA — Chat",
         "module": "Agente",
         "description": "Prompt del agente de chat que responde preguntas sobre el negocio",
-        "content": """Eres el agente IA de Vortu para esta empresa. Tienes acceso completo a todos los datos del negocio.
+        "content": """Eres el agente IA de Vela para esta empresa. Tienes acceso completo a todos los datos del negocio.
 Responde de forma concisa y accionable. Usa datos reales cuando estén disponibles.
 Si no tienes datos suficientes, dilo claramente.""",
         "variables": ["company_context", "historial", "mensaje"],
@@ -527,7 +527,7 @@ Responde en JSON.""",
         "name": "Actualizador de memoria IA",
         "module": "Analytics",
         "description": "Extrae patrones y hechos aprendidos del negocio para la memoria IA",
-        "content": """Eres el analista de IA de Vortu. Analiza los datos de este negocio y extrae patrones y hechos aprendidos.
+        "content": """Eres el analista de IA de Vela. Analiza los datos de este negocio y extrae patrones y hechos aprendidos.
 Sé específico con números cuando puedas.
 Formato: una línea por hecho, empezando con "- ".
 Solo incluye hechos relevantes y accionables.
@@ -845,7 +845,7 @@ def get_ai_insights(
     ]
 
     summary = {
-        "plataforma": "Nexum — SaaS de gestión empresarial con IA para pymes españolas",
+        "plataforma": "Vela — SaaS de gestión empresarial con IA para pymes españolas",
         "empresas_registradas": total_companies,
         "usuarios_totales": total_users,
         "suscripciones_activas": active_subs,
@@ -856,7 +856,7 @@ def get_ai_insights(
         "datos_empresas": snap_data,
     }
 
-    prompt = f"""Eres el analista de negocio de Nexum Solutions, una plataforma SaaS de gestión empresarial con IA para pymes españolas.
+    prompt = f"""Eres el analista de negocio de Vela, una plataforma SaaS de gestión empresarial con IA para pymes españolas.
 
 Analiza estos datos reales de la plataforma y devuelve SOLO un JSON válido con esta estructura exacta:
 {{
@@ -867,7 +867,7 @@ Analiza estos datos reales de la plataforma y devuelve SOLO un JSON válido con 
   "riesgos": [
     {{ "titulo": "...", "descripcion": "...", "urgencia": "alta|media|baja" }}
   ],
-  "recomendacion_principal": "La acción más importante que debería tomar Nexum ahora mismo"
+  "recomendacion_principal": "La acción más importante que debería tomar Vela ahora mismo"
 }}
 
 DATOS REALES DE LA PLATAFORMA:

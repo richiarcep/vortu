@@ -62,7 +62,7 @@ function ProfileBtn({ user, router }) {
             >Configuración</button>
           </div>
           <div style={{ padding: '6px 8px 10px', borderTop: `.5px solid ${T.hairline}` }}>
-            <button onClick={() => { localStorage.removeItem('nexum_token'); router.push('/login') }} style={{
+            <button onClick={() => { localStorage.removeItem('vela_token'); router.push('/login') }} style={{
               width: '100%', padding: '8px',
               background: T.redSoft, border: 'none', borderRadius: 8,
               color: T.red, fontSize: 13, fontWeight: 500,

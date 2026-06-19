@@ -14,7 +14,7 @@ export default function TopBar({ user }) {
       }}
     >
       <div>
-        <strong>Vortu</strong>
+        <strong>Vela</strong>
         <span style={{ color: '#64748b', marginLeft: 8 }}>
           Business Platform
         </span>

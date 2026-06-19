@@ -1,5 +1,5 @@
 """
-Nexum Prospector — Generador de mensajes personalizados por plataforma.
+Vela Prospector — Generador de mensajes personalizados por plataforma.
 Claude genera el mensaje perfecto para cada lead segun su canal.
 """
 import json
@@ -41,8 +41,8 @@ def generate_message(lead: dict) -> str:
     canal = lead.get("canal_recomendado", "google_maps")
     template = TEMPLATES.get(canal, TEMPLATES["google_maps"])
     
-    prompt = f"""Eres el director comercial de Nexum Solutions. 
-Genera un mensaje de prospección para contactar a este negocio sobre Vortu, 
+    prompt = f"""Eres el director comercial de Vela. 
+Genera un mensaje de prospección para contactar a este negocio sobre Vela, 
 nuestra plataforma de gestion empresarial con IA para pymes españolas.
 
 LEAD:
@@ -58,11 +58,11 @@ MENSAJE:
 - Longitud: {template["longitud"]}
 - Menciona el nombre del negocio
 - Referencia algo especifico de su negocio (tipo, ciudad, actividad)
-- Propuesta de valor clara de Vortu (ahorra tiempo, gestiona todo desde un sitio, IA incluida)
+- Propuesta de valor clara de Vela (ahorra tiempo, gestiona todo desde un sitio, IA incluida)
 - CTA claro: reunion, llamada o demo gratuita
 - NO menciones precios
 - NO uses palabras como "revolucionario" o "innovador"
-- Firma como Eduardo de Nexum
+- Firma como Eduardo de Vela
 
 Devuelve SOLO el mensaje, sin explicaciones ni comillas."""
 
@@ -75,7 +75,7 @@ Devuelve SOLO el mensaje, sin explicaciones ni comillas."""
         return response.content[0].text.strip()
     except Exception as e:
         print(f"Error generando mensaje: {e}")
-        return f"Hola {lead.get('nombre', '')}, me gustaría hablar contigo sobre cómo Vortu puede ayudar a tu negocio. ¿Tienes 15 minutos esta semana? Eduardo de Nexum."
+        return f"Hola {lead.get('nombre', '')}, me gustaría hablar contigo sobre cómo Vela puede ayudar a tu negocio. ¿Tienes 15 minutos esta semana? Eduardo de Vela."
 
 
 def generate_messages_batch(leads: list) -> list:

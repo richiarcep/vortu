@@ -8,7 +8,7 @@ from reportlab.platypus import Paragraph
 from reportlab.lib.enums import TA_CENTER, TA_LEFT
 from sqlalchemy.orm import Session
 from models.sales import Product
-from modules.sales.qr_generator import generate_nexum_qr_svg, generate_nexum_code
+from modules.sales.qr_generator import generate_vela_qr_svg, generate_vela_code
 
 
 NAVY  = colors.HexColor("#0B1426")
@@ -54,7 +54,7 @@ def generate_product_label_pdf(
         "brand":    S("brand",    fontName="Helvetica",      fontSize=5,  textColor=MUTED, leading=7),
     }
 
-    nexum_code   = product.nexum_code or generate_nexum_code(product.company_id, product.id)
+    vela_code   = product.vela_code or generate_vela_code(product.company_id, product.id)
     price_no_iva = product.sale_price
     price_w_iva  = round(price_no_iva * (1 + product.iva_rate / 100), 2)
     margin_pct   = 0.0
@@ -79,9 +79,9 @@ def generate_product_label_pdf(
         # Background
         drawing.add(Rect(0, 0, qr_size, qr_size, fillColor=colors.HexColor("#111827"), strokeColor=None))
 
-        # Generate a simplified color grid from the nexum code
+        # Generate a simplified color grid from the vela code
         import hashlib
-        hash_bytes = hashlib.sha256(nexum_code.encode()).digest()
+        hash_bytes = hashlib.sha256(vela_code.encode()).digest()
         color_palette = [
             colors.HexColor("#00B4D8"),  # Cyan
             colors.HexColor("#E63946"),  # Magenta
@@ -120,10 +120,10 @@ def generate_product_label_pdf(
                     rx=w * 0.2,
                 ))
 
-        # Nexum code text below QR
+        # Vela code text below QR
         drawing.add(String(
             qr_size / 2, -6,
-            nexum_code,
+            vela_code,
             fontName="Courier-Bold",
             fontSize=5,
             fillColor=colors.HexColor("#00B4D8"),
@@ -134,11 +134,11 @@ def generate_product_label_pdf(
         info_w = PAGE_W - 3*mm - qr_size - 2*mm - 3*mm
 
         name_para  = Paragraph(product.name[:30], ST["name"])
-        code_para  = Paragraph(nexum_code, ST["code"])
+        code_para  = Paragraph(vela_code, ST["code"])
         price_para = Paragraph(f"€{price_w_iva:.2f}", ST["price"])
         sub_para   = Paragraph(f"IVA {product.iva_rate:.0f}% incl. · s/IVA €{price_no_iva:.2f}", ST["sub"])
         cat_para   = Paragraph(product.category or "", ST["cat"])
-        brand_para = Paragraph("Nexum", ST["brand"])
+        brand_para = Paragraph("Vela", ST["brand"])
 
         from reportlab.platypus import KeepInFrame
         info_frame = KeepInFrame(

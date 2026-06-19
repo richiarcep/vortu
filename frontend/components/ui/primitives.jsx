@@ -3,7 +3,7 @@ import { useId, useState, useRef, useEffect } from 'react'
 import { useT, I } from './tokens'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-const AVATAR_COLORS = ['#0071E3', '#7c3aed', '#059669', '#dc2626', '#d97706', '#0EA5E9', '#8B5CF6']
+const AVATAR_COLORS = ['#4F46E5', '#4F46E5', '#059669', '#dc2626', '#d97706', '#0EA5E9', '#6366F1']
 export function avatarColor(name = '') {
   let hash = 0
   for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash)
@@ -114,7 +114,7 @@ export function PillTabs({ items, active, onChange }) {
               padding: '6px 14px',
               borderRadius: 999,
               border: `.5px solid ${isActive ? T.blue : T.hairline}`,
-              background: isActive ? 'rgba(0,113,227,.08)' : T.card,
+              background: isActive ? 'rgba(79,70,229,.08)' : T.card,
               color: isActive ? T.blue : T.text2,
               fontSize: 13,
               fontWeight: isActive ? 500 : 400,
@@ -183,7 +183,7 @@ export function Tab({ active, onClick, label, badge }) {
       {badge != null && badge > 0 && (
         <span style={{
           fontSize: 10, padding: '1px 5px', borderRadius: 999,
-          background: active ? 'rgba(0,113,227,.12)' : 'rgba(0,0,0,.08)',
+          background: active ? 'rgba(79,70,229,.12)' : 'rgba(0,0,0,.08)',
           color: active ? T.blue : T.text3,
           fontVariantNumeric: 'tabular-nums', minWidth: 16, textAlign: 'center',
         }}>{badge}</span>
@@ -226,7 +226,7 @@ export function Badge({ children, variant = 'neutral' }) {
     success: { bg: T.greenSoft, color: T.green },
     warning: { bg: T.amberSoft, color: T.amber },
     danger: { bg: T.redSoft, color: T.red },
-    info: { bg: 'rgba(0,113,227,.08)', color: T.blue },
+    info: { bg: 'rgba(79,70,229,.08)', color: T.blue },
     neutral: { bg: T.sidebar, color: T.text2 },
   }
   const v = variants[variant]
@@ -411,8 +411,8 @@ export function VeraPill({ onClick, label = 'Vera' }) {
     <button onClick={onClick} aria-label="Abrir Vera" className="press" style={{
       display: 'inline-flex', alignItems: 'center', gap: 6,
       padding: '5px 12px', height: 32, borderRadius: 999,
-      background: 'rgba(0,113,227,.06)',
-      border: '.5px solid rgba(0,113,227,.18)',
+      background: 'rgba(79,70,229,.06)',
+      border: '.5px solid rgba(79,70,229,.18)',
       color: T.blue, fontSize: 12.5, fontWeight: 500,
       cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
     }}>
@@ -440,7 +440,7 @@ export function ProfileBtn({ user, router }) {
   useEffect(() => {
     if (user) { setU(user); return }
     try {
-      const t = localStorage.getItem('nexum_token')
+      const t = localStorage.getItem('vela_token')
       if (t) { const p = JSON.parse(atob(t.split('.')[1])); setU({ email: p.sub || '', name: p.name || p.sub || 'Usuario' }) }
     } catch {}
   }, [user])
@@ -455,7 +455,7 @@ export function ProfileBtn({ user, router }) {
       }}>
         <div style={{
           width: 28, height: 28, borderRadius: 999,
-          background: 'linear-gradient(135deg,#0071E3,#00B4D8)',
+          background: 'linear-gradient(135deg,#4F46E5,#A5B1FF)',
           color: '#fff', display: 'grid', placeItems: 'center',
           fontWeight: 600, fontSize: 11,
         }}>{ini}</div>
@@ -478,7 +478,7 @@ export function ProfileBtn({ user, router }) {
             }}>Configuración</button>
           </div>
           <div style={{ padding: '6px 8px 10px', borderTop: `.5px solid ${T.hairline}` }}>
-            <button onClick={() => { localStorage.removeItem('nexum_token'); router.push('/login') }} style={{
+            <button onClick={() => { localStorage.removeItem('vela_token'); router.push('/login') }} style={{
               width: '100%', padding: '8px', background: T.redSoft,
               border: 'none', borderRadius: 8, color: T.red,
               fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',

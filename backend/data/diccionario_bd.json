@@ -836,7 +836,7 @@
       ]
     },
     "companies": {
-      "descripcion": "Empresas registradas en Vortu — nodo central de toda la arquitectura",
+      "descripcion": "Empresas registradas en Vela — nodo central de toda la arquitectura",
       "modulo": "Core",
       "graph_node": "Company",
       "columnas": [
@@ -1405,7 +1405,7 @@
       ]
     },
     "prospector_leads": {
-      "descripcion": "Leads encontrados por el Nexum Prospector — scraping + análisis IA + mensajes personalizados",
+      "descripcion": "Leads encontrados por el Vela Prospector — scraping + análisis IA + mensajes personalizados",
       "modulo": "Backoffice / Prospector",
       "graph_node": null,
       "columnas": [
@@ -1580,7 +1580,7 @@
       ]
     },
     "prospector_searches": {
-      "descripcion": "Búsquedas realizadas por el Nexum Prospector con su estado y resultados",
+      "descripcion": "Búsquedas realizadas por el Vela Prospector con su estado y resultados",
       "modulo": "Backoffice / Prospector",
       "graph_node": null,
       "columnas": [
@@ -1888,7 +1888,7 @@
       ]
     },
     "users": {
-      "descripcion": "Usuarios de la plataforma Vortu — autenticación y roles",
+      "descripcion": "Usuarios de la plataforma Vela — autenticación y roles",
       "modulo": "Core",
       "graph_node": "User",
       "columnas": [
@@ -1937,7 +1937,7 @@
           "tipo": "BOOLEAN",
           "pk": false,
           "fk": null,
-          "descripcion": "Si es admin de Nexum — acceso al backoffice",
+          "descripcion": "Si es admin de Vela — acceso al backoffice",
           "graph_node_id": false
         },
         {

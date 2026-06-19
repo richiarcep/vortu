@@ -67,7 +67,7 @@ def get_product_stats(db: Session, product_id: int, company_id: int) -> dict:
         "product_id":      product.id,
         "name":            product.name,
         "category":        product.category,
-        "nexum_code":      product.nexum_code,
+        "vela_code":      product.vela_code,
         "barcode":         product.barcode,
         "sale_price":      product.sale_price,
         "cost_price":      product.cost_price,
@@ -135,7 +135,7 @@ def get_sales_dashboard(db: Session, company_id: int) -> dict:
                 "name":         product.name,
                 "units_sold":   stats["units"],
                 "revenue":      round(stats["revenue"], 2),
-                "nexum_code":   product.nexum_code,
+                "vela_code":   product.vela_code,
             })
 
     # Low stock alerts

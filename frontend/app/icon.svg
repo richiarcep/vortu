@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="vela-fav" x1="20" y1="8" x2="52" y2="50" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#6366F1"/>
+      <stop offset="100%" stop-color="#A5B1FF"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="#0B0D2B"/>
+  <g stroke="#A5B1FF" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="0.9">
+    <path d="M13 22 L24 13 L26 26 Z"/>
+  </g>
+  <g fill="#A5B1FF">
+    <circle cx="13" cy="22" r="1.8"/>
+    <circle cx="26" cy="26" r="1.8"/>
+    <path d="M24 9.8C24 11.976 25.024 13 27.2 13C25.024 13 24 14.024 24 16.2C24 14.024 22.976 13 20.8 13C22.976 13 24 11.976 24 9.8Z"/>
+  </g>
+  <g fill="url(#vela-fav)">
+    <path d="M35 11C31.5 22 29.5 33 30 44L52 44C47.5 31 42 20 35 11Z"/>
+    <path d="M22 47.5Q39 55 56 46.5Q47 54 34 54Q27 54 22 47.5Z"/>
+  </g>
+</svg>

@@ -28,7 +28,7 @@ def read_register_pdf(
     automatically in the accounting system.
 
     Works with:
-    - Official Nexum templates
+    - Official Vela templates
     - Any bank statement PDF
     - Any handwritten or typed register
     - Scanned receipts and invoices
@@ -77,12 +77,12 @@ CATEGORÍAS DE GASTO válidas: {categorias_gasto}
 - monto: número decimal positivo (sin símbolo de moneda)
 - referencia: número de factura o referencia si existe, null si no
 
-Si el documento es una plantilla Nexum, lee el QR y extrae el 
+Si el documento es una plantilla Vela, lee el QR y extrae el 
 document_id del encabezado.
 
 Devuelve ÚNICAMENTE un objeto JSON con esta estructura exacta:
 {{
-    "documento_nexum": true o false,
+    "documento_vela": true o false,
     "document_id": "NXM-..." o null,
     "company_id_qr": número o null,
     "periodo_detectado": "YYYY-MM" o null,
@@ -183,7 +183,7 @@ No incluyas explicaciones, solo el JSON."""
 
     return {
         "estado": "completado",
-        "documento_nexum": extracted_data.get("documento_nexum", False),
+        "documento_vela": extracted_data.get("documento_vela", False),
         "document_id": extracted_data.get("document_id"),
         "total_detectadas": extracted_data.get("total_transacciones", 0),
         "total_registradas": len(registered),
@@ -196,9 +196,9 @@ No incluyas explicaciones, solo el JSON."""
     }
 
 
-def validate_nexum_document(document_id: str, company_id: int) -> dict:
+def validate_vela_document(document_id: str, company_id: int) -> dict:
     """
-    Validates that a scanned Nexum document belongs to
+    Validates that a scanned Vela document belongs to
     the correct company and has not been tampered with.
     """
     import hashlib

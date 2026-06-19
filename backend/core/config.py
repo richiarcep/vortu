@@ -4,11 +4,11 @@ from functools import lru_cache
 
 # Placeholder values that must never reach a running app — they signal a
 # missing/un-configured environment and would silently weaken security.
-_INSECURE_SECRETS = {"change-this-in-production", "", "nexum2026"}
+_INSECURE_SECRETS = {"change-this-in-production", ""}
 
 
 class Settings(BaseSettings):
-    APP_NAME: str = "Vortu"
+    APP_NAME: str = "Vela"
     APP_VERSION: str = "1.0.0"
     # Secure-by-default: stack traces are NOT exposed unless explicitly enabled.
     DEBUG: bool = False

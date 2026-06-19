@@ -13,7 +13,7 @@ class Product(Base):
     description         = Column(Text, nullable=True)
     category            = Column(String(100), nullable=True)
     barcode             = Column(String(100), nullable=True, index=True)
-    nexum_code          = Column(String(20), nullable=True, unique=True, index=True)
+    vela_code          = Column(String(20), nullable=True, unique=True, index=True)
     sale_price          = Column(Float, nullable=False, default=0.0)
     cost_price          = Column(Float, nullable=True, default=0.0)
     iva_rate            = Column(Float, default=21.0)   # 0, 4, 10, 21

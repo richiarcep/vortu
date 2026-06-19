@@ -151,8 +151,8 @@ export default function VeraPanel({
           <div style={{
             width: 28, height: 28, borderRadius: 8,
             background: isPlus
-              ? 'linear-gradient(135deg,#003D8F,#0071E3)'
-              : 'linear-gradient(135deg,#0071E3,#00B4D8)',
+              ? 'linear-gradient(135deg,#3730A3,#4F46E5)'
+              : 'linear-gradient(135deg,#4F46E5,#A5B1FF)',
             color: '#fff', display: 'grid', placeItems: 'center',
             fontSize: 12, fontWeight: 600,
           }}>V</div>
@@ -169,7 +169,7 @@ export default function VeraPanel({
         </div>
         <span style={{
           fontSize: 10, fontWeight: 700, color: isPlus ? '#fff' : T.blue,
-          background: isPlus ? '#003D8F' : 'rgba(0,113,227,.08)',
+          background: isPlus ? '#3730A3' : 'rgba(79,70,229,.08)',
           padding: '3px 10px', borderRadius: 999, letterSpacing: 0.4,
         }}>
           {isPlus ? '★ PLUS' : 'BASE'}
@@ -184,7 +184,7 @@ export default function VeraPanel({
           fontSize: 11, color: '#92400e',
         }}>
           <strong>Modo básico</strong> · usando {activeModel || 'modelo básico'}.{' '}
-          <a href="/vera-plus" style={{ color: '#003D8F', fontWeight: 700, textDecoration: 'none' }}>
+          <a href="/vera-plus" style={{ color: '#3730A3', fontWeight: 700, textDecoration: 'none' }}>
             Quita el límite →
           </a>
         </div>
@@ -198,7 +198,7 @@ export default function VeraPanel({
           fontSize: 11, color: '#92400e',
         }}>
           Te acercas al límite diario ({status.usage_pct}%).{' '}
-          <a href="/vera-plus" style={{ color: '#003D8F', fontWeight: 700, textDecoration: 'none' }}>
+          <a href="/vera-plus" style={{ color: '#3730A3', fontWeight: 700, textDecoration: 'none' }}>
             Vera Plus →
           </a>
         </div>
@@ -242,7 +242,7 @@ export default function VeraPanel({
         }}>
           <div style={{
             fontSize: 10, fontWeight: 600,
-            color: isPlus ? '#003D8F' : T.blue,
+            color: isPlus ? '#3730A3' : T.blue,
             textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6,
           }}>
             {planLabel} responde
@@ -294,7 +294,7 @@ export default function VeraPanel({
           border: 'none',
           background: loading || !msg.trim()
             ? T.sidebar
-            : (isPlus ? '#003D8F' : T.text),
+            : (isPlus ? '#3730A3' : T.text),
           color: loading || !msg.trim() ? T.text4 : '#fff',
           fontWeight: 600,
           fontSize: 14,
@@ -307,7 +307,7 @@ export default function VeraPanel({
 
       <button onClick={() => router.push('/vera')} style={{
         background: 'none', border: 'none',
-        color: isPlus ? '#003D8F' : T.blue,
+        color: isPlus ? '#3730A3' : T.blue,
         fontSize: 12, fontWeight: 500,
         cursor: 'pointer', fontFamily: 'inherit',
         textAlign: 'center', width: '100%', marginTop: 12,

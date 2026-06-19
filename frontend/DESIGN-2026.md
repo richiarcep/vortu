@@ -1,7 +1,7 @@
-# Vortu — Reglas de Diseño & Arquitectura 2026
+# Vela — Reglas de Diseño & Arquitectura 2026
 
 Síntesis de investigación (deep-research: 6 ángulos, 28 fuentes, 24 claims verificados) +
-`ui-ux-pro-max` + `frontend-design`. Guía para llevar Vortu a calidad de producción 2026.
+`ui-ux-pro-max` + `frontend-design`. Guía para llevar Vela a calidad de producción 2026.
 
 ## 1. Accesibilidad — WCAG 2.2 AA (alta confianza)
 - Contraste texto ≥ 4.5:1; targets táctiles/click ≥ **24×24px**; el **foco nunca debe quedar tapado** por barras fijas (header/sidebar).

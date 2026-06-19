@@ -34,7 +34,7 @@ export default function VeraDrawer({
   const [token, setToken] = useState(tokenProp || null)
   useEffect(() => {
     if (!tokenProp && typeof window !== 'undefined') {
-      setToken(localStorage.getItem('nexum_token'))
+      setToken(localStorage.getItem('vela_token'))
     }
   }, [tokenProp])
 
@@ -75,7 +75,7 @@ export default function VeraDrawer({
   const isPlus = status?.plan === 'plus'
   const isDegraded = status?.degraded
   const veraName = isPlus ? 'Vera Plus' : 'Vera'
-  const headerColor = isPlus ? '#003D8F' : '#0071E3'
+  const headerColor = isPlus ? '#6366F1' : '#4F46E5'
   const activeModel = status?.model_active_now?.display_name || ''
 
   // Sugerencias finales (priorizar contextuales por kpi, después módulo, después default)
@@ -190,8 +190,8 @@ export default function VeraDrawer({
             <div style={{
               width: 36, height: 36, borderRadius: 10,
               background: isPlus
-                ? 'linear-gradient(135deg,#003D8F,#0071E3)'
-                : 'linear-gradient(135deg,#0071E3,#00B4D8)',
+                ? 'linear-gradient(135deg,#6366F1,#4F46E5)'
+                : 'linear-gradient(135deg,#4F46E5,#A5B1FF)',
               display: 'grid', placeItems: 'center', flexShrink: 0,
             }}>
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -217,7 +217,7 @@ export default function VeraDrawer({
             <span style={{
               fontSize: 10, fontWeight: 700,
               color: isPlus ? '#fff' : headerColor,
-              background: isPlus ? '#003D8F' : 'rgba(0,113,227,.1)',
+              background: isPlus ? '#6366F1' : 'rgba(79,70,229,.1)',
               padding: '3px 10px', borderRadius: 999, letterSpacing: 0.4,
             }}>
               {isPlus ? '★ PLUS' : 'BASE'}
@@ -238,7 +238,7 @@ export default function VeraDrawer({
             flexShrink: 0,
           }}>
             <strong>Modo básico</strong> · usando {activeModel}. {' '}
-            <a href="/vera-plus" style={{ color: '#003D8F', fontWeight: 700, textDecoration: 'none' }}>
+            <a href="/vera-plus" style={{ color: '#6366F1', fontWeight: 700, textDecoration: 'none' }}>
               Quitar el límite →
             </a>
           </div>
@@ -253,8 +253,8 @@ export default function VeraDrawer({
               {kpi && (
                 <div style={{
                   padding: '12px 14px', marginBottom: 16,
-                  background: 'rgba(0,113,227,.04)',
-                  border: `.5px solid rgba(0,113,227,.18)`,
+                  background: 'rgba(79,70,229,.04)',
+                  border: `.5px solid rgba(79,70,229,.18)`,
                   borderRadius: 10,
                   fontSize: 12.5, color: T.text2, lineHeight: 1.5,
                 }}>

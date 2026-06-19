@@ -13,10 +13,10 @@ import { API_BASE as API } from '@/lib/api'
 // ════════════════════════════════════════════════════════════════════════════
 // CACHE CONFIG (localStorage + TTL 90s)
 // ════════════════════════════════════════════════════════════════════════════
-const CACHE_KEY_SUMMARY  = 'vortu:finanzas:summary:v2'
-const CACHE_KEY_RATIOS   = 'vortu:finanzas:ratios:v2'
-const CACHE_KEY_VISTA    = 'vortu:finanzas:vista'
-const CACHE_KEY_SECTION  = 'vortu:finanzas:section'
+const CACHE_KEY_SUMMARY  = 'vela:finanzas:summary:v2'
+const CACHE_KEY_RATIOS   = 'vela:finanzas:ratios:v2'
+const CACHE_KEY_VISTA    = 'vela:finanzas:vista'
+const CACHE_KEY_SECTION  = 'vela:finanzas:section'
 const CACHE_TTL_MS       = 90_000
 const CACHE_TTL_LONG_MS  = 24 * 60 * 60 * 1000
 
@@ -98,7 +98,7 @@ function FlagES({ size=14 }) {
 function GreenDot() { const T = useT(); return <span style={{display:'inline-block',width:7,height:7,borderRadius:'50%',background:T.green}}/> }
 function RedDot() { const T = useT(); return <span style={{display:'inline-block',width:7,height:7,borderRadius:'50%',background:T.red,boxShadow:`0 0 0 3px ${T.redSoft}`}}/> }
 
-// ─── PILL GROUP (tabs estilo Vortu)
+// ─── PILL GROUP (tabs estilo Vela)
 function PillGroup({ items, active, onChange, size='md' }) {
   const T = useT()
   const padding = size==='sm' ? '5px 12px' : '7px 14px'
@@ -230,7 +230,7 @@ function TrendChart({ data=[] }) {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// VERA DRAWER (estilo Vortu unificado)
+// VERA DRAWER (estilo Vela unificado)
 // ════════════════════════════════════════════════════════════════════════════
 // ════════════════════════════════════════════════════════════════════════════
 // VERA INSIGHTS CARD (sin emojis, observaciones múltiples)
@@ -270,7 +270,7 @@ export default function Finanzas() {
   // Vista
   const [vista, setVista] = useState('mes')
 
-  const getToken = () => localStorage.getItem('nexum_token')
+  const getToken = () => localStorage.getItem('vela_token')
 
   // ─── Bootstrap ────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -632,7 +632,7 @@ export default function Finanzas() {
                     {key:'general',  iconName:'search',title:'Análisis libre',   desc:'Cualquier documento — factura, contrato, informe. Vera hace análisis completo.'},
                   ].map(m => (
                     <button key={m.key} onClick={()=>{setUploadMode(m.key);setUploadFile(null);setUploadResult(null)}}
-                      style={{padding:'16px',border:`.5px solid ${uploadMode===m.key?T.blue:T.hairline}`,borderRadius:12,background:uploadMode===m.key?'rgba(0,113,227,.06)':T.card,cursor:'pointer',textAlign:'left',transition:'all .15s',fontFamily:'inherit',boxShadow:uploadMode===m.key?`0 0 0 1px ${T.blue}`:'none'}}>
+                      style={{padding:'16px',border:`.5px solid ${uploadMode===m.key?T.blue:T.hairline}`,borderRadius:12,background:uploadMode===m.key?'rgba(79,70,229,.06)':T.card,cursor:'pointer',textAlign:'left',transition:'all .15s',fontFamily:'inherit',boxShadow:uploadMode===m.key?`0 0 0 1px ${T.blue}`:'none'}}>
                       <div style={{width:36,height:36,borderRadius:9,background:`${uploadMode===m.key?T.blue:T.text4}15`,color:uploadMode===m.key?T.blue:T.text3,display:'grid',placeItems:'center',marginBottom:8}}>{m.iconName==='chart' ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg> : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>}</div>
                       <div style={{fontSize:13,fontWeight:500,color:uploadMode===m.key?T.blue:T.text,marginBottom:4}}>{m.title}</div>
                       <div style={{fontSize:11,color:T.text4,lineHeight:1.5}}>{m.desc}</div>

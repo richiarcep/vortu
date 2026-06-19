@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { useT } from '@/components/ui/tokens'
+import BrandLogo from '@/components/ui/BrandLogo'
 
 const Icon = ({ d, size=17, sw=1.5 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
@@ -70,7 +71,7 @@ export default function Sidebar({ active }) {
   const currentPath = active || pathname
 
   useEffect(() => {
-    const t = localStorage.getItem('nexum_token')
+    const t = localStorage.getItem('vela_token')
     if (!t) return
     try {
       const p = JSON.parse(atob(t.split('.')[1]))
@@ -79,7 +80,7 @@ export default function Sidebar({ active }) {
       setUser({ name, initials, email: p.sub || '' })
       setIsAdmin(p.is_admin === true || p.is_admin === 'true')
     } catch {
-      localStorage.removeItem('nexum_token')
+      localStorage.removeItem('vela_token')
       router.push('/login')
       return
     }
@@ -163,17 +164,7 @@ export default function Sidebar({ active }) {
         }}>
         {/* Brand + cerrar (móvil) */}
         <div style={{display:'flex',alignItems:'center',gap:10,padding:'22px 20px 16px'}}>
-          <div style={{
-            width:28,height:28,borderRadius:7,
-            background:'linear-gradient(135deg,#00B4D8 0%,#5EEAD4 100%)',
-            display:'grid',placeItems:'center',
-            color:'#fff',fontWeight:700,fontSize:13,
-            boxShadow:'inset 0 0 0 .5px rgba(0,0,0,.12),0 1px 1px rgba(0,0,0,.04)',
-          }}>V</div>
-          <div style={{display:'flex',flexDirection:'column',lineHeight:1.1}}>
-            <span style={{fontSize:15,fontWeight:600,color:T.text,letterSpacing:-0.3}}>Vortu</span>
-            <span style={{fontSize:11,color:T.text4,fontWeight:500,marginTop:1}}>by Nexum</span>
-          </div>
+          <BrandLogo size={28} nameSize={15} nameColor={T.text} constColor={T.blue} />
           <button onClick={() => setOpen(false)} aria-label="Cerrar menú"
             className="sb-hamburger" style={{ position:'static', marginLeft:'auto', background:'transparent', border:'none', color:T.text3 }}>
             {I.close}
@@ -209,7 +200,7 @@ export default function Sidebar({ active }) {
                     <span style={{color: isActive ? T.blue : T.text3, display:'flex',flexShrink:0}}>{n.icon}</span>
                     <span style={{flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{n.label}</span>
                     {n.tag && (
-                      <span style={{fontSize:10,fontWeight:600,padding:'1.5px 6px',borderRadius:4,color:T.blue,background:'rgba(0,113,227,.1)',letterSpacing:0.2,textTransform:'uppercase',flexShrink:0}}>{n.tag}</span>
+                      <span style={{fontSize:10,fontWeight:600,padding:'1.5px 6px',borderRadius:4,color:T.blue,background:'rgba(79,70,229,.1)',letterSpacing:0.2,textTransform:'uppercase',flexShrink:0}}>{n.tag}</span>
                     )}
                   </Link>
                 )

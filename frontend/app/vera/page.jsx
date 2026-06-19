@@ -5,8 +5,8 @@ import Sidebar from '@/components/Sidebar'
 import { FONT, I, useT, useTheme } from '@/components/ui/tokens'
 
 import { API_BASE as API } from '@/lib/api'
-const VERA_BLUE = '#0071E3'
-const VERA_PLUS_BLUE = '#003D8F'
+const VERA_BLUE = '#4F46E5'
+const VERA_PLUS_BLUE = '#3730A3'
 
 // Iconos Lucide-style inline (stroke currentColor) — sustituyen a los emojis usados
 // como icono en las sugerencias, para a11y consistente.
@@ -55,7 +55,7 @@ function ProfileBtn({ user, router }) {
       }}>
         <div style={{
           width: 28, height: 28, borderRadius: 999,
-          background: 'linear-gradient(135deg,#0071E3,#00B4D8)',
+          background: 'linear-gradient(135deg,#4F46E5,#A5B1FF)',
           color: '#fff', display: 'grid', placeItems: 'center',
           fontWeight: 600, fontSize: 11,
         }}>{initials}</div>
@@ -70,7 +70,7 @@ function ProfileBtn({ user, router }) {
           border: `.5px solid ${T.hairline}`,
           boxShadow: '0 8px 32px rgba(0,0,0,.12)', zIndex: 200, overflow: 'hidden',
         }}>
-          <button onClick={() => { localStorage.removeItem('nexum_token'); router.push('/login') }} style={{
+          <button onClick={() => { localStorage.removeItem('vela_token'); router.push('/login') }} style={{
             width: '100%', padding: '10px 14px', background: 'none',
             border: 'none', cursor: 'pointer', fontFamily: 'inherit',
             fontSize: 13, color: T.red, textAlign: 'left',
@@ -179,7 +179,7 @@ export default function VeraModule() {
 
   const isPlus = status?.plan === 'plus'
 
-  const getToken = () => localStorage.getItem('nexum_token')
+  const getToken = () => localStorage.getItem('vela_token')
   const h = () => ({ Authorization: `Bearer ${getToken()}`, 'Content-Type': 'application/json' })
 
   useEffect(() => {
@@ -191,7 +191,7 @@ export default function VeraModule() {
       setUser({ email: p.sub || '', name: p.name || p.sub || 'Usuario' })
     } catch {
       // Token malformado: limpiar y volver a login en vez de seguir con sesión rota.
-      localStorage.removeItem('nexum_token')
+      localStorage.removeItem('vela_token')
       router.push('/login')
       return
     }
@@ -475,7 +475,7 @@ export default function VeraModule() {
         .chat-item .actions{opacity:0;transition:opacity .15s}
         .chat-item:hover .actions{opacity:1}
         @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
-        @keyframes veraThink{0%,100%{box-shadow:0 0 0 0 rgba(0,113,227,.4)}50%{box-shadow:0 0 0 6px rgba(0,113,227,0)}}
+        @keyframes veraThink{0%,100%{box-shadow:0 0 0 0 rgba(79,70,229,.4)}50%{box-shadow:0 0 0 6px rgba(79,70,229,0)}}
         @keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
         .msg-actions{opacity:0;transition:opacity .15s}
         .msg-wrapper:hover .msg-actions{opacity:1}
@@ -679,7 +679,7 @@ export default function VeraModule() {
                 fontSize: 10.5, color: T.text4, fontWeight: 500,
                 letterSpacing: 0.3,
               }}>
-                {isPlus ? 'Vera Plus' : 'Vera'} <span style={{ opacity: 0.5, margin: '0 4px' }}>·</span> by Vortu
+                {isPlus ? 'Vera Plus' : 'Vera'} <span style={{ opacity: 0.5, margin: '0 4px' }}>·</span> by Vela
               </div>
               <div style={{
                 fontSize: 9.5, color: T.text4, opacity: 0.7,
@@ -745,7 +745,7 @@ export default function VeraModule() {
                           </span>
                         </div>
                         <div style={{ fontSize: 13.5, color: T.text3, lineHeight: 1.5 }}>
-                          Tu IA central de Vortu. Tengo acceso a toda tu información en tiempo real.<br />
+                          Tu IA central de Vela. Tengo acceso a toda tu información en tiempo real.<br />
                           Pregúntame lo que quieras sobre tu negocio.
                         </div>
                       </div>
@@ -776,7 +776,7 @@ export default function VeraModule() {
                             onMouseEnter={e => {
                               e.currentTarget.style.borderColor = VERA_BLUE
                               e.currentTarget.style.transform = 'translateY(-1px)'
-                              e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,113,227,.08)'
+                              e.currentTarget.style.boxShadow = '0 2px 8px rgba(79,70,229,.08)'
                             }}
                             onMouseLeave={e => {
                               e.currentTarget.style.borderColor = T.hairline
@@ -940,7 +940,7 @@ export default function VeraModule() {
                         <div style={{ fontSize: 14, lineHeight: 1.65, color: T.text }}
                           dangerouslySetInnerHTML={{
                             __html: renderMarkdown(streamingText) +
-                              '<span style="display:inline-block;width:7px;height:14px;background:#0071E3;margin-left:2px;vertical-align:-2px;animation:blink 1s infinite;"></span>'
+                              '<span style="display:inline-block;width:7px;height:14px;background:#4F46E5;margin-left:2px;vertical-align:-2px;animation:blink 1s infinite;"></span>'
                           }}
                         />
                       </div>

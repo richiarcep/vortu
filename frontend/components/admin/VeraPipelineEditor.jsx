@@ -6,8 +6,8 @@ import { API_BASE as API } from '@/lib/api'
 const T = {
   text: '#1d1d1f', text2: '#3a3a3c', text3: '#6e6e73', text4: '#86868b',
   card: '#fff', sidebar: '#f5f5f7', hairline: 'rgba(0,0,0,.08)',
-  blue: '#0071e3', green: '#34c759', amber: '#ff9500', red: '#ff3b30',
-  orange: '#ff6b35', purple: '#5e5ce6', dark: '#003D8F',
+  blue: '#4F46E5', green: '#34c759', amber: '#ff9500', red: '#ff3b30',
+  orange: '#ff6b35', purple: '#5e5ce6', dark: '#3730A3',
 }
 
 const FONT = "-apple-system,BlinkMacSystemFont,system-ui,sans-serif"
@@ -632,8 +632,8 @@ function ValidatorForm({ draft, setDraft }) {
       </div>
       {crossEnabled && (
         <div style={{
-          padding: 14, background: 'rgba(0,113,227,.05)', borderRadius: 9,
-          border: '.5px solid rgba(0,113,227,.2)', marginTop: 8,
+          padding: 14, background: 'rgba(79,70,229,.05)', borderRadius: 9,
+          border: '.5px solid rgba(79,70,229,.2)', marginTop: 8,
         }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: T.dark, marginBottom: 8 }}>
             Configuración Cross-AI

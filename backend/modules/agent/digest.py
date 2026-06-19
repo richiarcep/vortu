@@ -102,7 +102,7 @@ def generate_digest_narrative(data: dict) -> str:
         max_tokens=400,
         messages=[{
             "role": "user",
-            "content": f"""Eres el asistente de negocio de Nexum.
+            "content": f"""Eres el asistente de negocio de Vela.
 Escribe el resumen ejecutivo semanal para el dueño del negocio.
 Máximo 4 oraciones. Tono directo y profesional en español.
 Incluye los números clave. Destaca lo más importante.
@@ -125,7 +125,7 @@ def generate_recommendations(data: dict) -> list:
         max_tokens=400,
         messages=[{
             "role": "user",
-            "content": f"""Eres el asistente de negocio de Nexum.
+            "content": f"""Eres el asistente de negocio de Vela.
 Basándote en estos datos semanales, genera exactamente 3 recomendaciones
 específicas y accionables para el dueño del negocio esta semana.
 

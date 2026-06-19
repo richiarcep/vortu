@@ -9,7 +9,7 @@ from dateutil.relativedelta import relativedelta
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./nexum.db")
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./vela.db")
 if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 engine  = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
@@ -47,7 +47,7 @@ LINE_CFG = {
 }
 
 print("\n" + "="*60)
-print("  VORTU REALISTIC SEED — Moda Barcelonesa SL")
+print("  VELA REALISTIC SEED — Moda Barcelonesa SL")
 print("="*60 + "\n")
 
 # ─── 1. Wipe existing demo data ───────────────────────────────────────────────
@@ -82,7 +82,7 @@ db.execute(text("INSERT INTO companies (name,email,created_at) VALUES ('Moda Bar
 db.commit()
 CID = db.execute(text("SELECT id FROM companies WHERE name='Moda Barcelonesa SL'")).fetchone()[0]
 
-# Generate correct bcrypt hash using Vortu's own function
+# Generate correct bcrypt hash using Vela's own function
 sys.path.insert(0, os.getcwd())
 try:
     from core.security import hash_password
@@ -486,7 +486,7 @@ for t_idx,(month_date,months_ago) in enumerate(months_range(24)):
         ("Marketing",  "Marketing",     "Publicidad digital total",     round(total_mkt_this_month)),
         ("Logistica",  "Almacen",       "Transporte y envios",          round(rnd(600,1200)*gf)),
         ("Suministros","Administracion","Electricidad agua suministros", round(rnd(280,420)*gf)),
-        ("Tecnologia", "Administracion","Software licencias Vortu",      round(rnd(200,320)*gf)),
+        ("Tecnologia", "Administracion","Software licencias Vela",      round(rnd(200,320)*gf)),
         ("Compras",    "Compras",       "Compra mercancia proveedores",  round(rnd(8000,14000)*gf)),
     ]
     for cat_name,dept_name,desc,amount in entries:
@@ -584,7 +584,7 @@ for name,line,price,cost,iva,stock,thresh,eps in PRODUCTS:
     c   = COSTS.get(name,(2,2,2,5,5,5,1,1,1))
     db.execute(text("""
         INSERT INTO profit_optimizer_products
-        (company_id,line_id,vortu_product_id,name,selling_price,
+        (company_id,line_id,vela_product_id,name,selling_price,
          labour_cost_m3,labour_cost_m2,labour_cost_m1,
          material_cost_m3,material_cost_m2,material_cost_m1,
          logistics_cost_m3,logistics_cost_m2,logistics_cost_m1,

@@ -7,7 +7,7 @@
 
 export const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
-const TOKEN_KEY = 'nexum_token'
+const TOKEN_KEY = 'vela_token'
 
 /** Read the auth token (browser only; returns null during SSR). */
 export function getToken() {

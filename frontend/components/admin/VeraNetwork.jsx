@@ -4,13 +4,13 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { API_BASE as API } from '@/lib/api'
 
 // ════════════════════════════════════════════════════════════════════════════
-// DESIGN TOKENS — estilo Vortu + acento dorado para "premium interno"
+// DESIGN TOKENS — estilo Vela + acento dorado para "premium interno"
 // ════════════════════════════════════════════════════════════════════════════
 const T = {
   bg: '#FBFBFD', card: '#FFFFFF', sidebar: '#F5F5F7',
   hairline: 'rgba(0,0,0,0.08)', soft: 'rgba(0,0,0,0.05)',
   text: '#1D1D1F', text2: '#424245', text3: '#6E6E73', text4: '#86868B',
-  blue: '#0071E3', cyan: '#00B4D8',
+  blue: '#4F46E5', cyan: '#4F46E5',
   green: '#34C759', greenSoft: 'rgba(52,199,89,.1)',
   amber: '#FF9500', amberSoft: 'rgba(255,149,0,.1)',
   red: '#FF3B30', redSoft: 'rgba(255,59,48,.08)',
@@ -19,7 +19,7 @@ const T = {
 }
 const FONT = "-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',system-ui,sans-serif"
 
-const NEXUM_GRADIENT = 'linear-gradient(135deg, #B8860B, #D4A017)'
+const NETWORK_GRADIENT = 'linear-gradient(135deg, #B8860B, #D4A017)'
 
 // ════════════════════════════════════════════════════════════════════════════
 // HELPERS
@@ -146,7 +146,7 @@ const I = {
 // ════════════════════════════════════════════════════════════════════════════
 // COMPONENTE PRINCIPAL
 // ════════════════════════════════════════════════════════════════════════════
-export default function VeraNexum({ token }) {
+export default function VeraNetwork({ token }) {
   const [tab, setTab] = useState('pulso')
   const [contextCompany, setContextCompany] = useState(null)
 
@@ -185,7 +185,7 @@ export default function VeraNexum({ token }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 12 }}>
           <div style={{
             width: 32, height: 32, borderRadius: 8,
-            background: NEXUM_GRADIENT,
+            background: NETWORK_GRADIENT,
             display: 'grid', placeItems: 'center',
             boxShadow: `0 2px 8px ${T.goldSoft}`,
           }}>
@@ -196,7 +196,7 @@ export default function VeraNexum({ token }) {
           <div style={{ flex: 1 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, lineHeight: 1.1 }}>
               <span style={{ fontSize: 17, fontWeight: 600, color: T.text, letterSpacing: -.3 }}>
-                Vera Nexum
+                Vera Network Agent
               </span>
               <Pill color={T.gold} bg={T.goldSoft}>
                 {I.shield} Acceso interno
@@ -256,7 +256,7 @@ function PulsoTab({ h }) {
 
   const load = useCallback(async () => {
     try {
-      const r = await fetch(`${API}/api/admin/vera-nexum/pulso`, { headers: h() })
+      const r = await fetch(`${API}/api/admin/vera-network/pulso`, { headers: h() })
       setData(await r.json())
       setLastUpdate(new Date())
     } catch (e) { console.error(e) }
@@ -276,7 +276,7 @@ function PulsoTab({ h }) {
     <div style={{ height: '100%', overflowY: 'auto', padding: '20px 24px 40px' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
         <div>
-          <div style={{ fontSize: 14, fontWeight: 600, color: T.text, marginBottom: 4 }}>Pulso de la red Vortu</div>
+          <div style={{ fontSize: 14, fontWeight: 600, color: T.text, marginBottom: 4 }}>Pulso de la red Vela</div>
           <div style={{ fontSize: 12, color: T.text4 }}>Métricas agregadas en tiempo real · {(data?.totals?.companies || 0)} {(data?.totals?.companies || 0) === 1 ? 'empresa' : 'empresas'} en la red</div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, color: T.text4 }}>
@@ -304,7 +304,7 @@ function PulsoTab({ h }) {
             return (
               <div key={p.plan} style={{ marginBottom: 10 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 12 }}>
-                  <span style={{ fontWeight: 500, color: T.text2 }}>{isPlus ? 'Vera Plus' : 'Vortu (base)'}</span>
+                  <span style={{ fontWeight: 500, color: T.text2 }}>{isPlus ? 'Vera Plus' : 'Vela (base)'}</span>
                   <span style={{ color: T.text3, fontVariantNumeric: 'tabular-nums' }}>{p.count} · {pct}%</span>
                 </div>
                 <div style={{ height: 6, background: T.sidebar, borderRadius: 999, overflow: 'hidden' }}>
@@ -339,7 +339,7 @@ function PulsoTab({ h }) {
                 display: 'grid', placeItems: 'center', fontSize: 11, fontWeight: 700,
               }}>{i + 1}</span>
               <span style={{ fontWeight: 500 }}>{c.name}</span>
-              <Pill color={c.plan === 'plus' ? T.blue : T.text3} bg={c.plan === 'plus' ? 'rgba(0,113,227,.08)' : T.sidebar}>{c.plan}</Pill>
+              <Pill color={c.plan === 'plus' ? T.blue : T.text3} bg={c.plan === 'plus' ? 'rgba(79,70,229,.08)' : T.sidebar}>{c.plan}</Pill>
               <span style={{ textAlign: 'right', fontWeight: 600, color: T.green, fontVariantNumeric: 'tabular-nums' }}>{eurShort(c.sales_ytd)}</span>
             </div>
           ))}
@@ -558,7 +558,7 @@ function ChatTab({ h, contextCompany }) {
   const scrollRef = useRef(null)
 
   const loadConvs = useCallback(async () => {
-    const r = await fetch(`${API}/api/admin/vera-nexum/conversations`, { headers: h() })
+    const r = await fetch(`${API}/api/admin/vera-network/conversations`, { headers: h() })
     setConversations(await r.json())
   }, [h])
 
@@ -569,7 +569,7 @@ function ChatTab({ h, contextCompany }) {
   }, [messages, loading])
 
   const loadConv = async (id) => {
-    const r = await fetch(`${API}/api/admin/vera-nexum/conversations/${id}`, { headers: h() })
+    const r = await fetch(`${API}/api/admin/vera-network/conversations/${id}`, { headers: h() })
     const d = await r.json()
     setActiveConvId(id)
     setMessages(d.messages || [])
@@ -585,7 +585,7 @@ function ChatTab({ h, contextCompany }) {
     setInput('')
     setLoading(true)
     try {
-      const r = await fetch(`${API}/api/admin/vera-nexum/chat`, {
+      const r = await fetch(`${API}/api/admin/vera-network/chat`, {
         method: 'POST', headers: h(),
         body: JSON.stringify({
           mensaje: question,
@@ -615,7 +615,7 @@ function ChatTab({ h, contextCompany }) {
       {/* SIDEBAR conversaciones */}
       <div style={{ borderRight: `.5px solid ${T.hairline}`, background: T.sidebar, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <div style={{ padding: 12, borderBottom: `.5px solid ${T.hairline}` }}>
-          <Btn onClick={newConv} color={T.gold} style={{ width: '100%', justifyContent: 'center', background: NEXUM_GRADIENT }}>+ Nueva conversación</Btn>
+          <Btn onClick={newConv} color={T.gold} style={{ width: '100%', justifyContent: 'center', background: NETWORK_GRADIENT }}>+ Nueva conversación</Btn>
         </div>
         <div style={{ flex: 1, overflowY: 'auto', padding: '8px 8px' }}>
           {conversations.length === 0 ? (
@@ -664,7 +664,7 @@ function ChatTab({ h, contextCompany }) {
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
-            placeholder={contextCompany ? `Pregúntale a Vera Nexum sobre ${contextCompany.name}…` : 'Pregúntale a Vera Nexum… (Opus 4.7 con acceso cross-empresa)'}
+            placeholder={contextCompany ? `Pregúntale a Vera Network Agent sobre ${contextCompany.name}…` : 'Pregúntale a Vera Network Agent… (Opus 4.7 con acceso cross-empresa)'}
             disabled={loading}
             style={{
               flex: 1, padding: '10px 14px', borderRadius: 9,
@@ -672,7 +672,7 @@ function ChatTab({ h, contextCompany }) {
               fontSize: 13, color: T.text, fontFamily: 'inherit',
             }}
           />
-          <Btn onClick={send} disabled={loading || !input.trim()} color={T.gold} style={{ background: loading ? T.sidebar : NEXUM_GRADIENT }}>
+          <Btn onClick={send} disabled={loading || !input.trim()} color={T.gold} style={{ background: loading ? T.sidebar : NETWORK_GRADIENT }}>
             {loading ? <span className="spin" style={{ display: 'flex' }}>{I.refresh}</span> : I.send}
             {loading ? 'Pensando…' : 'Enviar'}
           </Btn>
@@ -693,18 +693,18 @@ function EmptyChat({ contextCompany, onPick }) {
     'Identifica las 3 empresas con margen más bajo este mes',
     '¿Qué proveedores son más comunes entre clientes de la red?',
     'Detecta empresas candidatas a upsell a Vera Plus',
-    'Resumen ejecutivo de la red Vortu hoy',
+    'Resumen ejecutivo de la red Vela hoy',
   ]
   return (
     <div style={{ maxWidth: 600, margin: '40px auto', textAlign: 'center' }}>
-      <div style={{ width: 56, height: 56, borderRadius: 14, background: NEXUM_GRADIENT, display: 'grid', placeItems: 'center', margin: '0 auto 16px' }}>
+      <div style={{ width: 56, height: 56, borderRadius: 14, background: NETWORK_GRADIENT, display: 'grid', placeItems: 'center', margin: '0 auto 16px' }}>
         <svg width="26" height="26" viewBox="0 0 16 16" fill="none">
           <path d="M8 1l1.5 5.5L15 8l-5.5 1.5L8 15l-1.5-5.5L1 8l5.5-1.5L8 1z" fill="#fff" />
         </svg>
       </div>
-      <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 6, letterSpacing: -.3 }}>Vera Nexum lista</div>
+      <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 6, letterSpacing: -.3 }}>Vera Network Agent lista</div>
       <div style={{ fontSize: 13, color: T.text3, marginBottom: 24, lineHeight: 1.5 }}>
-        Pregunta lo que quieras sobre cualquier dato de la red Vortu. Vera ejecuta SQL automáticamente para responder con datos reales.
+        Pregunta lo que quieras sobre cualquier dato de la red Vela. Vera ejecuta SQL automáticamente para responder con datos reales.
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, textAlign: 'left' }}>
         {sugerencias.map(s => (
@@ -734,7 +734,7 @@ function Message({ role, content, loading }) {
     }}>
       <div style={{
         width: 26, height: 26, borderRadius: 7, flexShrink: 0,
-        background: isUser ? T.text3 : NEXUM_GRADIENT,
+        background: isUser ? T.text3 : NETWORK_GRADIENT,
         display: 'grid', placeItems: 'center', color: '#fff', fontSize: 11, fontWeight: 700,
       }}>
         {isUser ? 'TÚ' : (
@@ -757,7 +757,7 @@ function Message({ role, content, loading }) {
             <span className="pulse" style={{ width: 5, height: 5, borderRadius: '50%', background: T.gold }} />
             <span className="pulse" style={{ width: 5, height: 5, borderRadius: '50%', background: T.gold, animationDelay: '.2s' }} />
             <span className="pulse" style={{ width: 5, height: 5, borderRadius: '50%', background: T.gold, animationDelay: '.4s' }} />
-            <span style={{ marginLeft: 6, fontSize: 11.5 }}>Vera Nexum razonando con Opus…</span>
+            <span style={{ marginLeft: 6, fontSize: 11.5 }}>Vera Network Agent razonando con Opus…</span>
           </span>
         ) : content}
       </div>
@@ -777,7 +777,7 @@ function EmpresasTab({ h, onOpenChat }) {
 
   useEffect(() => {
     setLoading(true)
-    fetch(`${API}/api/admin/vera-nexum/empresas`, { headers: h() })
+    fetch(`${API}/api/admin/vera-network/empresas`, { headers: h() })
       .then(r => r.json()).then(setCompanies).catch(console.error)
       .finally(() => setLoading(false))
   }, [h])
@@ -787,7 +787,7 @@ function EmpresasTab({ h, onOpenChat }) {
     setDrilldownLoading(true)
     setDrilldown(null)
     try {
-      const r = await fetch(`${API}/api/admin/vera-nexum/empresas/${c.id}`, { headers: h() })
+      const r = await fetch(`${API}/api/admin/vera-network/empresas/${c.id}`, { headers: h() })
       setDrilldown(await r.json())
     } catch (e) { console.error(e) }
     finally { setDrilldownLoading(false) }
@@ -817,7 +817,7 @@ function EmpresasTab({ h, onOpenChat }) {
                 <div style={{ fontSize: 13, fontWeight: 600 }}>{c.name}</div>
                 <div style={{ fontSize: 10.5, color: T.text4, marginTop: 2 }}>{c.country || '—'} · ID {c.id}</div>
               </div>
-              <Pill color={c.plan === 'plus' ? T.blue : T.text3} bg={c.plan === 'plus' ? 'rgba(0,113,227,.08)' : T.sidebar}>{c.plan}</Pill>
+              <Pill color={c.plan === 'plus' ? T.blue : T.text3} bg={c.plan === 'plus' ? 'rgba(79,70,229,.08)' : T.sidebar}>{c.plan}</Pill>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: T.text3 }}>
               <span><strong style={{ color: T.green, fontWeight: 600 }}>{eurShort(c.sales_ytd)}</strong> YTD</span>
@@ -859,8 +859,8 @@ function CompanyDrilldown({ data, onOpenChat }) {
             {c.country || '—'} · Plan <strong style={{ color: c.plan === 'plus' ? T.blue : T.text3 }}>{c.plan}</strong> · ID {c.id} · Creada {fmtDate(c.created_at)}
           </div>
         </div>
-        <Btn onClick={() => onOpenChat(c)} color={T.gold} style={{ background: NEXUM_GRADIENT }}>
-          {I.chat} Preguntar a Vera Nexum
+        <Btn onClick={() => onOpenChat(c)} color={T.gold} style={{ background: NETWORK_GRADIENT }}>
+          {I.chat} Preguntar a Vera Network Agent
         </Btn>
       </div>
 
@@ -920,7 +920,7 @@ function CompanyDrilldown({ data, onOpenChat }) {
               const colors = {
                 alert: { c: T.red, bg: T.redSoft, label: 'Alerta' },
                 warning: { c: T.amber, bg: T.amberSoft, label: 'Atención' },
-                upsell: { c: T.blue, bg: 'rgba(0,113,227,.08)', label: 'Upsell' },
+                upsell: { c: T.blue, bg: 'rgba(79,70,229,.08)', label: 'Upsell' },
                 churn: { c: T.red, bg: T.redSoft, label: 'Riesgo' },
                 engagement: { c: T.amber, bg: T.amberSoft, label: 'Engagement' },
                 success: { c: T.green, bg: T.greenSoft, label: 'Éxito' },
@@ -1005,7 +1005,7 @@ function CompanyDrilldown({ data, onOpenChat }) {
               <div style={{ fontSize: 11, color: T.text4 }}>{u.email}</div>
             </div>
             {u.is_superadmin && <Pill color={T.gold} bg={T.goldSoft}>Superadmin</Pill>}
-            {u.is_admin && !u.is_superadmin && <Pill color={T.blue} bg="rgba(0,113,227,.08)">Admin</Pill>}
+            {u.is_admin && !u.is_superadmin && <Pill color={T.blue} bg="rgba(79,70,229,.08)">Admin</Pill>}
           </div>
         ))}
       </Card>
@@ -1038,7 +1038,7 @@ function LabTab({ h }) {
     if (!question.trim() || selected.length < 2) return
     setLoading(true); setResults(null)
     try {
-      const r = await fetch(`${API}/api/admin/vera-nexum/lab`, {
+      const r = await fetch(`${API}/api/admin/vera-network/lab`, {
         method: 'POST', headers: h(),
         body: JSON.stringify({ mensaje: question, models: selected }),
       })
@@ -1086,7 +1086,7 @@ function LabTab({ h }) {
             fontSize: 13, color: T.text, resize: 'vertical', marginBottom: 12,
           }}
         />
-        <Btn onClick={run} disabled={loading || !question.trim() || selected.length < 2} color={T.gold} style={{ background: NEXUM_GRADIENT }}>
+        <Btn onClick={run} disabled={loading || !question.trim() || selected.length < 2} color={T.gold} style={{ background: NETWORK_GRADIENT }}>
           {loading ? <span className="spin" style={{ display: 'flex' }}>{I.refresh}</span> : I.zap}
           {loading ? 'Ejecutando…' : `Comparar ${selected.length} modelos`}
         </Btn>

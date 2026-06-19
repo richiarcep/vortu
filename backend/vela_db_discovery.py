@@ -1,12 +1,12 @@
 """
-vortu_db_discovery.py
+vela_db_discovery.py
 ─────────────────────
-Read-only inspection of the Vortu database (SQLite or PostgreSQL).
+Read-only inspection of the Vela database (SQLite or PostgreSQL).
 Run from the bizos/ folder:
 
-    python vortu_db_discovery.py
+    python vela_db_discovery.py
 
-Saves a full report to vortu_db_report.json when done.
+Saves a full report to vela_db_report.json when done.
 """
 
 import os
@@ -24,7 +24,7 @@ except ImportError:
 
 # ─── Connection ───────────────────────────────────────────────────────────────
 
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./nexum.db")
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./vela.db")
 
 if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
@@ -111,11 +111,11 @@ def safe_sample(conn, table, col):
 # ─── Main ─────────────────────────────────────────────────────────────────────
 
 def run():
-    h1("VORTU DATABASE DISCOVERY")
+    h1("VELA DATABASE DISCOVERY")
     print(f"  Time    : {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print(f"  DB type : {'SQLite' if IS_SQLITE else 'PostgreSQL'}")
     print(f"  Mode    : READ-ONLY — nothing will be modified")
-    print(f"  Purpose : Plan Profit Optimizer integration with Vortu\n")
+    print(f"  Purpose : Plan Profit Optimizer integration with Vela\n")
 
     # Connect
     try:
@@ -291,7 +291,7 @@ def run():
         ],
     }
 
-    path = "vortu_db_report.json"
+    path = "vela_db_report.json"
     with open(path, "w", encoding="utf-8") as f:
         json.dump(report, f, indent=2, ensure_ascii=False)
     ok(f"Report saved to: {path}")
@@ -303,7 +303,7 @@ def run():
     miss_count = sum(1 for *_, sp in gap_rows if "[!!]" in sp)
 
     print(f"\n  Data points the model needs  : {len(gap_rows)}")
-    print(f"  {GR}Already in Vortu{EN}             : {ok_count}")
+    print(f"  {GR}Already in Vela{EN}             : {ok_count}")
     print(f"  {YL}Missing / needs new solution{EN} : {miss_count}\n")
 
     if miss_count == 0:
@@ -313,7 +313,7 @@ def run():
     else:
         warn(f"{miss_count} items missing. A new profit_optimizer_inputs table will be needed.")
 
-    print(f"\n  {BD}Next step:{EN} Paste the terminal output or send vortu_db_report.json")
+    print(f"\n  {BD}Next step:{EN} Paste the terminal output or send vela_db_report.json")
     print(f"  We will use it to design the exact integration architecture.\n")
 
 

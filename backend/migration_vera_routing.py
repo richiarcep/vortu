@@ -8,11 +8,11 @@ import sys
 
 # Path al .db (ajusta si tu DB está en otro sitio)
 DB_PATHS = [
-    os.path.expanduser('~/Desktop/vortu/backend/vortu.db'),
-    os.path.expanduser('~/Desktop/vortu/backend/nexum.db'),
-    os.path.expanduser('~/Desktop/vortu/backend/database.db'),
-    os.path.expanduser('~/Desktop/vortu/backend/bizos.db'),
-    os.path.expanduser('~/Desktop/vortu/backend/app.db'),
+    os.path.expanduser('~/Desktop/vela/backend/vela.db'),
+    os.path.expanduser('~/Desktop/vela/backend/vela.db'),
+    os.path.expanduser('~/Desktop/vela/backend/database.db'),
+    os.path.expanduser('~/Desktop/vela/backend/bizos.db'),
+    os.path.expanduser('~/Desktop/vela/backend/app.db'),
 ]
 
 db_path = None
@@ -23,7 +23,7 @@ for p in DB_PATHS:
 
 if not db_path:
     # Busca cualquier .db en backend/
-    backend = os.path.expanduser('~/Desktop/vortu/backend')
+    backend = os.path.expanduser('~/Desktop/vela/backend')
     if os.path.exists(backend):
         for f in os.listdir(backend):
             if f.endswith('.db'):

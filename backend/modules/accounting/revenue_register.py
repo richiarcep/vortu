@@ -130,7 +130,7 @@ def generate_qr(data: dict) -> BytesIO:
         payload.encode(),
         hashlib.sha256
     ).hexdigest()[:16].upper()
-    qr_content = f"NEXUM-CAJA|{payload}|SIG:{signature}"
+    qr_content = f"VELA-CAJA|{payload}|SIG:{signature}"
     qr = qrcode.QRCode(
         version=2,
         error_correction=qrcode.constants.ERROR_CORRECT_H,
@@ -245,7 +245,7 @@ def generate_cierre_caja(
 
     # ── HEADER ──────────────────────────────────────────────────────
     qr_data = {
-        "app": "nexum", "tipo": "cierre_caja",
+        "app": "vela", "tipo": "cierre_caja",
         "cid": company_data["id"], "doc": doc_id,
         "fecha": str(fecha), "negocio": tipo_negocio,
     }
@@ -254,7 +254,7 @@ def generate_cierre_caja(
     qr_img = Image(qr_buf, width=20*mm, height=20*mm)
 
     hdr_left = [
-        Paragraph("Nexum", S("logo", fontName="Helvetica-Bold",
+        Paragraph("Vela", S("logo", fontName="Helvetica-Bold",
                                fontSize=14, textColor=PURPLE)),
         Paragraph(company_data.get("name", ""),
                    S("cn", fontName="Helvetica-Bold", fontSize=8,
@@ -497,7 +497,7 @@ def generate_cierre_caja(
 
     # Mini header page 2
     p2_hdr_data = [[
-        Paragraph("Nexum — Cierre de Caja Diario (Página 2/2)",
+        Paragraph("Vela — Cierre de Caja Diario (Página 2/2)",
                    S("p2h", fontName="Helvetica-Bold", fontSize=8,
                       textColor=PURPLE)),
         Paragraph(
@@ -703,13 +703,13 @@ def generate_cierre_caja(
 
     # ── SECTION I — CONSULTAS IA (PURPLE DARK) ────────────────────────
     story.append(sec_hdr(
-        "I  CONSULTAS AL ASISTENTE IA — Nexum responde al subir este documento",
+        "I  CONSULTAS AL ASISTENTE IA — Vela responde al subir este documento",
         CW, PURPLE_D
     ))
     story.append(Spacer(1, 1*mm))
 
     q_data = [
-        ["Nº", "Tu pregunta", "Respuesta de Nexum IA"],
+        ["Nº", "Tu pregunta", "Respuesta de Vela IA"],
     ]
     for i in range(1, 5):
         q_data.append([str(i), "", ""])
@@ -756,7 +756,7 @@ def generate_cierre_caja(
 
     ft_data = [[
         Paragraph(
-            f"Nexum · Generado el {datetime.now().strftime('%d/%m/%Y %H:%M')}",
+            f"Vela · Generado el {datetime.now().strftime('%d/%m/%Y %H:%M')}",
             S("fl", fontName="Helvetica", fontSize=6,
                textColor=MUTED, alignment=TA_LEFT)
         ),
@@ -764,7 +764,7 @@ def generate_cierre_caja(
                    S("fc", fontName="Courier-Bold", fontSize=6,
                       textColor=PURPLE, alignment=TA_CENTER)),
         Paragraph(
-            "Suba este documento en Nexum para procesamiento IA automático",
+            "Suba este documento en Vela para procesamiento IA automático",
             S("fr", fontName="Helvetica", fontSize=6,
                textColor=MUTED, alignment=TA_RIGHT)
         ),

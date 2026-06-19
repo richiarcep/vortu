@@ -1,5 +1,5 @@
 """
-Vera Nexum API — endpoints solo para superadmins de Nexum.
+Vera Network Agent API — endpoints solo para superadmins de Vela.
 """
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -11,9 +11,9 @@ import json
 from core.database import get_db
 from core.security import get_current_user
 from models.user import User
-from vera.nexum_engine import nexum_chat, get_pulso, get_company_drilldown, lab_compare
+from vera.network_engine import network_chat, get_pulso, get_company_drilldown, lab_compare
 
-router = APIRouter(prefix="/api/admin/vera-nexum", tags=["Vera Nexum"])
+router = APIRouter(prefix="/api/admin/vera-network", tags=["Vera Network Agent"])
 
 
 def require_superadmin(current_user: User = Depends(get_current_user)) -> User:
@@ -24,7 +24,7 @@ def require_superadmin(current_user: User = Depends(get_current_user)) -> User:
     except Exception:
         pass
     if not is_super:
-        raise HTTPException(403, "Solo accesible para Nexum superadmins")
+        raise HTTPException(403, "Solo accesible para Vela superadmins")
     return current_user
 
 
@@ -45,14 +45,14 @@ class LabRequest(BaseModel):
 
 
 # ──────────────────────────────────────────────────────────────────
-# PULSO — métricas agregadas red Vortu
+# PULSO — métricas agregadas red Vela
 # ──────────────────────────────────────────────────────────────────
 @router.get("/pulso")
 def pulso(
     db: Session = Depends(get_db),
     admin: User = Depends(require_superadmin),
 ):
-    """Métricas agregadas de toda la red Vortu en tiempo real."""
+    """Métricas agregadas de toda la red Vela en tiempo real."""
     return get_pulso(db)
 
 
@@ -65,8 +65,8 @@ def chat(
     db: Session = Depends(get_db),
     admin: User = Depends(require_superadmin),
 ):
-    """Conversación con Vera Nexum (Opus + tool use)."""
-    result = nexum_chat(
+    """Conversación con Vera Network Agent (Opus + tool use)."""
+    result = network_chat(
         db=db,
         user_id=admin.id,
         user_email=admin.email,
@@ -78,7 +78,7 @@ def chat(
     # Guardar conversación
     if payload.conversation_id:
         db.execute(text("""
-            UPDATE vera_nexum_conversations
+            UPDATE vera_network_conversations
             SET messages_json = :msgs,
                 total_tokens = total_tokens + :tok,
                 total_cost_usd = total_cost_usd + :cost,
@@ -95,7 +95,7 @@ def chat(
         # Nueva conversación: crear con título auto desde el primer mensaje
         title = (payload.mensaje[:60] + "…") if len(payload.mensaje) > 60 else payload.mensaje
         cur = db.execute(text("""
-            INSERT INTO vera_nexum_conversations (
+            INSERT INTO vera_network_conversations (
                 user_id, title, context_company_id, messages_json,
                 model_used, total_tokens, total_cost_usd
             ) VALUES (:uid, :title, :cc, :msgs, :model, :tok, :cost)
@@ -124,7 +124,7 @@ def list_conversations(
     rows = db.execute(text("""
         SELECT id, title, context_company_id, model_used,
                total_tokens, total_cost_usd, created_at, updated_at
-        FROM vera_nexum_conversations
+        FROM vera_network_conversations
         WHERE user_id = :uid
         ORDER BY updated_at DESC
         LIMIT 50
@@ -144,7 +144,7 @@ def get_conversation(
 ):
     row = db.execute(text("""
         SELECT id, title, context_company_id, messages_json, total_tokens, total_cost_usd
-        FROM vera_nexum_conversations
+        FROM vera_network_conversations
         WHERE id = :cid AND user_id = :uid
     """), {"cid": conv_id, "uid": admin.id}).fetchone()
     if not row:
@@ -163,7 +163,7 @@ def delete_conversation(
     admin: User = Depends(require_superadmin),
 ):
     db.execute(text(
-        "DELETE FROM vera_nexum_conversations WHERE id = :cid AND user_id = :uid"
+        "DELETE FROM vera_network_conversations WHERE id = :cid AND user_id = :uid"
     ), {"cid": conv_id, "uid": admin.id})
     db.commit()
     return {"ok": True}
@@ -240,7 +240,7 @@ def get_audit(
         SELECT id, user_email, endpoint, action, question, response_preview,
                sql_executed, model_used, tokens_input, tokens_output,
                cost_usd, latency_ms, created_at
-        FROM vera_nexum_audit
+        FROM vera_network_audit
         ORDER BY created_at DESC
         LIMIT :limit
     """), {"limit": limit}).fetchall()

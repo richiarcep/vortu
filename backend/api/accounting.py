@@ -34,7 +34,7 @@ from modules.accounting.reports import (
     generate_cashflow_report
 )
 from modules.accounting.template_generator import generate_daily_register_template
-from modules.accounting.ai_reader import read_register_pdf, validate_nexum_document
+from modules.accounting.ai_reader import read_register_pdf, validate_vela_document
 
 router = APIRouter(prefix="/api/contabilidad", tags=["Contabilidad"])
 
@@ -214,7 +214,7 @@ def leer_pdf_registro(
     """
     Sube un PDF de registro diario y Claude extrae
     todas las transacciones automáticamente.
-    Funciona con plantillas Nexum, estados de cuenta
+    Funciona con plantillas Vela, estados de cuenta
     bancarios y cualquier registro en PDF.
     """
     # Save uploaded file
@@ -354,10 +354,10 @@ def validar_documento(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Valida que un documento Nexum escaneado pertenece
+    Valida que un documento Vela escaneado pertenece
     a esta empresa y no ha sido modificado.
     """
-    return validate_nexum_document(
+    return validate_vela_document(
         document_id=document_id,
         company_id=current_user.company_id
     )

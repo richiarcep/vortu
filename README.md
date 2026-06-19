@@ -1,4 +1,4 @@
-# Vortu / Nexum
+# Vela
 
 SaaS de gestión empresarial para pymes y autónomos — multi-país (ES, MX, CO, AR, CL, PE, SV),
 con asistente IA ("Vera"). Backend FastAPI + frontend Next.js 16.

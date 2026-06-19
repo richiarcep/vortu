@@ -125,7 +125,7 @@ function VeraHybrid({ token, onOpenChat }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{
             width: 28, height: 28, borderRadius: 8,
-            background: 'linear-gradient(135deg,#0071E3,#00B4D8)',
+            background: 'linear-gradient(135deg,#4F46E5,#A5B1FF)',
             display: 'grid', placeItems: 'center',
           }}>
             <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
@@ -138,7 +138,7 @@ function VeraHybrid({ token, onOpenChat }) {
           </div>
         </div>
         <span style={{
-          padding: '3px 10px', background: 'rgba(0,113,227,.06)',
+          padding: '3px 10px', background: 'rgba(79,70,229,.06)',
           color: T.blue, borderRadius: 999, fontSize: 10, fontWeight: 600,
           letterSpacing: 0.4,
         }}>BASE</span>
@@ -154,9 +154,9 @@ function VeraHybrid({ token, onOpenChat }) {
       {!insightLoading && shortInsight && (
         <div style={{
           padding: '12px 14px',
-          background: 'linear-gradient(180deg, rgba(0,113,227,.04), rgba(0,113,227,.01))',
+          background: 'linear-gradient(180deg, rgba(79,70,229,.04), rgba(79,70,229,.01))',
           borderRadius: 10,
-          border: `.5px solid rgba(0,113,227,.12)`,
+          border: `.5px solid rgba(79,70,229,.12)`,
           fontSize: 12.5, color: T.text2, lineHeight: 1.55, marginBottom: 12,
         }}>{shortInsight}</div>
       )}
@@ -271,7 +271,7 @@ function BarChart({ data = [] }) {
           const x = cx - barW / 2
           const ingH = Math.max(((d.ing || 0) / maxVal) * plotH, 2)
           const isHov = hover === i
-          const barColor = isHov ? T.blue : 'rgba(0,113,227,.45)'
+          const barColor = isHov ? T.blue : 'rgba(79,70,229,.45)'
           return (
             <g key={i} onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)} style={{ cursor: 'pointer' }}>
               <rect x={padL + slotW * i} y={padT} width={slotW} height={plotH} fill="transparent" />
@@ -311,11 +311,11 @@ export default function Dashboard() {
 
   const [periodo, setPeriodo] = useState(() => {
     if (typeof window === 'undefined') return '30d'
-    return localStorage.getItem('vortu_dashboard_periodo') || '30d'
+    return localStorage.getItem('vela_dashboard_periodo') || '30d'
   })
 
   useEffect(() => {
-    const t = localStorage.getItem('nexum_token')
+    const t = localStorage.getItem('vela_token')
     if (!t) { router.push('/login'); return }
     setToken(t)
     try {
@@ -407,7 +407,7 @@ export default function Dashboard() {
 
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <PillGroup items={periodos} active={periodo}
-              onChange={v => { setPeriodo(v); localStorage.setItem('vortu_dashboard_periodo', v) }} />
+              onChange={v => { setPeriodo(v); localStorage.setItem('vela_dashboard_periodo', v) }} />
           </div>
 
           <HeaderActions onVera={() => openVeraDrawer({ modulo: 'dashboard' })} user={user} router={router}>
@@ -698,7 +698,7 @@ export default function Dashboard() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <div style={{
                     width: 28, height: 28, borderRadius: 8,
-                    background: 'rgba(0,180,216,.1)', color: T.cyan,
+                    background: 'rgba(79,70,229,.1)', color: T.cyan,
                     display: 'grid', placeItems: 'center',
                   }}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -790,7 +790,7 @@ export default function Dashboard() {
                   },
                   'Recursos Humanos': {
                     color: T.blue,
-                    bg: 'rgba(0,113,227,.1)',
+                    bg: 'rgba(79,70,229,.1)',
                     icon: (
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
@@ -802,7 +802,7 @@ export default function Dashboard() {
                   },
                   'Clientes': {
                     color: T.cyan,
-                    bg: 'rgba(0,180,216,.1)',
+                    bg: 'rgba(79,70,229,.1)',
                     icon: (
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />

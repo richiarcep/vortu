@@ -2,7 +2,7 @@ import hashlib
 import math
 
 
-# ── Nexum color palette (NaviLens-inspired CMYK) ─────────────────────────────
+# ── Vela color palette (NaviLens-inspired CMYK) ─────────────────────────────
 COLORS = {
     'C': '#00B4D8',  # Cyan
     'M': '#E63946',  # Magenta
@@ -97,8 +97,8 @@ def _build_grid(data: str) -> list:
     return grid
 
 
-def generate_nexum_qr_svg(
-    nexum_code: str,
+def generate_vela_qr_svg(
+    vela_code: str,
     product_name: str = "",
     size: int = 200,
 ) -> str:
@@ -106,14 +106,14 @@ def generate_nexum_qr_svg(
     Generates a NaviLens-style colorful pixel art SVG for a product.
 
     Args:
-        nexum_code:   The unique Nexum product code (e.g. NX-00001)
+        vela_code:   The unique Vela product code (e.g. NX-00001)
         product_name: Product name shown below the code
         size:         Total SVG size in pixels
 
     Returns:
         SVG string ready to embed or save as .svg
     """
-    grid = _build_grid(nexum_code)
+    grid = _build_grid(vela_code)
     n = GRID_SIZE
 
     # Calculate module size to fit in the requested size with padding
@@ -148,11 +148,11 @@ def generate_nexum_qr_svg(
                 f'fill="{color}" rx="{rx:.1f}"/>'
             )
 
-    # ── Nexum code label below the grid ──────────────────────────────────────
+    # ── Vela code label below the grid ──────────────────────────────────────
     svg_parts.append(
         f'<text x="{total_w // 2}" y="{size + 4}" '
         f'text-anchor="middle" font-family="monospace" font-size="9" '
-        f'font-weight="bold" fill="#00B4D8">{nexum_code}</text>'
+        f'font-weight="bold" fill="#00B4D8">{vela_code}</text>'
     )
 
     if product_name:
@@ -164,7 +164,7 @@ def generate_nexum_qr_svg(
             f'fill="#9CA3AF">{display_name}</text>'
         )
 
-    # ── Nexum branding dot ────────────────────────────────────────────────────
+    # ── Vela branding dot ────────────────────────────────────────────────────
     svg_parts.append(
         f'<circle cx="{total_w - 14}" cy="14" r="4" fill="#00B4D8" opacity="0.8"/>'
     )
@@ -173,9 +173,9 @@ def generate_nexum_qr_svg(
     return '\n'.join(svg_parts)
 
 
-def generate_nexum_code(company_id: int, product_id: int) -> str:
+def generate_vela_code(company_id: int, product_id: int) -> str:
     """
-    Generates a unique Nexum product code.
+    Generates a unique Vela product code.
     Format: NX-{company_id:03d}{product_id:05d}
     Example: NX-001-00042
     """
@@ -183,7 +183,7 @@ def generate_nexum_code(company_id: int, product_id: int) -> str:
 
 
 def generate_label_svg(
-    nexum_code: str,
+    vela_code: str,
     product_name: str,
     sale_price: float,
     iva_rate: float,
@@ -196,7 +196,7 @@ def generate_label_svg(
     """
     W, H = 340, 216   # 4x scale of 85x54mm
 
-    qr_svg_inner = generate_nexum_qr_svg(nexum_code, size=160)
+    qr_svg_inner = generate_vela_qr_svg(vela_code, size=160)
     # Extract inner content from qr svg (remove outer svg tags)
     qr_inner = qr_svg_inner.split('\n', 1)[1].rsplit('\n', 1)[0]
 
@@ -223,11 +223,11 @@ def generate_label_svg(
         f'<text x="188" y="100" font-family="sans-serif" font-size="28" font-weight="800" fill="#0B1426">€{price_incl:.2f}</text>',
         f'<text x="188" y="118" font-family="sans-serif" font-size="9" fill="#9CA3AF">IVA {iva_rate:.0f}% incluido · s/IVA €{sale_price:.2f}</text>',
 
-        # Nexum code
-        f'<text x="188" y="150" font-family="monospace" font-size="11" fill="#00B4D8" font-weight="bold">{nexum_code}</text>',
+        # Vela code
+        f'<text x="188" y="150" font-family="monospace" font-size="11" fill="#00B4D8" font-weight="bold">{vela_code}</text>',
 
-        # Nexum branding
-        f'<text x="188" y="195" font-family="sans-serif" font-size="8" fill="#D1D5DB">Powered by Nexum</text>',
+        # Vela branding
+        f'<text x="188" y="195" font-family="sans-serif" font-size="8" fill="#D1D5DB">Powered by Vela</text>',
 
         '</svg>'
     ]

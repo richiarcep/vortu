@@ -201,7 +201,7 @@ async def get_billing_notifications(db: Session = Depends(get_db), current_user:
         notifications.append({
             "type": "error",
             "title": "Tu negocio te esta esperando",
-            "message": f"Tu acceso a Vortu {plan_name} esta pausado. Reactiva tu plan para continuar.",
+            "message": f"Tu acceso a Vela {plan_name} esta pausado. Reactiva tu plan para continuar.",
             "cta": "Retomar acceso",
             "cta_url": "/settings?tab=subscription",
             "dismissible": False,
@@ -219,7 +219,7 @@ async def get_billing_notifications(db: Session = Depends(get_db), current_user:
         notifications.append({
             "type": "warning",
             "title": f"Tu acceso vence en {days} dias",
-            "message": f"Llevas meses construyendo tu negocio en Vortu. No pierdas el acceso a tus datos.",
+            "message": f"Llevas meses construyendo tu negocio en Vela. No pierdas el acceso a tus datos.",
             "cta": "Renovar plan",
             "cta_url": "/settings?tab=subscription",
             "dismissible": True,
@@ -228,7 +228,7 @@ async def get_billing_notifications(db: Session = Depends(get_db), current_user:
         notifications.append({
             "type": "info",
             "title": f"Tu plan renueva en {days} dias",
-            "message": f"Tu plan Vortu {plan_name} se renueva automaticamente el {status.get('current_period_end', '')[:10]}.",
+            "message": f"Tu plan Vela {plan_name} se renueva automaticamente el {status.get('current_period_end', '')[:10]}.",
             "cta": "Ver facturacion",
             "cta_url": "/settings?tab=subscription",
             "dismissible": True,

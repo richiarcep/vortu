@@ -51,17 +51,17 @@ def get_monthly_revenue(db, company_id, line_id, n_months=8):
         OptimizerProduct.company_id == company_id,
         OptimizerProduct.is_active == True,
     ).all()
-    vortu_ids = [p.vortu_product_id for p in prods if p.vortu_product_id]
+    vela_ids = [p.vela_product_id for p in prods if p.vela_product_id]
 
     today = date.today()
     result = []
     for i in range(n_months - 1, -1, -1):
         start, end = _month_range(today, i)
         label = start.strftime("%Y-%m")
-        if vortu_ids:
+        if vela_ids:
             revenue = db.query(func.sum(SaleItem.line_total)).join(Sale).filter(
                 SaleItem.company_id == company_id,
-                SaleItem.product_id.in_(vortu_ids),
+                SaleItem.product_id.in_(vela_ids),
                 Sale.sale_date >= start,
                 Sale.sale_date <= end,
             ).scalar() or 0.0
@@ -98,9 +98,9 @@ def get_monthly_marketing_spend(db, company_id, line_name, n_months=8):
     return result
 
 
-def get_product_price_quantity_history(db, company_id, vortu_product_id, n_months=8):
+def get_product_price_quantity_history(db, company_id, vela_product_id, n_months=8):
     product = db.query(Product).filter(
-        Product.id == vortu_product_id,
+        Product.id == vela_product_id,
         Product.company_id == company_id,
     ).first()
     if not product:
@@ -113,7 +113,7 @@ def get_product_price_quantity_history(db, company_id, vortu_product_id, n_month
         label = start.strftime("%Y-%m")
         items = db.query(SaleItem).join(Sale).filter(
             SaleItem.company_id == company_id,
-            SaleItem.product_id == vortu_product_id,
+            SaleItem.product_id == vela_product_id,
             Sale.sale_date >= start,
             Sale.sale_date <= end,
         ).all()
@@ -123,9 +123,9 @@ def get_product_price_quantity_history(db, company_id, vortu_product_id, n_month
     return result
 
 
-def get_product_supply_limit(db, company_id, vortu_product_id):
+def get_product_supply_limit(db, company_id, vela_product_id):
     product = db.query(Product).filter(
-        Product.id == vortu_product_id,
+        Product.id == vela_product_id,
         Product.company_id == company_id,
     ).first()
     return int(product.stock_quantity or 0) if product else 0
@@ -154,9 +154,9 @@ def load_line_data(db, company_id, line_id, n_months=8):
     products_data = []
     for p in optimizer_products:
         qty_history = []
-        if p.vortu_product_id:
-            qty_history  = get_product_price_quantity_history(db, company_id, p.vortu_product_id, n_months)
-            supply_limit = get_product_supply_limit(db, company_id, p.vortu_product_id)
+        if p.vela_product_id:
+            qty_history  = get_product_price_quantity_history(db, company_id, p.vela_product_id, n_months)
+            supply_limit = get_product_supply_limit(db, company_id, p.vela_product_id)
         else:
             supply_limit = p.supply_limit
         products_data.append({

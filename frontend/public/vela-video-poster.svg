@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" width="1280" height="720">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="720" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0B0D2B"/>
+      <stop offset="1" stop-color="#161A3E"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="640" cy="360" r="520" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#4F46E5" stop-opacity="0.30"/>
+      <stop offset="1" stop-color="#4F46E5" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="sail" x1="540" y1="150" x2="760" y2="470" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#6366F1"/>
+      <stop offset="1" stop-color="#A5B1FF"/>
+    </linearGradient>
+    <linearGradient id="water" x1="0" y1="470" x2="0" y2="660" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#4F46E5" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#0B0D2B" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1280" height="720" fill="url(#bg)"/>
+  <rect width="1280" height="720" fill="url(#glow)"/>
+
+  <!-- Constelación -->
+  <g opacity="0.9">
+    <path d="M250 150 L370 96 L410 196 Z" stroke="#A5B1FF" stroke-width="2" fill="none" opacity="0.55"/>
+    <circle cx="250" cy="150" r="5" fill="#A5B1FF"/>
+    <circle cx="410" cy="196" r="5" fill="#A5B1FF"/>
+    <circle cx="370" cy="96" r="7" fill="#ffffff"/>
+    <circle cx="180" cy="250" r="3.5" fill="#A5B1FF"/>
+    <circle cx="470" cy="120" r="3" fill="#A5B1FF"/>
+    <circle cx="980" cy="160" r="4" fill="#A5B1FF"/>
+    <circle cx="1080" cy="240" r="3" fill="#ffffff"/>
+  </g>
+
+  <!-- Velero -->
+  <g>
+    <line x1="640" y1="160" x2="640" y2="470" stroke="#A5B1FF" stroke-width="6" stroke-linecap="round"/>
+    <path d="M640 158 C612 250 596 372 600 470 L832 470 C786 360 716 250 640 158 Z" fill="url(#sail)"/>
+    <path d="M620 244 C596 330 582 410 588 470 L496 470 C530 396 580 318 620 244 Z" fill="#A5B1FF" opacity="0.72"/>
+    <path d="M484 488 Q640 566 812 484 Q754 540 640 540 Q540 540 484 488 Z" fill="#6366F1"/>
+  </g>
+
+  <!-- Agua / olas -->
+  <rect y="500" width="1280" height="220" fill="url(#water)"/>
+  <path d="M0 560 q40 -22 80 0 t80 0 t80 0 t80 0 t80 0 t80 0 t80 0 t80 0 t80 0 t80 0 t80 0 t80 0 t80 0 t80 0 t80 0 t80 0" stroke="#6366F1" stroke-width="4" fill="none" opacity="0.5" stroke-linecap="round"/>
+  <path d="M0 600 q40 -18 80 0 t80 0 t80 0 t80 0 t80 0 t80 0 t80 0 t80 0 t80 0 t80 0 t80 0 t80 0 t80 0 t80 0 t80 0 t80 0" stroke="#A5B1FF" stroke-width="4" fill="none" opacity="0.35" stroke-linecap="round"/>
+
+  <!-- Wordmark -->
+  <text x="640" y="678" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="44" font-weight="700" letter-spacing="-1" fill="#ffffff">Vela</text>
+</svg>

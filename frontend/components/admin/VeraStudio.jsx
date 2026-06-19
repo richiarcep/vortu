@@ -8,13 +8,13 @@ import VeraDocPrompts from './VeraDocPrompts'
 import { API_BASE as API } from '@/lib/api'
 
 // ════════════════════════════════════════════════════════════════════════════
-// DESIGN TOKENS (alineado con resto de Vortu)
+// DESIGN TOKENS (alineado con resto de Vela)
 // ════════════════════════════════════════════════════════════════════════════
 const T = {
   bg: '#FBFBFD', card: '#FFFFFF', sidebar: '#F5F5F7',
   hairline: 'rgba(0,0,0,0.08)', soft: 'rgba(0,0,0,0.05)',
   text: '#1D1D1F', text2: '#424245', text3: '#6E6E73', text4: '#86868B',
-  blue: '#0071E3', cyan: '#00B4D8',
+  blue: '#4F46E5', cyan: '#4F46E5',
   green: '#34C759', greenSoft: 'rgba(52,199,89,.1)',
   amber: '#FF9500', amberSoft: 'rgba(255,149,0,.1)',
   red: '#FF3B30', redSoft: 'rgba(255,59,48,.08)',
@@ -23,7 +23,7 @@ const T = {
 }
 const FONT = "-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',system-ui,sans-serif"
 
-const VERA_GRADIENT = 'linear-gradient(135deg, #0071E3, #00B4D8)'
+const VERA_GRADIENT = 'linear-gradient(135deg, #4F46E5, #A5B1FF)'
 
 // ════════════════════════════════════════════════════════════════════════════
 // HELPERS
@@ -231,7 +231,7 @@ export default function VeraStudio({ token }) {
               Control central de Vera · Planes · APIs · Routing · Logs · Stats
             </div>
           </div>
-          <Pill color={T.blue} bg="rgba(0,113,227,.08)">
+          <Pill color={T.blue} bg="rgba(79,70,229,.08)">
             <StatusDot status="ok" size={6} />
             Sistema operativo
           </Pill>
@@ -344,7 +344,7 @@ function PlanesTab({ token, h }) {
       <div style={{ marginBottom: 18 }}>
         <div style={{ fontSize: 14, fontWeight: 600, color: T.text, marginBottom: 4 }}>Planes de Vera</div>
         <div style={{ fontSize: 12, color: T.text4, lineHeight: 1.5 }}>
-          Vera viene incluida en todos los planes de Vortu. Vera Plus es el upgrade que añade capacidades avanzadas (búsqueda web, visión, auto-acciones, memoria permanente).
+          Vera viene incluida en todos los planes de Vela. Vera Plus es el upgrade que añade capacidades avanzadas (búsqueda web, visión, auto-acciones, memoria permanente).
         </div>
       </div>
 
@@ -385,8 +385,8 @@ function PlanCard({ plan, models, onEdit }) {
   return (
     <div style={{
       background: T.card, borderRadius: 14,
-      border: `.5px solid ${isPlus ? 'rgba(0,113,227,.25)' : T.hairline}`,
-      boxShadow: isPlus ? '0 4px 16px rgba(0,113,227,.06)' : '0 1px 2px rgba(0,0,0,.02)',
+      border: `.5px solid ${isPlus ? 'rgba(79,70,229,.25)' : T.hairline}`,
+      boxShadow: isPlus ? '0 4px 16px rgba(79,70,229,.06)' : '0 1px 2px rgba(0,0,0,.02)',
       overflow: 'hidden', position: 'relative',
     }}>
       {isPlus && (
@@ -401,7 +401,7 @@ function PlanCard({ plan, models, onEdit }) {
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
               <span style={{ fontSize: 18, fontWeight: 600, letterSpacing: -.3 }}>{plan.display_name}</span>
-              {isPlus && <Pill color={T.blue} bg="rgba(0,113,227,.08)">PREMIUM</Pill>}
+              {isPlus && <Pill color={T.blue} bg="rgba(79,70,229,.08)">PREMIUM</Pill>}
             </div>
             <div style={{ fontSize: 12, color: T.text3, lineHeight: 1.5 }}>{plan.description}</div>
           </div>
@@ -518,8 +518,8 @@ function PlanEditModal({ plan, models, onChange, onClose, onSave, saving }) {
           {plan.plan_key === 'plus' && (
             <div style={{
               padding: '10px 12px', marginBottom: 12,
-              background: 'rgba(0,113,227,.06)', borderRadius: 8,
-              border: '.5px solid rgba(0,113,227,.18)',
+              background: 'rgba(79,70,229,.06)', borderRadius: 8,
+              border: '.5px solid rgba(79,70,229,.18)',
               fontSize: 11.5, color: T.dark, lineHeight: 1.5,
             }}>
               <strong>En Vera Plus el orquestador decide el modelo</strong> según el tipo de pregunta (simple → Haiku, normal/análisis/crítico → Sonnet). Los campos primary/fallback de abajo son referencia/legacy.
@@ -702,7 +702,7 @@ function ApiModelCard({ model: m, isExpanded, onToggleExpand, onSaveKey, onDelet
           {m.has_api_key && (
             <Pill>{m.key_source === 'database' ? 'BD' : 'ENV'}</Pill>
           )}
-          <Pill color={m.plan_required === 'plus' ? T.blue : T.text3} bg={m.plan_required === 'plus' ? 'rgba(0,113,227,.08)' : T.sidebar}>
+          <Pill color={m.plan_required === 'plus' ? T.blue : T.text3} bg={m.plan_required === 'plus' ? 'rgba(79,70,229,.08)' : T.sidebar}>
             Plan {m.plan_required}
           </Pill>
         </div>
@@ -935,7 +935,7 @@ function StatsTab({ token, h }) {
                 }}>
                   <span style={{ fontWeight: 500 }}>{c.company_name}</span>
                   <span>
-                    <Pill color={c.plan === 'plus' ? T.blue : T.text3} bg={c.plan === 'plus' ? 'rgba(0,113,227,.08)' : T.sidebar}>{c.plan}</Pill>
+                    <Pill color={c.plan === 'plus' ? T.blue : T.text3} bg={c.plan === 'plus' ? 'rgba(79,70,229,.08)' : T.sidebar}>{c.plan}</Pill>
                   </span>
                   <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 500 }}>{num(c.requests)}</span>
                   <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: T.text3, fontSize: 11 }}>{num(c.tokens_total)}</span>

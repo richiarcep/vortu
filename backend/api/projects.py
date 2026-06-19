@@ -480,7 +480,7 @@ def download_report(
             pass
 
     pdf_bytes = generate_project_report_pdf(db, project, ai_analysis)
-    filename  = f"nexum_proyecto_{project.id}_{date.today()}.pdf"
+    filename  = f"vela_proyecto_{project.id}_{date.today()}.pdf"
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",

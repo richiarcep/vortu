@@ -123,7 +123,7 @@ def _generate_insights(db, company_id, modulo):
         }
 
     system = (
-        "Eres Vera, IA central de Vortu. Genera observaciones SECAS y UTILES, sin saludos. "
+        "Eres Vera, IA central de Vela. Genera observaciones SECAS y UTILES, sin saludos. "
         "Cada insight: 1 frase de 1-2 lineas maximo. Formato OBLIGATORIO JSON valido: "
         '{"insights": [{"label": "Concentracion", "text": "...", "tone": "amber"}, ...]} '
         "Tone permitido: good (verde), amber (atencion), red (alerta), neutral (azul). "

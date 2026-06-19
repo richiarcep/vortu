@@ -1,5 +1,5 @@
 """
-Vera Nexum Engine — La super-Vera de Nexum.
+Vera Network Agent Engine — La super-Vera de Vela.
 
 Solo accesible por superadmins. Acceso total a las 3 BDs cross-cliente.
 - SQL SELECT-only sobre cualquier tabla
@@ -19,8 +19,8 @@ from core.config import get_settings
 
 settings = get_settings()
 
-from vera.models import OPUS_NEXUM, SONNET, cost_usd
-MODEL_PRIMARY = OPUS_NEXUM
+from vera.models import OPUS_NETWORK, SONNET, cost_usd
+MODEL_PRIMARY = OPUS_NETWORK
 MODEL_FALLBACK = SONNET
 
 # ──────────────────────────────────────────────────────────────────────
@@ -41,9 +41,9 @@ def is_safe_select(sql: str) -> bool:
 
 
 # ──────────────────────────────────────────────────────────────────────
-# HERRAMIENTAS (tools) que Vera Nexum puede invocar
+# HERRAMIENTAS (tools) que Vera Network Agent puede invocar
 # ──────────────────────────────────────────────────────────────────────
-NEXUM_TOOLS = [
+NETWORK_TOOLS = [
     {
         "name": "query_sql",
         "description": (
@@ -51,7 +51,7 @@ NEXUM_TOOLS = [
             "PROHIBIDO: INSERT, UPDATE, DELETE, DROP. Solo lectura. "
             "Tablas relevantes: companies, users, sales, sale_items, products, "
             "journal_entries, accounts, cost_entries, cost_categories, "
-            "documents, vera_routing_logs, vera_plans, vera_nexum_audit. "
+            "documents, vera_routing_logs, vera_plans, vera_network_audit. "
             "Usa LIMIT generosamente para no saturar."
         ),
         "input_schema": {
@@ -173,9 +173,9 @@ def execute_tool(db: Session, tool_name: str, tool_input: dict) -> dict:
 # ──────────────────────────────────────────────────────────────────────
 # SYSTEM PROMPT
 # ──────────────────────────────────────────────────────────────────────
-NEXUM_SYSTEM = """Eres Vera Nexum, la versión interna de Vera para el equipo Nexum (administradores de la plataforma Vortu).
+NETWORK_SYSTEM = """Eres Vera Network Agent, la versión interna de Vera para el equipo Vela (administradores de la plataforma Vela).
 
-A diferencia de las Veras de clientes (que solo ven datos de su propia empresa), tú tienes acceso CROSS-EMPRESA a toda la red Vortu:
+A diferencia de las Veras de clientes (que solo ven datos de su propia empresa), tú tienes acceso CROSS-EMPRESA a toda la red Vela:
 - Datos transaccionales de todas las empresas (SQLite)
 - Patrones aprendidos en el grafo (Neo4j)
 - Memoria semántica colectiva (Chroma)
@@ -187,16 +187,16 @@ PRINCIPIOS:
 4. Solo SELECT. Si necesitas modificar datos, dile al admin que lo haga manualmente.
 5. Cita siempre la fuente del dato (qué tabla, qué columna, qué periodo).
 6. Para benchmarks o comparativas cross-empresa, agrega varios clientes y respeta la privacidad (nunca destaques una empresa por información sensible sin pertinencia clara).
-7. Si detectas patrones útiles para el negocio Vortu (clientes en riesgo, oportunidades de upsell, anomalías), señálalos.
+7. Si detectas patrones útiles para el negocio Vela (clientes en riesgo, oportunidades de upsell, anomalías), señálalos.
 
 DATOS DEL SISTEMA QUE DEBES SABER:
-- companies: empresas clientes de Vortu (id, name, country, plan)
+- companies: empresas clientes de Vela (id, name, country, plan)
 - sales + sale_items + products: transacciones POS
 - journal_entries + accounts: contabilidad PGC español (account_type: income/expense/asset/liability)
 - cost_entries + cost_categories: gastos clasificados
 - vera_routing_logs: cada llamada a Vera con tokens y coste
-- vera_plans: 2 planes (base=Vortu, plus=Vera Plus €19)
-- users: usuarios (con is_superadmin para distinguir equipo Nexum)
+- vera_plans: 2 planes (base=Vela, plus=Vera Plus €19)
+- users: usuarios (con is_superadmin para distinguir equipo Vela)
 
 ESTILO DE RESPUESTA:
 - Markdown sutil. Negritas para datos clave. Tablas si comparas.
@@ -207,7 +207,7 @@ ESTILO DE RESPUESTA:
 # ──────────────────────────────────────────────────────────────────────
 # CHAT PRINCIPAL CON TOOL USE LOOP
 # ──────────────────────────────────────────────────────────────────────
-def nexum_chat(
+def network_chat(
     db: Session,
     user_id: int,
     user_email: str,
@@ -216,7 +216,7 @@ def nexum_chat(
     context_company_id: Optional[int] = None,
 ) -> dict:
     """
-    Punto de entrada principal de Vera Nexum.
+    Punto de entrada principal de Vera Network Agent.
     Soporta tool use loop (Vera invoca herramientas y vuelve).
     """
     if historial is None:
@@ -255,8 +255,8 @@ def nexum_chat(
             response = client.messages.create(
                 model=model_used,
                 max_tokens=4096,
-                system=NEXUM_SYSTEM + extra_context,
-                tools=NEXUM_TOOLS,
+                system=NETWORK_SYSTEM + extra_context,
+                tools=NETWORK_TOOLS,
                 messages=messages,
             )
         except Exception as e:
@@ -266,8 +266,8 @@ def nexum_chat(
                 response = client.messages.create(
                     model=model_used,
                     max_tokens=4096,
-                    system=NEXUM_SYSTEM + extra_context,
-                    tools=NEXUM_TOOLS,
+                    system=NETWORK_SYSTEM + extra_context,
+                    tools=NETWORK_TOOLS,
                     messages=messages,
                 )
             else:
@@ -313,7 +313,7 @@ def nexum_chat(
     # Audit log
     try:
         db.execute(text("""
-            INSERT INTO vera_nexum_audit (
+            INSERT INTO vera_network_audit (
                 user_id, user_email, endpoint, action, question, response_preview,
                 sql_executed, model_used, tokens_input, tokens_output,
                 cost_usd, latency_ms
@@ -352,7 +352,7 @@ def nexum_chat(
 # PULSO — métricas agregadas en tiempo real
 # ──────────────────────────────────────────────────────────────────────
 def get_pulso(db: Session) -> dict:
-    """Métricas agregadas de TODA la red Vortu."""
+    """Métricas agregadas de TODA la red Vela."""
     today = date.today().isoformat()
 
     total_companies = db.execute(text("SELECT COUNT(*) FROM companies")).scalar() or 0

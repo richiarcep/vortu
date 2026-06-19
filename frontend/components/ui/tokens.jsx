@@ -1,7 +1,9 @@
 'use client'
 import { createContext, useContext, useEffect, useState, useCallback } from 'react'
 
-// ── Paleta CLARA (la de siempre — NO cambia; mantiene el diseño actual) ──────
+// ── Paleta CLARA (marca Vela: acentos azul-violeta) ──────────────────────────
+// Solo cambian los acentos (blue/cyan/purple) y derivados; los grises de texto y
+// los colores semánticos (green/amber/red) se conservan para no romper el a11y.
 export const T_LIGHT = {
   bg: '#F7F8FA',
   card: '#FFFFFF',
@@ -12,8 +14,8 @@ export const T_LIGHT = {
   text2: '#334155',
   text3: '#64748B',
   text4: '#778598', // a11y: subido de #94A3B8 (2.7:1) → ~3.3:1 sobre blanco, sigue siendo el tono más tenue
-  blue: '#0071E3',
-  cyan: '#00B4D8',
+  blue: '#4F46E5',  // Vela Blue Violet (acento principal)
+  cyan: '#6366F1',  // Vela violeta-claro (compañero de gradiente)
   green: '#059669',
   greenSoft: 'rgba(5,150,105,.10)',
   amber: '#D97706',
@@ -24,27 +26,27 @@ export const T_LIGHT = {
   purpleSoft: 'rgba(99,102,241,.1)',
 }
 
-// ── Paleta OSCURA (mismas claves; tonos Apple-dark, contraste WCAG AA) ───────
+// ── Paleta OSCURA (marca Vela: fondos Midnight Navy + acentos violeta) ────────
 export const T_DARK = {
-  bg: '#0F141B',
-  card: '#161B22',
-  sidebar: '#11161D',
+  bg: '#0B0D22',     // Vela Midnight Navy (lienzo)
+  card: '#15172E',
+  sidebar: '#0F1126',
   hairline: 'rgba(255,255,255,0.10)',
   soft: 'rgba(255,255,255,0.05)',
   text: '#E6EDF3',
   text2: '#C9D1D9',
   text3: '#8B949E',
   text4: '#7C8593', // a11y: subido de #6E7681 → ~4.5:1 sobre el fondo oscuro
-  blue: '#3B82F6',
-  cyan: '#40C8E0',
+  blue: '#6366F1',  // violeta más claro para contraste sobre navy
+  cyan: '#A5B1FF',  // Soft Periwinkle (acento claro)
   green: '#3FB950',
   greenSoft: 'rgba(63,185,80,.16)',
   amber: '#D29922',
   amberSoft: 'rgba(210,153,34,.16)',
   red: '#F85149',
   redSoft: 'rgba(248,81,73,.16)',
-  purple: '#7D7DFF',
-  purpleSoft: 'rgba(125,125,255,.20)',
+  purple: '#818CF8',
+  purpleSoft: 'rgba(129,140,248,.20)',
 }
 
 // Compat: `T` estático = paleta clara. Las páginas no migradas lo siguen usando
@@ -66,7 +68,7 @@ export function ThemeProvider({ children }) {
   useEffect(() => {
     let initial = 'light'
     try {
-      const saved = localStorage.getItem('vortu_theme')
+      const saved = localStorage.getItem('vela_theme')
       if (saved === 'light' || saved === 'dark') initial = saved
       else if (window.matchMedia?.('(prefers-color-scheme: dark)').matches) initial = 'dark'
     } catch {}
@@ -77,7 +79,7 @@ export function ThemeProvider({ children }) {
   const setTheme = useCallback((t) => {
     setThemeState(t)
     applyTheme(t)
-    try { localStorage.setItem('vortu_theme', t) } catch {}
+    try { localStorage.setItem('vela_theme', t) } catch {}
   }, [])
 
   const toggle = useCallback(() => setTheme(theme === 'dark' ? 'light' : 'dark'), [theme, setTheme])

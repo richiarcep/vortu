@@ -41,6 +41,8 @@ next-env.d.ts
 # ── Ad-hoc backups (do not commit) ───────────────────────────────────────────
 *.bak
 *.bak_*
+*.bak-*
+*.db.bak*
 *.backup_*
 *.backup-*
 **/_backup_*/
