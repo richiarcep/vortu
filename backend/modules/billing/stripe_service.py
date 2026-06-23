@@ -329,7 +329,24 @@ def _handle_subscription_updated(db, stripe_sub):
         sub.cancel_at_period_end = stripe_sub.get("cancel_at_period_end", False)
 
 def _handle_subscription_deleted(db, stripe_sub):
+    from sqlalchemy import text
     meta = stripe_sub.get("metadata", {})
+
+    # Vera Plus cancellation → drop the company back to the base plan. Match either
+    # by the metadata (product=vera_plus) or by the persisted subscription id.
+    sub_id = stripe_sub.get("id")
+    company_id = None
+    if meta.get("product") == "vera_plus" and meta.get("vela_company_id"):
+        company_id = int(meta["vela_company_id"])
+    elif sub_id:
+        row = db.execute(text(
+            "SELECT id FROM companies WHERE vera_plus_subscription_id = :sub"
+        ), {"sub": sub_id}).fetchone()
+        if row:
+            company_id = row[0]
+    if company_id:
+        deactivate_vera_plus(db, company_id)
+
     user_id = int(meta.get("vela_user_id", 0))
     if not user_id:
         return
@@ -485,8 +502,8 @@ def activate_vera_plus(db, company_id, stripe_subscription_id):
     """Activa Vera Plus para una empresa (companies.plan = 'plus')."""
     from sqlalchemy import text
     db.execute(text(
-        "UPDATE companies SET plan = 'plus' WHERE id = :cid"
-    ), {"cid": company_id})
+        "UPDATE companies SET plan = 'plus', vera_plus_subscription_id = :sub WHERE id = :cid"
+    ), {"cid": company_id, "sub": stripe_subscription_id})
 
     # Audit
     try:
@@ -512,6 +529,6 @@ def deactivate_vera_plus(db, company_id):
     """Desactiva Vera Plus (cuando cancela suscripción)."""
     from sqlalchemy import text
     db.execute(text(
-        "UPDATE companies SET plan = 'base' WHERE id = :cid"
+        "UPDATE companies SET plan = 'base', vera_plus_subscription_id = NULL WHERE id = :cid"
     ), {"cid": company_id})
     db.commit()

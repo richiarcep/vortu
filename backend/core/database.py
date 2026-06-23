@@ -142,6 +142,10 @@ def ensure_runtime_schema():
         company_cols = existing_columns(conn, "companies")
         if company_cols is not None and "plan" not in company_cols:
             conn.execute(text("ALTER TABLE companies ADD COLUMN plan TEXT DEFAULT 'base'"))
+        # Vera Plus: persist the Stripe subscription id so the cancellation webhook
+        # can map a deleted subscription back to the company and deactivate it.
+        if company_cols is not None and "vera_plus_subscription_id" not in company_cols:
+            conn.execute(text("ALTER TABLE companies ADD COLUMN vera_plus_subscription_id TEXT"))
 
         # Ventas: columnas de devoluciones e idempotencia (create_all() no altera
         # tablas existentes; en una BD nueva ya las crea el modelo y esto es no-op).
