@@ -1,5 +1,7 @@
 # Vela — Module-by-Module Production Audit
 **Date:** 2026-06-23 · **Method:** 15 parallel module agents (functionality / interconnection / UX / completeness), every high+blocker finding adversarially verified, then cross-cutting synthesis. 73 agents, ~3.2M tokens.
+
+> **FIX STATUS (2026-06-23): all module-audit P0 addressed across 6 commits.** Quick wins (`56840a4`): Fiscal cert password, Settings pricing, team invite+list, Ventas per-line IVA, Costes drilldown path, Clientes generate/send reply, Sidebar identity. Heavy (`55259a9`): Proyectos ES/EN status vocab, Marketing→company_id tenancy, Contabilidad "Registro" implemented. `dbfa361`: Documentos validated-amount fix + **Costes rewritten to accounting (journal_entries) as single source of truth** (category filter works; manual category→PGC-account mapping is a noted follow-up). `96f69df`: Vera Plus deactivates on cancel. `f048829`: module-limit gating built (backend full-set in beta + superadmin; frontend guard + sidebar locks; **beta stays open — flip the phase to enforce**). Backend boots (307 routes), frontend builds. Remaining = P1/P2 feature build-out (CRUD wiring for Proyectos/Clientes, real Fiscal DTE, app-wide error states) per the prioritized list below.
 > Companion to [AUDIT.md](AUDIT.md) (the P0/P1 security+infra audit). This one covers whether each module's **functions work, interconnect, are simple, and complete**.
 
 ---
