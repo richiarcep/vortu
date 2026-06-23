@@ -254,7 +254,7 @@ def get_kpis(db: Session = Depends(get_db), current_user: User = Depends(get_cur
 def list_gastos(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    category_id: Optional[int] = None,
+    category_id: Optional[str] = None,   # PGC account code (matches agg/categorias)
     department_id: Optional[int] = None,
     provider: Optional[str] = None,
     desde: Optional[str] = None,
@@ -267,43 +267,68 @@ def list_gastos(
     offset: int = 0,
     order_by: str = "date_desc",
 ):
-    q = db.query(CostEntry).filter(CostEntry.company_id == current_user.company_id)
-
-    if category_id is not None:
-        q = q.filter(CostEntry.category_id == category_id)
-    if department_id is not None:
-        q = q.filter(CostEntry.department_id == department_id)
+    """Lista de gastos LIVE desde contabilidad (journal_entries = fuente única de
+    verdad, igual que los KPIs y la tarta agg/categorias). La categoría es la
+    cuenta de gasto del PGC (a.code), por lo que el filtro de la tarta funciona.
+    El proveedor/departamento se enriquecen desde cost_entries cuando existe."""
+    from sqlalchemy import text as _text
+    cid = current_user.company_id
+    where = ["je.company_id = :cid", "a.account_type = 'expense'", "je.debit > 0"]
+    params = {"cid": cid, "limit": limit, "offset": offset}
+    if category_id:
+        where.append("a.code = :code"); params["code"] = category_id
     if desde:
-        q = q.filter(CostEntry.date >= datetime.fromisoformat(desde))
+        where.append("je.date >= :desde"); params["desde"] = desde
     if hasta:
-        q = q.filter(CostEntry.date <= datetime.fromisoformat(hasta))
+        where.append("je.date <= :hasta"); params["hasta"] = hasta
     if min_amount is not None:
-        q = q.filter(CostEntry.amount >= min_amount)
+        where.append("je.debit >= :mina"); params["mina"] = min_amount
     if max_amount is not None:
-        q = q.filter(CostEntry.amount <= max_amount)
+        where.append("je.debit <= :maxa"); params["maxa"] = max_amount
     if search:
-        like = f"%{search}%"
-        q = q.filter(or_(CostEntry.description.ilike(like), CostEntry.notes.ilike(like)))
+        where.append("(je.description LIKE :s OR a.name LIKE :s)"); params["s"] = f"%{search}%"
     if provider:
-        q = q.filter(CostEntry.notes.ilike(f"%Proveedor: {provider}%"))
+        where.append("je.description LIKE :prov"); params["prov"] = f"%{provider}%"
 
-    order_map = {
-        "date_desc": CostEntry.date.desc(),
-        "date_asc": CostEntry.date.asc(),
-        "amount_desc": CostEntry.amount.desc(),
-        "amount_asc": CostEntry.amount.asc(),
-    }
-    q = q.order_by(order_map.get(order_by, CostEntry.date.desc()))
+    order = {
+        "date_desc": "je.date DESC, je.id DESC", "date_asc": "je.date ASC, je.id ASC",
+        "amount_desc": "je.debit DESC", "amount_asc": "je.debit ASC",
+    }.get(order_by, "je.date DESC, je.id DESC")
+    wsql = " AND ".join(where)
 
-    total = q.count()
-    rows = q.offset(offset).limit(limit).all()
-    items = [_entry_to_dict(e, db) for e in rows]
+    # con_asiento=False is meaningless here (every journal row IS a posting).
+    if con_asiento is False:
+        return {"items": [], "total": 0, "limit": limit, "offset": offset}
 
-    # Filtro post-serialización (con_asiento se basa en notes parseadas)
-    if con_asiento is True:
-        items = [i for i in items if i["tiene_asiento_pgc"]]
-    elif con_asiento is False:
-        items = [i for i in items if not i["tiene_asiento_pgc"]]
+    total = db.execute(_text(
+        f"SELECT COUNT(*) FROM journal_entries je JOIN accounts a ON a.id=je.account_id WHERE {wsql}"
+    ), params).scalar() or 0
+    rows = db.execute(_text(f"""
+        SELECT je.id, je.date, je.description, je.debit, je.reference, a.code, a.name
+        FROM journal_entries je JOIN accounts a ON a.id = je.account_id
+        WHERE {wsql} ORDER BY {order} LIMIT :limit OFFSET :offset
+    """), params).fetchall()
+
+    # Enrich provider from cost_entries (keyed by the journal reference = factura_ref).
+    refs = {r[4] for r in rows if r[4]}
+    prov_by_ref = {}
+    if refs:
+        for ce in db.query(CostEntry).filter(
+            CostEntry.company_id == cid,
+            CostEntry.notes.isnot(None),
+        ).all():
+            m = _parse_notes(ce.notes)
+            if m["factura_ref"] in refs and m["provider"]:
+                prov_by_ref[m["factura_ref"]] = m["provider"]
+
+    items = [{
+        "id": r[0], "date": str(r[1]) if r[1] else None, "description": r[2],
+        "amount": float(r[3] or 0), "reference": r[4],
+        "category_id": r[5], "category_name": r[6],
+        "provider": prov_by_ref.get(r[4]),
+        "department_name": None,
+        "tiene_asiento_pgc": True,
+    } for r in rows]
 
     return {"items": items, "total": total, "limit": limit, "offset": offset}
 
@@ -393,45 +418,61 @@ def update_proveedor(provider_id: int, payload: ProveedorUpdate, db: Session = D
 
 @router.get("/{gasto_id}")
 def get_gasto(gasto_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    e = db.query(CostEntry).filter(
-        CostEntry.id == gasto_id,
-        CostEntry.company_id == current_user.company_id
-    ).first()
-    if not e:
+    """Detalle de un gasto. El id es un journal_entry (la lista es journal-based).
+    Devuelve el gasto, su asiento PGC completo (todas las líneas de la transacción),
+    el documento origen y el histórico de proveedor (best-effort vía cost_entries)."""
+    from sqlalchemy import text
+    cid = current_user.company_id
+
+    je = db.execute(text("""
+        SELECT je.id, je.transaction_id, je.date, je.description, je.debit, je.reference,
+               a.code, a.name
+        FROM journal_entries je JOIN accounts a ON a.id = je.account_id
+        WHERE je.id = :id AND je.company_id = :cid
+    """), {"id": gasto_id, "cid": cid}).fetchone()
+    if not je:
         raise HTTPException(404, "Gasto no encontrado")
 
-    gasto = _entry_to_dict(e, db)
-    meta = _parse_notes(e.notes)
+    txid, ref = je[1], je[5]
+    # Linked cost_entry (provider/department metadata), matched by the journal reference.
+    ce = None
+    if ref:
+        for c in db.query(CostEntry).filter(CostEntry.company_id == cid, CostEntry.notes.isnot(None)).all():
+            if _parse_notes(c.notes)["factura_ref"] == ref:
+                ce = c
+                break
+    meta = _parse_notes(ce.notes) if ce else {"provider": None, "factura_ref": ref, "iban": None, "nif": None, "doc_id": None}
 
-    # Asiento PGC (JOIN journal_entries con accounts por reference)
-    asiento = []
-    if meta["factura_ref"]:
-        from sqlalchemy import text
-        rows = db.execute(text("""
-            SELECT je.id, je.transaction_id, je.date, je.description, je.debit, je.credit,
-                   a.code as account_code, a.name as account_name
-            FROM journal_entries je
-            LEFT JOIN accounts a ON a.id = je.account_id
-            WHERE je.reference = :ref AND je.company_id = :cid
-            ORDER BY je.id ASC
-        """), {"ref": meta["factura_ref"], "cid": current_user.company_id}).fetchall()
-        asiento = [{
-            "id": r[0],
-            "transaction_id": r[1],
-            "date": r[2].isoformat() if hasattr(r[2], "isoformat") else str(r[2]),
-            "concept": r[3],
-            "debit": float(r[4] or 0),
-            "credit": float(r[5] or 0),
-            "account_code": r[6],
-            "account_name": r[7],
-        } for r in rows]
+    gasto = {
+        "id": je[0], "description": je[3], "amount": float(je[4] or 0),
+        "date": str(je[2]) if je[2] else None, "reference": ref,
+        "category_id": je[6], "category_name": je[7],
+        "provider": meta["provider"], "department_name": ce.department.name if (ce and ce.department) else None,
+        "factura_ref": meta["factura_ref"], "iban": meta["iban"], "nif": meta["nif"],
+        "document_id": meta["doc_id"], "tiene_asiento_pgc": True,
+    }
+
+    # Asiento PGC completo (todas las líneas de la transacción).
+    rows = db.execute(text("""
+        SELECT je.id, je.transaction_id, je.date, je.description, je.debit, je.credit,
+               a.code, a.name
+        FROM journal_entries je LEFT JOIN accounts a ON a.id = je.account_id
+        WHERE je.transaction_id = :tx AND je.company_id = :cid
+        ORDER BY je.id ASC
+    """), {"tx": txid, "cid": cid}).fetchall()
+    asiento = [{
+        "id": r[0], "transaction_id": r[1],
+        "date": r[2].isoformat() if hasattr(r[2], "isoformat") else str(r[2]),
+        "concept": r[3], "debit": float(r[4] or 0), "credit": float(r[5] or 0),
+        "account_code": r[6], "account_name": r[7],
+    } for r in rows]
 
     # Documento origen
     documento = None
     if meta["doc_id"]:
         doc = db.query(Document).filter(
             Document.id == meta["doc_id"],
-            Document.company_id == current_user.company_id
+            Document.company_id == cid
         ).first()
         if doc:
             documento = {
@@ -447,9 +488,8 @@ def get_gasto(gasto_id: int, db: Session = Depends(get_db), current_user: User =
     historico = []
     if meta["provider"]:
         rows = db.query(CostEntry).filter(
-            CostEntry.company_id == current_user.company_id,
+            CostEntry.company_id == cid,
             CostEntry.notes.ilike(f"%Proveedor: {meta['provider']}%"),
-            CostEntry.id != e.id
         ).order_by(CostEntry.date.desc()).limit(5).all()
         historico = [{
             "id": h.id,
@@ -460,7 +500,7 @@ def get_gasto(gasto_id: int, db: Session = Depends(get_db), current_user: User =
 
         year_inicio = date(date.today().year, 1, 1)
         total_ytd = db.query(func.coalesce(func.sum(CostEntry.amount), 0), func.count(CostEntry.id)).filter(
-            CostEntry.company_id == current_user.company_id,
+            CostEntry.company_id == cid,
             CostEntry.notes.ilike(f"%Proveedor: {meta['provider']}%"),
             CostEntry.date >= year_inicio
         ).first()

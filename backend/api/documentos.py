@@ -502,9 +502,15 @@ def post_asiento(journal_entry: dict, db: Session, current_user: User, doc_id: i
         return {"journal_created": False, "journal_error": str(e)[:200]}
 
 
-def execute_sql_action(action: dict, db: Session, current_user: User, doc_id: int) -> dict:
+def execute_sql_action(action: dict, db: Session, current_user: User, doc_id: int,
+                       extracted_data: dict = None) -> dict:
     """Crea el registro SQL estructurado (gasto/nómina/contrato). El asiento contable
-    se postea por separado vía post_asiento()."""
+    se postea por separado vía post_asiento().
+
+    Usa los datos VALIDADOS de `extracted_data` (que el pipeline de evidencia
+    corrige/repara) con preferencia sobre `preview_record`, que es la conjetura
+    pre-validación y puede estar desfasada — antes el gasto se guardaba con el
+    importe stale del preview mientras el asiento usaba el importe validado."""
     if not action.get('should_create'):
         return {'created': False, 'reason': 'No se solicitó crear'}
 
@@ -512,7 +518,21 @@ def execute_sql_action(action: dict, db: Session, current_user: User, doc_id: in
     import uuid
 
     table = action.get('table')
-    record = action.get('preview_record', {})
+    record = action.get('preview_record', {}) or {}
+    ed = extracted_data or {}
+
+    def _num(v):
+        try:
+            return float(str(v).replace(",", ".")) if v not in (None, "") else None
+        except (ValueError, TypeError):
+            return None
+
+    # Validated-first values (mirror build_asiento_proposal so gasto == asiento).
+    val_amount   = _num(ed.get("importe")) or _num(ed.get("total")) or _num(record.get("amount")) or 0
+    val_date     = ed.get("fecha") or ed.get("date") or record.get("date") or datetime.now().date().isoformat()
+    val_supplier = ed.get("proveedor") or record.get("supplier")
+    val_concept  = ed.get("concepto") or record.get("concept") or record.get("description") or "Gasto"
+    val_invoice  = ed.get("numero_documento") or ed.get("numero_factura") or record.get("invoice_number")
     result = {'created': False}
 
     try:
@@ -529,8 +549,8 @@ def execute_sql_action(action: dict, db: Session, current_user: User, doc_id: in
                 try:
                     # Schema real: description, amount, date, notes (no supplier/concept/document_id)
                     notes_parts = []
-                    if record.get('supplier'): notes_parts.append(f"Proveedor: {record['supplier']}")
-                    if record.get('invoice_number'): notes_parts.append(f"Factura: {record['invoice_number']}")
+                    if val_supplier: notes_parts.append(f"Proveedor: {val_supplier}")
+                    if val_invoice: notes_parts.append(f"Factura: {val_invoice}")
                     if record.get('iban'): notes_parts.append(f"IBAN: {record['iban']}")
                     notes_parts.append(f"Doc ID: {doc_id}")
                     notes_text = " | ".join(notes_parts)
@@ -540,9 +560,9 @@ def execute_sql_action(action: dict, db: Session, current_user: User, doc_id: in
                         VALUES (:cid, :desc, :amount, :date, :notes, NULL, NULL, :now)
                     """), {
                         'cid': current_user.company_id,
-                        'desc': record.get('concept', 'Gasto') or record.get('description', 'Gasto'),
-                        'amount': record.get('amount', 0),
-                        'date': record.get('date') or datetime.now().date().isoformat(),
+                        'desc': val_concept,
+                        'amount': val_amount,
+                        'date': val_date,
                         'notes': notes_text,
                         'now': datetime.now(),
                     })
@@ -820,7 +840,8 @@ def confirm_document(
 
     # 1) Registro estructurado (gasto / nómina / contrato) si aplica
     if body.save_to_sql and analysis.get('sql_action', {}).get('should_create'):
-        sql_result = execute_sql_action(analysis['sql_action'], db, current_user, doc.id)
+        sql_result = execute_sql_action(analysis['sql_action'], db, current_user, doc.id,
+                                        extracted_data=analysis.get('extracted_data', {}))
         ai_result_full['sql_action_result'] = sql_result
         doc.ai_result = json.dumps(ai_result_full, ensure_ascii=False)
         db.commit()
