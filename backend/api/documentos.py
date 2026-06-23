@@ -1015,6 +1015,7 @@ def get_document(doc_id: int, db: Session = Depends(get_db), current_user: User 
         "semantic_tags": parsed.get('semantic_tags', []),
         "sql_action": parsed.get('sql_action', {}),
         "sql_action_result": parsed.get('sql_action_result'),
+        "journal_result": parsed.get('journal_result'),
         "user_notes": parsed.get('user_notes', ''),
         "approved_at": parsed.get('approved_at'),
         "created_at": doc.created_at.isoformat() if doc.created_at else None,

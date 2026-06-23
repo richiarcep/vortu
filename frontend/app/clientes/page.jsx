@@ -544,7 +544,7 @@ function ConocimientoTab({ token }) {
                   <Pill label={cfg.label} color={cfg.color} bg={`${cfg.color}1A`} />
                 </div>
                 <div style={{ fontSize: 12, color: T.text3, lineHeight: 1.5, marginBottom: 8 }}>
-                  {e.full_content?.substring(0, 200)}{e.full_content?.length > 200 ? '…' : ''}
+                  {e.content_summary?.substring(0, 200)}{e.content_summary?.length > 200 ? '…' : ''}
                 </div>
                 <div style={{ fontSize: 10.5, color: T.text4 }}>Creado {fmtDate(e.created_at)}</div>
               </div>
@@ -635,9 +635,9 @@ function InformesTab({ token }) {
             </div>
           </div>
 
-          {report.claude_narrative && (
+          {report.narrative && (
             <div style={{ fontSize: 13, color: T.text2, lineHeight: 1.65, paddingTop: 14, borderTop: `.5px solid ${T.hairline}` }}>
-              {report.claude_narrative}
+              {report.narrative}
             </div>
           )}
 

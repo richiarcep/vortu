@@ -33,9 +33,15 @@ def generate_pl_statement(db: Session, company_id: int,
         if total_income > 0 else 0
 
     # ── Costos de personal ────────────────────────────────────────────────────
+    # Gastos de personal = grupo 64 del PGC (640 Sueldos y salarios, 642 Seguridad
+    # Social a cargo de la empresa, 641/643/644/645/649…). Antes filtraba por
+    # ["500","510"], que en el PGC RD 1514/2007 NO son cuentas de gasto sino pasivos
+    # (500 "Obligaciones y bonos a corto plazo", 510 "Deudas a corto plazo con
+    # entidades de crédito vinculadas"), por lo que nunca aparecían en expense_accounts
+    # y costos_personal salía siempre 0 → el EBITDA colapsaba a la utilidad neta.
     costos_personal = sum(
         v["balance"] for k, v in expense_accounts.items()
-        if k in ["500", "510"]
+        if str(k).startswith("64")
     )
     gastos_operativos = total_expenses - costos_personal
     ebitda = round(total_income - gastos_operativos, 2)

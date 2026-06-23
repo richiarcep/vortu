@@ -787,10 +787,10 @@ export default function Finanzas() {
                                 </div>
                               ))}
                             </div>
-                            {esc.acciones_recomendadas?.length > 0 && (
+                            {esc.acciones?.length > 0 && (
                               <div style={{padding:'10px 12px',background:T.sidebar,borderRadius:10}}>
                                 <div style={{fontSize:11,fontWeight:600,color:T.text3,textTransform:'uppercase',letterSpacing:.5,marginBottom:6}}>Acciones recomendadas</div>
-                                {esc.acciones_recomendadas.map((a,j) => <div key={j} style={{fontSize:12,color:T.text2,marginBottom:2}}>→ {a}</div>)}
+                                {esc.acciones.map((a,j) => <div key={j} style={{fontSize:12,color:T.text2,marginBottom:2}}>→ {a}</div>)}
                               </div>
                             )}
                           </Card>

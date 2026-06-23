@@ -641,7 +641,8 @@ def chat_stream(payload: MessageCreate,
         except Exception as e:
             print(f"[stream] save error: {e}")
 
-        yield f"data: {json.dumps({'type': 'done', 'latency_ms': latency, 'plan': plan, 'model': model_choice, 'degraded': is_degraded})}\n\n"
+        model_label = "Vera base" if model_choice == "claude-haiku" else ("Vera Plus" if plan == "plus" else "Vera")
+        yield f"data: {json.dumps({'type': 'done', 'latency_ms': latency, 'plan': plan, 'model': model_choice, 'model_label': model_label, 'degraded': is_degraded})}\n\n"
 
     return StreamingResponse(event_stream(), media_type="text/event-stream", headers={
         "Cache-Control": "no-cache",

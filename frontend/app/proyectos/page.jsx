@@ -880,7 +880,22 @@ function ProjectDrawer({ project, onClose, token, employees }) {
                     }}>{analyzing ? 'Analizando…' : '↻ Reanalizar'}</button>
                   </div>
                   <div style={{ fontSize: 12.5, color: T.text2, lineHeight: 1.55 }}>
-                    {analysis?.analysis || p.last_ai_analysis}
+                    {analysis ? (
+                      <>
+                        {analysis.resumen_ejecutivo && <div>{analysis.resumen_ejecutivo}</div>}
+                        {analysis.accion_hoy && (
+                          <div style={{ marginTop: 8 }}>
+                            <span style={{ fontWeight: 600, color: VERA_BLUE }}>Acción de hoy: </span>
+                            {analysis.accion_hoy}
+                          </div>
+                        )}
+                        {analysis.prediccion && (
+                          <div style={{ marginTop: 8, color: T.text3 }}>{analysis.prediccion}</div>
+                        )}
+                      </>
+                    ) : (
+                      p.last_ai_analysis
+                    )}
                   </div>
                 </div>
               )}

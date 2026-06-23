@@ -117,10 +117,12 @@ def get_sales_dashboard(db: Session, company_id: int) -> dict:
             (s.iva_amount * ((s.total - (s.refunded_amount or 0)) / s.total)) if s.total else 0.0
             for s in sales
         )
+        n_sales = len(sales)
         return {
-            "total_sales":   len(sales),
+            "total_sales":   n_sales,
             "total_revenue": round(net_total, 2),
             "total_iva":     round(net_iva, 2),
+            "avg_ticket":    round(net_total / n_sales, 2) if n_sales else 0.0,
         }
 
     today_stats = get_period_stats(today, today)

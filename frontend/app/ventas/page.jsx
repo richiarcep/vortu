@@ -426,7 +426,10 @@ export default function Ventas() {
       })
       if (res.ok) {
         const d = await res.json()
-        setVeraInsight(d.insight)
+        const txt = Array.isArray(d.insights)
+          ? d.insights.map(i => (i.label ? `${i.label}: ${i.text}` : i.text)).filter(Boolean).join('\n')
+          : (typeof d.insight === 'string' ? d.insight : null)
+        setVeraInsight(txt)
       }
     } catch { }
     setVeraInsightLoading(false)
