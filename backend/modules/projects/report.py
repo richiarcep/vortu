@@ -84,8 +84,8 @@ def generate_project_report_pdf(
     total_expenses = sum(e.amount or 0 for e in expenses)
     total_spent    = total_cost + total_expenses
     budget_left    = (project.budget or 0) - total_spent
-    completed      = len([t for t in tasks if t.status == "completada"])
-    blocked        = len([t for t in tasks if t.status == "bloqueada"])
+    completed      = len([t for t in tasks if t.status == "done"])
+    blocked        = len([t for t in tasks if t.status == "blocked"])
 
     E = []  # elements
 
@@ -220,8 +220,8 @@ def generate_project_report_pdf(
 
     task_rows = [["Tarea", "Estado", "Prioridad", "H. Est.", "H. Real", "Vencimiento"]]
     status_colors = {
-        "completada": GREEN, "en_progreso": colors.HexColor("#2563EB"),
-        "bloqueada": RED,    "pendiente": MUTED,
+        "done": GREEN, "in_progress": colors.HexColor("#2563EB"),
+        "blocked": RED,    "todo": MUTED,
     }
     for t in tasks:
         task_rows.append([

@@ -7,7 +7,8 @@ from core.database import Base
 class CompanyAnalysis(Base):
     __tablename__ = "marketing_company_analyses"
     id              = Column(Integer, primary_key=True, index=True)
-    user_id         = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id         = Column(Integer, ForeignKey("users.id"), nullable=True)   # creator (kept for history)
+    company_id      = Column(Integer, ForeignKey("companies.id"), nullable=True, index=True)  # tenant scope
     sector          = Column(String(200))
     business_type   = Column(String(200))
     target_audience = Column(Text)
@@ -29,7 +30,8 @@ class CompanyAnalysis(Base):
 class MarketingCampaign(Base):
     __tablename__ = "marketing_campaigns"
     id              = Column(Integer, primary_key=True, index=True)
-    user_id         = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id         = Column(Integer, ForeignKey("users.id"), nullable=True)   # creator (kept for history)
+    company_id      = Column(Integer, ForeignKey("companies.id"), nullable=True, index=True)  # tenant scope
     analysis_id     = Column(Integer, ForeignKey("marketing_company_analyses.id"), nullable=True)
     name            = Column(String(300), nullable=False)
     objective       = Column(String(100))
@@ -79,7 +81,8 @@ class CampaignMetrics(Base):
 class PlatformCredential(Base):
     __tablename__ = "marketing_platform_credentials"
     id              = Column(Integer, primary_key=True, index=True)
-    user_id         = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id         = Column(Integer, ForeignKey("users.id"), nullable=True)   # creator (kept for history)
+    company_id      = Column(Integer, ForeignKey("companies.id"), nullable=True, index=True)  # tenant scope
     platform        = Column(String(50))
     google_customer_id      = Column(String(100))
     google_developer_token  = Column(String(300))

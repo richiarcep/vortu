@@ -112,8 +112,8 @@ def serialize_project(db, project, include_tasks=False):
         "health":                health,
         "velocity":              velocity,
         "total_tasks":           len(tasks),
-        "completed_tasks":       len([t for t in tasks if t.status == "completada"]),
-        "blocked_tasks":         len([t for t in tasks if t.status == "bloqueada"]),
+        "completed_tasks":       len([t for t in tasks if t.status == "done"]),
+        "blocked_tasks":         len([t for t in tasks if t.status == "blocked"]),
         "created_at":            str(project.created_at),
     }
 
@@ -165,7 +165,7 @@ def create_project(
         start_date=data.start_date,
         deadline=data.deadline,
         budget=data.budget or 0.0,
-        status="activo",
+        status="active",
         health_score=10.0,
         completion_percentage=0.0,
     )
@@ -205,8 +205,8 @@ def get_projects_summary(
         Project.company_id == current_user.company_id
     ).all()
 
-    active    = [p for p in projects if p.status == "activo"]
-    completed = [p for p in projects if p.status == "completado"]
+    active    = [p for p in projects if p.status == "active"]
+    completed = [p for p in projects if p.status == "completed"]
 
     total_budget  = sum(p.budget or 0 for p in active)
     at_risk       = [p for p in active if p.health_score < 5]
@@ -246,13 +246,13 @@ def update_project(
     current_user: User = Depends(get_current_user)
 ):
     project = get_project_or_404(db, project_id, current_user.company_id)
-    was_completed = project.status == "completado"
+    was_completed = project.status == "completed"
 
     for field, value in data.dict(exclude_none=True).items():
         setattr(project, field, value)
 
     # Auto post-project report when marked complete
-    if data.status == "completado" and not was_completed:
+    if data.status == "completed" and not was_completed:
         report = generate_post_project_report(db, project)
         project.last_ai_analysis = str(report)
         project.completion_percentage = 100.0
@@ -295,7 +295,7 @@ def create_task(
         due_date=data.due_date,
         estimated_hours=data.estimated_hours or 0.0,
         actual_hours=0.0,
-        status="pendiente",
+        status="todo",
     )
     db.add(task)
     db.commit()

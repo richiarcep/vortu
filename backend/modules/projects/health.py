@@ -78,7 +78,7 @@ def calculate_health_score(db: Session, project: Project) -> dict:
             budget_score = 1.0
 
     # ── Factor 3 — Task velocity (15%) ───────────────────────────────────────
-    completed_tasks = [t for t in tasks if t.status == "completada"]
+    completed_tasks = [t for t in tasks if t.status == "done"]
     completion_rate = len(completed_tasks) / total_tasks
     if completion_rate >= 0.7:
         velocity_score = 10.0
@@ -92,7 +92,7 @@ def calculate_health_score(db: Session, project: Project) -> dict:
         velocity_score = 2.0
 
     # ── Factor 4 — Blocked tasks (15%) ───────────────────────────────────────
-    blocked = [t for t in tasks if t.status == "bloqueada"]
+    blocked = [t for t in tasks if t.status == "blocked"]
     blocked_pct = len(blocked) / total_tasks
     if blocked_pct == 0:
         blocked_score = 10.0
@@ -128,7 +128,7 @@ def calculate_health_score(db: Session, project: Project) -> dict:
     # ── Factor 6 — Overdue tasks (5%) ────────────────────────────────────────
     overdue = [
         t for t in tasks
-        if t.due_date and t.due_date < today and t.status != "completada"
+        if t.due_date and t.due_date < today and t.status != "done"
     ]
     overdue_pct = len(overdue) / total_tasks
     if overdue_pct == 0:
@@ -214,7 +214,7 @@ def update_project_health(db: Session, project_id: int) -> float:
     # Recalculate completion percentage from tasks
     tasks = db.query(Task).filter(Task.project_id == project_id).all()
     if tasks:
-        completed = len([t for t in tasks if t.status == "completada"])
+        completed = len([t for t in tasks if t.status == "done"])
         project.completion_percentage = round((completed / len(tasks)) * 100, 1)
 
     result = calculate_health_score(db, project)

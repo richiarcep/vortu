@@ -204,3 +204,17 @@ def ensure_runtime_schema():
                 "CREATE UNIQUE INDEX IF NOT EXISTS uq_employees_company_email "
                 "ON employees(company_id, email)"
             ))
+
+        # Marketing: ahora se escopa por company_id (antes user_id, rompía multi-tenant).
+        # create_all() añade la columna en BD nueva; aquí se parchea la existente y se
+        # rellena company_id desde la empresa del usuario creador.
+        for _mt in ("marketing_company_analyses", "marketing_campaigns", "marketing_platform_credentials"):
+            mcols = existing_columns(conn, _mt)
+            if mcols is not None and "company_id" not in mcols:
+                conn.execute(text(f"ALTER TABLE {_mt} ADD COLUMN company_id INTEGER"))
+                conn.execute(text(
+                    f"UPDATE {_mt} SET company_id = "
+                    f"(SELECT u.company_id FROM users u WHERE u.id = {_mt}.user_id) "
+                    f"WHERE company_id IS NULL"
+                ))
+            conn.execute(text(f"CREATE INDEX IF NOT EXISTS ix_{_mt}_company ON {_mt}(company_id)"))

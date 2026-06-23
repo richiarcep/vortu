@@ -66,9 +66,9 @@ def analyze_project_with_ai(db: Session, project: Project) -> dict:
         "terminara_a_tiempo": velocity.get("will_finish_on_time"),
         "tareas":           task_summary,
         "total_tareas":     len(tasks),
-        "completadas":      len([t for t in tasks if t.status == "completada"]),
-        "bloqueadas":       len([t for t in tasks if t.status == "bloqueada"]),
-        "vencidas":         len([t for t in tasks if t.due_date and t.due_date < today and t.status != "completada"]),
+        "completadas":      len([t for t in tasks if t.status == "done"]),
+        "bloqueadas":       len([t for t in tasks if t.status == "blocked"]),
+        "vencidas":         len([t for t in tasks if t.due_date and t.due_date < today and t.status != "done"]),
     }
 
     client = vera_client(None, None, module="proyectos")
@@ -168,7 +168,7 @@ def generate_post_project_report(db: Session, project: Project) -> dict:
     "horas_reales": {round(total_hours, 1)},
     "desviacion_tiempo_pct": {round(100 - time_accuracy, 1)},
     "total_tareas": {len(tasks)},
-    "tareas_completadas": {len([t for t in tasks if t.status == "completada"])}
+    "tareas_completadas": {len([t for t in tasks if t.status == "done"])}
   }},
   "que_salio_bien": ["punto positivo 1", "punto positivo 2", "punto positivo 3"],
   "que_salio_mal": ["problema 1", "problema 2"],

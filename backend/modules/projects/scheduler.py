@@ -14,7 +14,7 @@ def scan_all_projects():
     db: Session = SessionLocal()
     try:
         projects = db.query(Project).filter(
-            Project.status == "activo"
+            Project.status == "active"
         ).all()
 
         alerts_generated = []
@@ -88,7 +88,7 @@ def scan_all_projects():
             # ── Check blocked tasks older than 3 days ─────────────────────────
             tasks = db.query(Task).filter(
                 Task.project_id == project.id,
-                Task.status == "bloqueada"
+                Task.status == "blocked"
             ).all()
             old_blocked = [
                 t for t in tasks
@@ -131,8 +131,8 @@ def generate_weekly_projects_digest(company_id: int) -> dict:
             Project.company_id == company_id
         ).all()
 
-        active    = [p for p in projects if p.status == "activo"]
-        completed = [p for p in projects if p.status == "completado"]
+        active    = [p for p in projects if p.status == "active"]
+        completed = [p for p in projects if p.status == "completed"]
         at_risk   = [p for p in active if p.health_score < 5]
 
         project_summaries = []

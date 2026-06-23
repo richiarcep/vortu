@@ -903,19 +903,54 @@ def registrar_gasto(db, company_id, fecha, categoria,
 
 
 def get_registro_periodo(db, company_id, start_date, end_date):
-    from modules.accounting.journal import JournalEntry
-    entries = db.query(JournalEntry).filter(
-        JournalEntry.company_id == company_id,
-        JournalEntry.date >= start_date,
-        JournalEntry.date <= end_date,
-        JournalEntry.module_source == "cierre_caja"
-    ).all()
+    """Income/expense movements for a period, shaped for the Contabilidad
+    "Registro del mes" panel: {resumen, ingresos[], gastos[]}.
+
+    Reads the income/expense lines of the journal (income accounts carry the
+    revenue on the credit side, expense accounts on the debit side)."""
+    from modules.accounting.journal import JournalEntry, Account
+    rows = (
+        db.query(JournalEntry, Account)
+        .join(Account, Account.id == JournalEntry.account_id)
+        .filter(
+            JournalEntry.company_id == company_id,
+            JournalEntry.date >= start_date,
+            JournalEntry.date <= end_date,
+            Account.account_type.in_(["income", "expense"]),
+        )
+        .order_by(JournalEntry.date.desc())
+        .limit(500)
+        .all()
+    )
+
+    ingresos, gastos = [], []
+    total_ing = total_gas = 0.0
+    for je, acc in rows:
+        if acc.account_type == "income":
+            monto = float(je.credit or 0) - float(je.debit or 0)   # net revenue
+            if monto == 0:
+                continue
+            total_ing += monto
+            ingresos.append({"descripcion": je.description, "fecha": str(je.date),
+                             "categoria": acc.name, "monto": round(monto, 2)})
+        else:  # expense
+            monto = float(je.debit or 0) - float(je.credit or 0)   # net cost
+            if monto == 0:
+                continue
+            total_gas += monto
+            gastos.append({"descripcion": je.description, "fecha": str(je.date),
+                           "categoria": acc.name, "monto": round(monto, 2)})
+
     return {
-        "periodo": {
-            "inicio": str(start_date),
-            "fin": str(end_date)
+        "periodo": {"inicio": str(start_date), "fin": str(end_date)},
+        "resumen": {
+            "total_ingresos": round(total_ing, 2),
+            "total_gastos": round(total_gas, 2),
+            "resultado_neto": round(total_ing - total_gas, 2),
         },
-        "total_asientos": len(entries)
+        "ingresos": ingresos,
+        "gastos": gastos,
+        "total_asientos": len(ingresos) + len(gastos),
     }
 
 

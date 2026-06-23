@@ -196,7 +196,7 @@ async def analizar_empresa(
 
     # 4. Persist
     analysis = CompanyAnalysis(
-        user_id=current_user.id,
+        user_id=current_user.id, company_id=current_user.company_id,
         sector=result.get("sector"),
         business_type=result.get("business_type"),
         target_audience=json.dumps(result.get("target_audience", {}), ensure_ascii=False),
@@ -244,7 +244,7 @@ def get_last_analysis(
 ):
     """Get the most recent company analysis."""
     analysis = db.query(CompanyAnalysis).filter(
-        CompanyAnalysis.user_id == current_user.id
+        CompanyAnalysis.company_id == current_user.company_id
     ).order_by(CompanyAnalysis.created_at.desc()).first()
 
     if not analysis:
@@ -291,7 +291,7 @@ async def create_campaign(
     if body.analysis_id:
         an = db.query(CompanyAnalysis).filter(
             CompanyAnalysis.id == body.analysis_id,
-            CompanyAnalysis.user_id == current_user.id
+            CompanyAnalysis.company_id == current_user.company_id
         ).first()
         if an:
             def _p(v):
@@ -334,7 +334,7 @@ async def create_campaign(
 
     # Persist campaign
     campaign = MarketingCampaign(
-        user_id=current_user.id,
+        user_id=current_user.id, company_id=current_user.company_id,
         analysis_id=body.analysis_id,
         name=body.name,
         objective=body.objective,
@@ -382,7 +382,7 @@ def list_campaigns(
     current_user: User = Depends(get_current_user),
 ):
     campaigns = db.query(MarketingCampaign).filter(
-        MarketingCampaign.user_id == current_user.id
+        MarketingCampaign.company_id == current_user.company_id
     ).order_by(MarketingCampaign.created_at.desc()).all()
 
     def _p(v):
@@ -419,7 +419,7 @@ def get_campaign(
 ):
     campaign = db.query(MarketingCampaign).filter(
         MarketingCampaign.id == campaign_id,
-        MarketingCampaign.user_id == current_user.id,
+        MarketingCampaign.company_id == current_user.company_id,
     ).first()
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaña no encontrada")
@@ -458,7 +458,7 @@ async def update_campaign_status(
 ):
     campaign = db.query(MarketingCampaign).filter(
         MarketingCampaign.id == campaign_id,
-        MarketingCampaign.user_id == current_user.id,
+        MarketingCampaign.company_id == current_user.company_id,
     ).first()
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaña no encontrada")
@@ -468,7 +468,7 @@ async def update_campaign_status(
     # Sync with platforms if published
     if campaign.google_campaign_id:
         cred = db.query(PlatformCredential).filter(
-            PlatformCredential.user_id == current_user.id,
+            PlatformCredential.company_id == current_user.company_id,
             PlatformCredential.platform == "google"
         ).first()
         if cred:
@@ -480,7 +480,7 @@ async def update_campaign_status(
 
     if campaign.meta_campaign_id:
         cred = db.query(PlatformCredential).filter(
-            PlatformCredential.user_id == current_user.id,
+            PlatformCredential.company_id == current_user.company_id,
             PlatformCredential.platform == "meta"
         ).first()
         if cred:
@@ -507,7 +507,7 @@ async def publish_campaign(
     """Publish campaign to selected platforms via their APIs."""
     campaign = db.query(MarketingCampaign).filter(
         MarketingCampaign.id == campaign_id,
-        MarketingCampaign.user_id == current_user.id,
+        MarketingCampaign.company_id == current_user.company_id,
     ).first()
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaña no encontrada")
@@ -529,7 +529,7 @@ async def publish_campaign(
 
     if "google" in body.platforms:
         cred = db.query(PlatformCredential).filter(
-            PlatformCredential.user_id == current_user.id,
+            PlatformCredential.company_id == current_user.company_id,
             PlatformCredential.platform == "google",
             PlatformCredential.connected == True,
         ).first()
@@ -546,7 +546,7 @@ async def publish_campaign(
 
     if "meta" in body.platforms:
         cred = db.query(PlatformCredential).filter(
-            PlatformCredential.user_id == current_user.id,
+            PlatformCredential.company_id == current_user.company_id,
             PlatformCredential.platform == "meta",
             PlatformCredential.connected == True,
         ).first()
@@ -585,7 +585,7 @@ async def get_campaign_metrics(
 ):
     campaign = db.query(MarketingCampaign).filter(
         MarketingCampaign.id == campaign_id,
-        MarketingCampaign.user_id == current_user.id,
+        MarketingCampaign.company_id == current_user.company_id,
     ).first()
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaña no encontrada")
@@ -594,7 +594,7 @@ async def get_campaign_metrics(
 
     if campaign.google_campaign_id:
         cred = db.query(PlatformCredential).filter(
-            PlatformCredential.user_id == current_user.id,
+            PlatformCredential.company_id == current_user.company_id,
             PlatformCredential.platform == "google"
         ).first()
         if cred:
@@ -612,7 +612,7 @@ async def get_campaign_metrics(
 
     if campaign.meta_campaign_id:
         cred = db.query(PlatformCredential).filter(
-            PlatformCredential.user_id == current_user.id,
+            PlatformCredential.company_id == current_user.company_id,
             PlatformCredential.platform == "meta"
         ).first()
         if cred:
@@ -659,11 +659,11 @@ async def connect_google(
     current_user: User = Depends(get_current_user),
 ):
     cred = db.query(PlatformCredential).filter(
-        PlatformCredential.user_id == current_user.id,
+        PlatformCredential.company_id == current_user.company_id,
         PlatformCredential.platform == "google"
     ).first()
     if not cred:
-        cred = PlatformCredential(user_id=current_user.id, platform="google")
+        cred = PlatformCredential(user_id=current_user.id, company_id=current_user.company_id, platform="google")
         db.add(cred)
 
     cred.google_customer_id = body.customer_id
@@ -699,11 +699,11 @@ async def connect_meta(
     current_user: User = Depends(get_current_user),
 ):
     cred = db.query(PlatformCredential).filter(
-        PlatformCredential.user_id == current_user.id,
+        PlatformCredential.company_id == current_user.company_id,
         PlatformCredential.platform == "meta"
     ).first()
     if not cred:
-        cred = PlatformCredential(user_id=current_user.id, platform="meta")
+        cred = PlatformCredential(user_id=current_user.id, company_id=current_user.company_id, platform="meta")
         db.add(cred)
 
     cred.meta_account_id = body.account_id
@@ -731,7 +731,7 @@ def get_platforms(
     current_user: User = Depends(get_current_user),
 ):
     creds = db.query(PlatformCredential).filter(
-        PlatformCredential.user_id == current_user.id
+        PlatformCredential.company_id == current_user.company_id
     ).all()
 
     result = {"google": None, "meta": None}
@@ -759,7 +759,7 @@ async def verify_platform(
     current_user: User = Depends(get_current_user),
 ):
     cred = db.query(PlatformCredential).filter(
-        PlatformCredential.user_id == current_user.id,
+        PlatformCredential.company_id == current_user.company_id,
         PlatformCredential.platform == platform
     ).first()
     if not cred:

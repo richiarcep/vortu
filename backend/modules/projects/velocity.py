@@ -24,7 +24,7 @@ def calculate_velocity(db: Session, project_id: int) -> dict:
         }
 
     total_tasks = len(tasks)
-    completed_tasks = [t for t in tasks if t.status == "completada"]
+    completed_tasks = [t for t in tasks if t.status == "done"]
     remaining_tasks = total_tasks - len(completed_tasks)
 
     # ── Velocity: tasks completed per day over last 7 days ───────────────────
@@ -104,7 +104,7 @@ def get_all_projects_velocity(db: Session, company_id: int) -> list:
     """
     projects = db.query(Project).filter(
         Project.company_id == company_id,
-        Project.status == "activo"
+        Project.status == "active"
     ).all()
 
     results = []

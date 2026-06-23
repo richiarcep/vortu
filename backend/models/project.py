@@ -5,19 +5,21 @@ from core.database import Base
 import enum
 
 
+# Status values are stored in English to match the seeded data and the frontend
+# (the two halves of the app previously disagreed: ES enums vs EN data).
 class ProjectStatus(str, enum.Enum):
-    borrador = "borrador"
-    activo = "activo"
-    pausado = "pausado"
-    completado = "completado"
-    cancelado = "cancelado"
+    draft = "draft"
+    active = "active"
+    paused = "paused"
+    completed = "completed"
+    cancelled = "cancelled"
 
 
 class TaskStatus(str, enum.Enum):
-    pendiente = "pendiente"
-    en_progreso = "en_progreso"
-    completada = "completada"
-    bloqueada = "bloqueada"
+    todo = "todo"
+    in_progress = "in_progress"
+    done = "done"
+    blocked = "blocked"
 
 
 class TaskPriority(str, enum.Enum):
@@ -35,7 +37,7 @@ class Project(Base):
     name                  = Column(String(200), nullable=False)
     description           = Column(Text, nullable=True)
     client_name           = Column(String(200), nullable=True)
-    status                = Column(String(20), default="activo")
+    status                = Column(String(20), default="active")
     start_date            = Column(Date, nullable=True)
     deadline              = Column(Date, nullable=True)
     budget                = Column(Float, default=0.0)
@@ -58,7 +60,7 @@ class Task(Base):
     company_id       = Column(Integer, ForeignKey("companies.id"), nullable=False)
     title            = Column(String(300), nullable=False)
     description      = Column(Text, nullable=True)
-    status           = Column(String(20), default="pendiente")
+    status           = Column(String(20), default="todo")
     priority         = Column(String(10), default="media")
     assigned_to      = Column(Integer, ForeignKey("employees.id"), nullable=True)
     due_date         = Column(Date, nullable=True)
