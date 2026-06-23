@@ -26,6 +26,15 @@ const I = {
   chevronDown: <Icon d={<path d="M6 9.5l6 5 6-5"/>} />,
   menu:      <Icon d={<path d="M4 6h16M4 12h16M4 18h16"/>} sw={2} />,
   close:     <Icon d={<path d="M6 6l12 12M18 6L6 18"/>} sw={2} />,
+  lock:      <Icon d={<><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></>} size={13} />,
+}
+
+// Sidebar route → plan module key (mirrors JurisdictionGuard). Unlisted routes
+// are never gated. Locked items route to billing instead of navigating.
+const HREF_MODULE = {
+  '/contabilidad': 'contabilidad', '/finanzas': 'finanzas', '/costes': 'finanzas',
+  '/ventas': 'ventas', '/hr': 'hr', '/proyectos': 'proyectos', '/clientes': 'clientes',
+  '/documentos': 'documentos', '/marketing': 'marketing', '/vera': 'agente',
 }
 
 const NAV_GROUPS = [
@@ -66,6 +75,7 @@ export default function Sidebar({ active }) {
   const [user, setUser] = useState(null)
   const [company, setCompany] = useState(null)
   const [isAdmin, setIsAdmin] = useState(false)
+  const [allowedModules, setAllowedModules] = useState(null)  // null = loading (show all unlocked)
   const [open, setOpen] = useState(false)   // drawer móvil
 
   const currentPath = active || pathname
@@ -97,6 +107,11 @@ export default function Sidebar({ active }) {
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (d?.empresa) setCompany(d.empresa) })
       .catch(e => console.error('Error de red:', e))
+    // Allowed modules drive the nav locks (beta returns the full set → nothing locks).
+    fetch(`${API}/api/billing/status`, { headers: { Authorization: `Bearer ${t}` } })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (Array.isArray(d?.modules)) setAllowedModules(d.modules) })
+      .catch(() => {})
   }, [])
 
   // Cerrar el drawer con Escape (a11y).
@@ -199,6 +214,23 @@ export default function Sidebar({ active }) {
               <div style={{fontSize:11,fontWeight:600,color:T.text4,padding:'8px 10px 6px',letterSpacing:0.1}}>{g.title}</div>
               {g.items.map(n => {
                 const isActive = currentPath === n.href || currentPath?.startsWith(n.href + '/')
+                const modKey = HREF_MODULE[n.href]
+                const locked = allowedModules && modKey && !allowedModules.includes(modKey)
+                if (locked) {
+                  // Not in plan → show a lock, route to billing instead of the module.
+                  return (
+                    <div key={n.href} onClick={() => { setOpen(false); router.push('/settings?tab=subscription') }}
+                      title="Mejora tu plan para desbloquear"
+                      style={{ ...navItemStyle(false), opacity: 0.45, cursor: 'pointer' }}
+                      onMouseEnter={e => e.currentTarget.style.background = T.soft}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <span style={{color: T.text4, display:'flex',flexShrink:0}}>{n.icon}</span>
+                      <span style={{flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{n.label}</span>
+                      <span style={{color: T.text4, display:'flex',flexShrink:0}}>{I.lock}</span>
+                    </div>
+                  )
+                }
                 return (
                   <Link key={n.href} href={n.href} onClick={() => setOpen(false)}
                     aria-current={isActive ? 'page' : undefined}

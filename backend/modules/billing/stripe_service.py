@@ -409,6 +409,19 @@ def get_subscription_status(db, user_id):
     if sub.current_period_end and sub.current_period_end < now and sub.status not in ("trialing", "active"):
         has_access = False
 
+    # Module access set. Beta is OPEN (full module set) so the gating UI is wired
+    # but locks no one yet; superadmins (incl. the demo) always get full access.
+    # Flip the phase to "paid"/"early_adopter" to start enforcing per-plan modules.
+    from models.user import User as _User
+    _u = db.query(_User).filter(_User.id == user_id).first()
+    _is_super = bool(_u and getattr(_u, "is_superadmin", False))
+    if fase == "beta" or _is_super:
+        allowed_modules = PLANS["business"]["modules"]
+    elif has_access:
+        allowed_modules = plan["modules"]
+    else:
+        allowed_modules = ["dashboard"]
+
     usage = db.query(UsageTracking).filter(
         UsageTracking.subscription_id == sub.id,
         UsageTracking.period_start <= now,
@@ -430,7 +443,7 @@ def get_subscription_status(db, user_id):
         "cancel_at_period_end": sub.cancel_at_period_end,
         "pending_downgrade_plan": sub.pending_downgrade_plan if hasattr(sub, 'pending_downgrade_plan') else None,
         "license_paid": lic.status == "paid" if lic else False,
-        "modules": plan["modules"] if has_access else ["dashboard"],
+        "modules": allowed_modules,
         "max_users": plan["max_users"] + sub.extra_users,
         "extra_users": sub.extra_users,
         "ai_limit": plan["ai_queries_monthly"],
