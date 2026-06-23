@@ -128,6 +128,7 @@ def create_employee(
     """Creates a new employee record."""
 
     existing = db.query(Employee).filter(
+        Employee.company_id == current_user.company_id,
         Employee.email == data.email
     ).first()
     if existing:
@@ -264,11 +265,40 @@ def process_payroll_document(
 @router.get("/payslip/{employee_name}")
 def download_payslip(
     employee_name: str,
+    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Downloads a generated payslip PDF for an employee."""
-    filename = f"payslips/{employee_name}_payslip.pdf"
+    """Downloads a generated payslip PDF for an employee of the caller's company."""
+    from core.files import safe_filename
+    # Sanitize the path param (kills ../ traversal) and rebuild the path from the
+    # safe value only — never from the raw param.
+    safe_name = safe_filename(employee_name)
 
+    # Authorize: the requested payslip must belong to an employee of THIS company.
+    # Payslips are named from full_name with spaces → underscores (payroll.py).
+    requested = safe_name.replace("_", " ").strip().lower()
+    owns = (
+        db.query(Employee)
+        .filter(
+            Employee.company_id == current_user.company_id,
+            func.lower(func.replace(Employee.full_name, " ", "_")) == safe_name.lower(),
+        )
+        .first()
+    )
+    if not owns:
+        # Fall back to a looser name match, still scoped to the company.
+        owns = (
+            db.query(Employee)
+            .filter(
+                Employee.company_id == current_user.company_id,
+                func.lower(Employee.full_name) == requested,
+            )
+            .first()
+        )
+    if not owns:
+        raise HTTPException(status_code=404, detail="Payslip not found.")
+
+    filename = os.path.join("payslips", f"{safe_name}_payslip.pdf")
     if not os.path.exists(filename):
         raise HTTPException(
             status_code=404,
@@ -278,7 +308,7 @@ def download_payslip(
     return FileResponse(
         filename,
         media_type="application/pdf",
-        filename=f"{employee_name}_payslip.pdf"
+        filename=f"{safe_name}_payslip.pdf"
     )
 
 
@@ -405,6 +435,15 @@ def create_vacation(
     current_user: User = Depends(get_current_user)
 ):
     """Crea una nueva solicitud de vacaciones."""
+    # Authorize: the employee must belong to the caller's company (prevents
+    # attaching vacation records to another tenant's employees).
+    emp = db.query(Employee).filter(
+        Employee.id == data.employee_id,
+        Employee.company_id == current_user.company_id,
+    ).first()
+    if not emp:
+        raise HTTPException(status_code=404, detail="Empleado no encontrado")
+
     start = datetime.fromisoformat(data.start_date).date()
     end = datetime.fromisoformat(data.end_date).date()
     days = (end - start).days + 1

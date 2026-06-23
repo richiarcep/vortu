@@ -1,0 +1,21 @@
+# Caddy reverse proxy. Provisions and renews HTTPS automatically via Let's
+# Encrypt for {$DOMAIN} (point your domain's DNS A record at the server, and
+# make sure ports 80 + 443 are open). For local testing set DOMAIN=localhost
+# (Caddy serves an internal self-signed cert).
+
+{$DOMAIN} {
+	encode gzip zstd
+
+	# API and health checks → FastAPI backend.
+	handle /api/* {
+		reverse_proxy backend:8000
+	}
+	handle /health {
+		reverse_proxy backend:8000
+	}
+
+	# Everything else → Next.js frontend.
+	handle {
+		reverse_proxy frontend:3000
+	}
+}

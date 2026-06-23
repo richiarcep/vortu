@@ -11,7 +11,7 @@ import json
 import time
 
 from core.database import get_db
-from core.security import get_current_user
+from core.security import get_current_user, get_admin_user
 from models.user import User
 from vera.llm_router import VeraRouter
 
@@ -136,13 +136,13 @@ def route_message(
 @router.get("/route/status")
 def route_status(
     db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
+    user: User = Depends(get_admin_user),
 ):
     """
-    Devuelve el estado del sistema multi-LLM:
+    Devuelve el estado del sistema multi-LLM (solo superadmin de plataforma):
     - Modelos configurados y disponibles
     - Reglas activas
-    - Stats últimas 24h
+    - Stats últimas 24h (agregadas cross-tenant)
     """
     from vera.llm_router import LLMFactory
     factory = LLMFactory(db)

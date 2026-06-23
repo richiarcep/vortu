@@ -16,8 +16,8 @@ PLANS = {
     },
     "starter": {
         "name": "Starter",
-        "price_monthly": 9,
-        "license_price": 149,
+        "price_monthly": 29,
+        "license_price": 0,
         "max_users": 1,
         "extra_user_price": 8,
         "ai_queries_monthly": 50,
@@ -26,8 +26,8 @@ PLANS = {
     },
     "pro": {
         "name": "Pro",
-        "price_monthly": 19,
-        "license_price": 299,
+        "price_monthly": 59,
+        "license_price": 0,
         "max_users": 3,
         "extra_user_price": 8,
         "ai_queries_monthly": 500,
@@ -36,8 +36,8 @@ PLANS = {
     },
     "business": {
         "name": "Business",
-        "price_monthly": 39,
-        "license_price": 499,
+        "price_monthly": 119,
+        "license_price": 0,
         "max_users": 10,
         "extra_user_price": 8,
         "ai_queries_monthly": 99999,

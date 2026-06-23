@@ -6,7 +6,7 @@ import { API_BASE as API } from '@/lib/api'
 const T = {
   text: '#1d1d1f', text2: '#3a3a3c', text3: '#6e6e73', text4: '#86868b',
   card: '#fff', sidebar: '#f5f5f7', hairline: 'rgba(0,0,0,.08)',
-  blue: '#4F46E5', green: '#34c759', amber: '#ff9500', red: '#ff3b30',
+  blue: '#3D2BFF', green: '#34c759', amber: '#ff9500', red: '#ff3b30',
   purple: '#5e5ce6', dark: '#3730A3',
 }
 const FONT = "-apple-system,BlinkMacSystemFont,system-ui,sans-serif"
@@ -219,7 +219,7 @@ export default function VeraDocPrompts({ token }) {
                   {p.is_default && (
                     <span style={{
                       fontSize: 9, padding: '2px 6px', borderRadius: 4,
-                      background: 'rgba(79,70,229,.1)', color: T.blue,
+                      background: 'rgba(61,43,255,.1)', color: T.blue,
                       fontWeight: 700, letterSpacing: 0.4,
                     }}>DEFAULT</span>
                   )}

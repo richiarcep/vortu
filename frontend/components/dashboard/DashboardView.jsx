@@ -8,7 +8,7 @@ const T = {
   bg:'#FBFBFD', sidebar:'#F5F5F7', card:'#FFFFFF',
   hairline:'rgba(0,0,0,0.08)', hairlineSoft:'rgba(0,0,0,0.05)',
   text:'#1D1D1F', text2:'#424245', text3:'#6E6E73', text4:'#86868B',
-  blue:'#4F46E5', cyan:'#4F46E5',
+  blue:'#3D2BFF', cyan:'#3D2BFF',
   green:'#34C759', greenSoft:'rgba(52,199,89,.12)',
   amber:'#FF9500', amberSoft:'rgba(255,149,0,.12)',
   red:'#FF3B30', redSoft:'rgba(255,59,48,.10)',
@@ -175,7 +175,7 @@ function AgentPanel({ token }) {
   return (
     <div style={{background:T.card,borderRadius:18,padding:22,border:`.5px solid ${T.hairline}`,display:'flex',flexDirection:'column',gap:18,boxShadow:'0 1px 2px rgba(0,0,0,.03)'}}>
       <div style={{display:'flex',alignItems:'center',gap:10}}>
-        <div style={{width:30,height:30,borderRadius:8,background:'linear-gradient(135deg,#4F46E5,#A5B1FF)',color:'#fff',display:'grid',placeItems:'center',flexShrink:0,boxShadow:'0 1px 2px rgba(79,70,229,.25)'}}>{I.sparkle}</div>
+        <div style={{width:30,height:30,borderRadius:8,background:'linear-gradient(135deg,#3D2BFF,#A5B1FF)',color:'#fff',display:'grid',placeItems:'center',flexShrink:0,boxShadow:'0 1px 2px rgba(61,43,255,.25)'}}>{I.sparkle}</div>
         <div>
           <div style={{fontSize:15,fontWeight:600,color:T.text,letterSpacing:-0.2}}>Vera</div>
           <div style={{fontSize:11.5,color:T.text4}}>Datos en tiempo real</div>
@@ -285,7 +285,7 @@ function ProfileBtn({ user }) {
         onMouseEnter={e=>e.currentTarget.style.background='rgba(0,0,0,.04)'}
         onMouseLeave={e=>e.currentTarget.style.background='transparent'}
       >
-        <div style={{width:28,height:28,borderRadius:999,background:'linear-gradient(135deg,#4F46E5,#A5B1FF)',color:'#fff',display:'grid',placeItems:'center',fontWeight:600,fontSize:11.5,boxShadow:'inset 0 0 0 .5px rgba(0,0,0,.1)'}}>{initials}</div>
+        <div style={{width:28,height:28,borderRadius:999,background:'linear-gradient(135deg,#3D2BFF,#A5B1FF)',color:'#fff',display:'grid',placeItems:'center',fontWeight:600,fontSize:11.5,boxShadow:'inset 0 0 0 .5px rgba(0,0,0,.1)'}}>{initials}</div>
         <div style={{display:'flex',flexDirection:'column',lineHeight:1.2,whiteSpace:'nowrap'}}>
           <span style={{fontSize:13,fontWeight:500,color:T.text}}>{user?.name?.split(' ')[0]||'Usuario'}</span>
           <span style={{fontSize:11,color:T.text4}}>Pro</span>

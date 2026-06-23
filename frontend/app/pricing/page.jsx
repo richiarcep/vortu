@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { API_BASE } from '@/lib/api'
 
 const NAVY  = '#0B0D2B'
-const CYAN  = '#4F46E5'
+const CYAN  = '#3D2BFF'
 const BLUE  = '#6366F1'
 const GREEN = '#059669'
 const AMBER = '#d97706'
@@ -16,8 +16,7 @@ const PLANS = [
     name: 'Starter',
     emoji: '🥉',
     tagline: 'Para autónomos y microempresas',
-    license: 149,
-    monthly: 9,
+    monthly: 29,
     users: 1,
     ai: '50 consultas/mes',
     docs: '25 documentos/mes',
@@ -25,15 +24,13 @@ const PLANS = [
     highlight: false,
     modules: ['Dashboard', 'Contabilidad', 'Finanzas', 'Ventas básica'],
     missing: ['RR.HH.', 'Proyectos', 'Clientes', 'Documentos', 'Agente IA', 'Marketing IA'],
-    be_note: 'Ancla la percepción de valor',
   },
   {
     id: 'pro',
     name: 'Pro',
     emoji: '🥈',
     tagline: 'El más elegido por pymes',
-    license: 299,
-    monthly: 19,
+    monthly: 59,
     users: 3,
     ai: '500 consultas/mes',
     docs: '50 documentos/mes',
@@ -41,15 +38,13 @@ const PLANS = [
     highlight: true,
     modules: ['Dashboard', 'Contabilidad', 'Finanzas', 'Ventas', 'RR.HH.', 'Proyectos', 'Clientes', 'Documentos', 'Agente IA'],
     missing: ['Marketing IA'],
-    be_note: 'Compromise Effect — el cerebro elige el centro',
   },
   {
     id: 'business',
     name: 'Business',
     emoji: '🥇',
     tagline: 'Para empresas en crecimiento',
-    license: 499,
-    monthly: 39,
+    monthly: 119,
     users: 10,
     ai: 'IA ilimitada',
     docs: 'Documentos ilimitados',
@@ -57,7 +52,6 @@ const PLANS = [
     highlight: false,
     modules: ['Dashboard', 'Contabilidad', 'Finanzas', 'Ventas', 'RR.HH.', 'Proyectos', 'Clientes', 'Documentos', 'Agente IA', 'Marketing IA'],
     missing: [],
-    be_note: 'Aspirational — hace que Pro parezca asequible',
   },
 ]
 
@@ -93,10 +87,8 @@ function CountUp({ end, duration = 1200, prefix = '', suffix = '' }) {
   return <span>{prefix}{count.toLocaleString('es-ES')}{suffix}</span>
 }
 
-function PlanCard({ plan, isAnnual, onChoose, loading }) {
+function PlanCard({ plan, onChoose, loading }) {
   const [hovered, setHovered] = useState(false)
-  const yearSavings = plan.monthly * 12 - plan.monthly * 10  // 2 months free if annual
-  const displayMonthly = isAnnual ? Math.round(plan.monthly * 10 / 12) : plan.monthly
 
   return (
     <div
@@ -120,7 +112,7 @@ function PlanCard({ plan, isAnnual, onChoose, loading }) {
 
       {/* Popular badge — Social Proof */}
       {plan.highlight && (
-        <div style={{ position: 'absolute', top: '-14px', left: '50%', transform: 'translateX(-50%)', background: `linear-gradient(135deg, ${CYAN}, ${BLUE})`, color: 'white', fontSize: '11px', fontWeight: '800', padding: '4px 16px', borderRadius: '20px', whiteSpace: 'nowrap', letterSpacing: '0.05em', boxShadow: '0 4px 12px rgba(79,70,229,0.4)' }}>
+        <div style={{ position: 'absolute', top: '-14px', left: '50%', transform: 'translateX(-50%)', background: `linear-gradient(135deg, ${CYAN}, ${BLUE})`, color: 'white', fontSize: '11px', fontWeight: '800', padding: '4px 16px', borderRadius: '20px', whiteSpace: 'nowrap', letterSpacing: '0.05em', boxShadow: '0 4px 12px rgba(61,43,255,0.4)' }}>
           ⭐ MÁS POPULAR
         </div>
       )}
@@ -132,22 +124,13 @@ function PlanCard({ plan, isAnnual, onChoose, loading }) {
         <div style={{ fontSize: '13px', color: plan.highlight ? 'rgba(255,255,255,0.5)' : '#6b7280' }}>{plan.tagline}</div>
       </div>
 
-      {/* Pricing — Contrast pricing (show monthly big, license small) */}
+      {/* Pricing */}
       <div style={{ marginBottom: '24px' }}>
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: '4px', marginBottom: '4px' }}>
-          <span style={{ fontSize: '48px', fontWeight: '800', color: plan.highlight ? 'white' : NAVY, letterSpacing: '-2px', lineHeight: 1 }}>€{displayMonthly}</span>
+          <span style={{ fontSize: '48px', fontWeight: '800', color: plan.highlight ? 'white' : NAVY, letterSpacing: '-2px', lineHeight: 1 }}>€{plan.monthly}</span>
           <span style={{ fontSize: '14px', color: plan.highlight ? 'rgba(255,255,255,0.5)' : '#6b7280', marginBottom: '8px' }}>/mes</span>
         </div>
-        {isAnnual && (
-          <div style={{ fontSize: '11px', color: GREEN, fontWeight: '700', background: '#f0fdf4', padding: '2px 8px', borderRadius: '6px', display: 'inline-block', marginBottom: '6px' }}>
-            Ahorras €{yearSavings}/año
-          </div>
-        )}
-        {/* License — Pain of Paying chunking */}
-        <div style={{ fontSize: '12px', color: plan.highlight ? 'rgba(255,255,255,0.4)' : '#9ca3af', marginTop: '4px' }}>
-          + €{plan.license} licencia única (pago único)
-        </div>
-        <div style={{ fontSize: '11px', color: plan.highlight ? 'rgba(255,255,255,0.3)' : '#9ca3af', marginTop: '2px' }}>
+        <div style={{ fontSize: '11px', color: plan.highlight ? 'rgba(255,255,255,0.3)' : '#9ca3af', marginTop: '6px' }}>
           {plan.users} usuario{plan.users > 1 ? 's' : ''} incluido{plan.users > 1 ? 's' : ''} · +€8/usuario extra
         </div>
       </div>
@@ -175,7 +158,7 @@ function PlanCard({ plan, isAnnual, onChoose, loading }) {
           alignItems: 'center',
           justifyContent: 'center',
           gap: '8px',
-          boxShadow: plan.highlight ? '0 8px 24px rgba(79,70,229,0.4)' : 'none',
+          boxShadow: plan.highlight ? '0 8px 24px rgba(61,43,255,0.4)' : 'none',
         }}>
         {loading === plan.id
           ? <><span style={{ width: '16px', height: '16px', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', borderRadius: '50%', display: 'inline-block', animation: 'spin 0.7s linear infinite' }} /> Iniciando...</>
@@ -188,7 +171,7 @@ function PlanCard({ plan, isAnnual, onChoose, loading }) {
         <div style={{ fontSize: '11px', fontWeight: '700', color: plan.highlight ? 'rgba(255,255,255,0.4)' : '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '12px' }}>Módulos incluidos</div>
         {plan.modules.map(m => (
           <div key={m} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-            <span style={{ width: '18px', height: '18px', borderRadius: '50%', background: plan.highlight ? 'rgba(79,70,229,0.2)' : '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', flexShrink: 0 }}>✓</span>
+            <span style={{ width: '18px', height: '18px', borderRadius: '50%', background: plan.highlight ? 'rgba(61,43,255,0.2)' : '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', flexShrink: 0 }}>✓</span>
             <span style={{ fontSize: '13px', color: plan.highlight ? 'rgba(255,255,255,0.85)' : '#374151' }}>{MODULE_ICONS[m]} {m}</span>
           </div>
         ))}
@@ -218,7 +201,6 @@ function PlanCard({ plan, isAnnual, onChoose, loading }) {
 
 export default function PricingPage() {
   const router = useRouter()
-  const [isAnnual, setIsAnnual] = useState(false)
   const [loading, setLoading] = useState(null)
   const [trialLoading, setTrialLoading] = useState(false)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
@@ -234,34 +216,25 @@ export default function PricingPage() {
     if (!token) { router.push('/login?redirect=/pricing'); return }
     setLoading(planId)
     try {
-      // First buy license, then subscription
-      const res = await fetch(`${API_BASE}/api/billing/license/checkout`, {
+      const res = await fetch(`${API_BASE}/api/billing/subscription/checkout`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ plan_id: planId }),
       })
       const data = await res.json()
       if (data.checkout_url) window.location.href = data.checkout_url
+      else alert(data.detail || 'No se pudo iniciar el checkout. Inténtalo de nuevo.')
     } catch { alert('Error de conexión') } finally { setLoading(null) }
   }
 
-  async function handleTrial() {
+  function handleTrial() {
+    // El trial se activa al registrarse. Usuarios nuevos → registro;
+    // usuarios ya autenticados → su panel (ya tienen cuenta/trial activo).
     const token = localStorage.getItem('vela_token')
-    if (!token) { router.push('/register'); return }
-    setTrialLoading(true)
-    try {
-      const res = await fetch(`${API_BASE}/api/billing/trial/start`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      const data = await res.json()
-      if (data.checkout_url) window.location.href = data.checkout_url
-      else if (data.detail) alert(data.detail)
-    } catch { alert('Error de conexión') } finally { setTrialLoading(false) }
+    router.push(token ? '/dashboard' : '/register')
   }
 
   const faqs = [
-    { q: '¿Por qué hay una licencia única además de la suscripción mensual?', a: 'La licencia te da acceso permanente a la plataforma base de Vela. La suscripción mensual cubre la IA, actualizaciones y soporte. Si en algún momento pausas la suscripción, conservas acceso básico con tu licencia.' },
     { q: '¿Puedo cambiar de plan después?', a: 'Sí, en cualquier momento desde Ajustes → Facturación. Si subes de plan, se aplica un prorrateo proporcional al tiempo restante del mes.' },
     { q: '¿Qué pasa si supero el límite de consultas IA?', a: 'Vela te avisa antes de llegar al límite. Puedes subir de plan o esperar al próximo ciclo de facturación. Nunca se te cobra automáticamente extra.' },
     { q: '¿Cómo funciona el free trial?', a: '14 días con acceso completo al plan Business. Se requiere tarjeta de crédito para activarlo — si cancelas antes del día 14, no se te cobra nada. Si no cancelas, convierte automáticamente al plan Business.' },
@@ -332,13 +305,9 @@ export default function PricingPage() {
           ))}
         </div>
 
-        {/* Annual toggle — Foot in the door */}
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '12px', background: 'white', border: '1px solid #e5e9f0', borderRadius: '12px', padding: '6px 8px' }}>
-          <button onClick={() => setIsAnnual(false)} style={{ padding: '7px 16px', borderRadius: '8px', border: 'none', background: !isAnnual ? NAVY : 'transparent', color: !isAnnual ? 'white' : '#6b7280', fontWeight: '600', fontSize: '13px', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s' }}>Mensual</button>
-          <button onClick={() => setIsAnnual(true)} style={{ padding: '7px 16px', borderRadius: '8px', border: 'none', background: isAnnual ? NAVY : 'transparent', color: isAnnual ? 'white' : '#6b7280', fontWeight: '600', fontSize: '13px', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            Anual
-            <span style={{ fontSize: '10px', fontWeight: '800', background: GREEN, color: 'white', padding: '2px 6px', borderRadius: '6px' }}>-17%</span>
-          </button>
+        {/* Pago mensual, sin permanencia */}
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#6b7280', fontWeight: '500' }}>
+          <span>Facturación mensual · Sin permanencia · Cancela cuando quieras</span>
         </div>
       </div>
 
@@ -346,7 +315,7 @@ export default function PricingPage() {
       <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '0 40px 80px' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', alignItems: 'center' }}>
           {PLANS.map(plan => (
-            <PlanCard key={plan.id} plan={plan} isAnnual={isAnnual} onChoose={handleChoosePlan} loading={loading} />
+            <PlanCard key={plan.id} plan={plan} onChoose={handleChoosePlan} loading={loading} />
           ))}
         </div>
 
@@ -373,7 +342,7 @@ export default function PricingPage() {
             <p style={{ fontSize: '15px', color: 'rgba(255,255,255,0.55)', marginBottom: '28px', maxWidth: '440px', margin: '0 auto 28px', lineHeight: '1.6' }}>
               Experimenta Vela al completo. Si no te convence, cancela sin preguntas. Si te queda, introduces tu tarjeta al final del trial.
             </p>
-            <button onClick={handleTrial} disabled={trialLoading} style={{ padding: '16px 40px', borderRadius: '12px', border: 'none', background: `linear-gradient(135deg, ${CYAN}, ${BLUE})`, color: 'white', fontWeight: '800', fontSize: '16px', cursor: 'pointer', fontFamily: 'inherit', letterSpacing: '-0.2px', boxShadow: '0 8px 32px rgba(79,70,229,0.4)', display: 'inline-flex', alignItems: 'center', gap: '10px' }}>
+            <button onClick={handleTrial} disabled={trialLoading} style={{ padding: '16px 40px', borderRadius: '12px', border: 'none', background: `linear-gradient(135deg, ${CYAN}, ${BLUE})`, color: 'white', fontWeight: '800', fontSize: '16px', cursor: 'pointer', fontFamily: 'inherit', letterSpacing: '-0.2px', boxShadow: '0 8px 32px rgba(61,43,255,0.4)', display: 'inline-flex', alignItems: 'center', gap: '10px' }}>
               {trialLoading ? <><span style={{ width: '18px', height: '18px', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', borderRadius: '50%', display: 'inline-block', animation: 'spin 0.7s linear infinite' }} />Iniciando...</> : '🚀 Empezar prueba gratuita'}
             </button>
             <div style={{ marginTop: '14px', fontSize: '12px', color: 'rgba(255,255,255,0.3)' }}>

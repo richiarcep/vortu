@@ -15,7 +15,7 @@ const PAISES = [
     desc:'VeriFactu — AEAT',
     detalle:'PGC Real Decreto 1514/2007 · IVA 21/10/4% · IRPF',
     disponible:true,
-    color:'#4F46E5',
+    color:'#3D2BFF',
   },
   {
     code:'SV', name:'El Salvador', flag:'🇸🇻',
@@ -68,8 +68,14 @@ export default function OnboardingPage() {
     fetch(`${API}/api/auth/me`, {
       headers: { Authorization: `Bearer ${token}` }
     })
-      .then(r => r.json())
+      .then(r => {
+        // Don't parse an error body as if it were the user — an expired/invalid
+        // token returns 401 and would otherwise strand the user on onboarding.
+        if (!r.ok) { localStorage.removeItem('vela_token'); router.push('/login'); return null }
+        return r.json()
+      })
       .then(d => {
+        if (!d) return
         if (d.country) { router.push('/dashboard'); return }
         setUser(d)
       })
@@ -117,9 +123,9 @@ export default function OnboardingPage() {
       <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:48}}>
         <div style={{
           width:40,height:40,borderRadius:10,
-          background:'linear-gradient(135deg,#4F46E5,#A5B1FF)',
+          background:'linear-gradient(135deg,#3D2BFF,#A5B1FF)',
           display:'flex',alignItems:'center',justifyContent:'center',
-          boxShadow:'0 4px 12px rgba(79,70,229,0.3)',
+          boxShadow:'0 4px 12px rgba(61,43,255,0.3)',
         }}>
           <svg width="20" height="17" viewBox="0 0 26 22" fill="none">
             <rect x="1"  y="12" width="6" height="10" rx="1.5" fill="rgba(255,255,255,0.6)"/>
@@ -145,7 +151,7 @@ export default function OnboardingPage() {
         {/* Top */}
         <div style={{
           background:NAVY, padding:'36px 40px',
-          backgroundImage:'radial-gradient(ellipse 60% 80% at 100% 50%, rgba(79,70,229,0.12) 0%, transparent 70%)',
+          backgroundImage:'radial-gradient(ellipse 60% 80% at 100% 50%, rgba(61,43,255,0.12) 0%, transparent 70%)',
         }}>
           <div style={{fontSize:11,fontWeight:700,color:'rgba(255,255,255,0.4)',letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:10}}>
             Paso 2 de 3
@@ -182,7 +188,7 @@ export default function OnboardingPage() {
                       ? `1.5px solid ${p.color}`
                       : `.5px solid ${T.hairline}`,
                     background: isSelected
-                      ? `rgba(${p.color === '#4F46E5' ? '61,43,255' : '52,199,89'},.06)`
+                      ? `rgba(${p.color === '#3D2BFF' ? '61,43,255' : '52,199,89'},.06)`
                       : p.disponible ? T.card : T.sidebar,
                     padding:'20px 18px',
                     cursor: p.disponible ? 'pointer' : 'not-allowed',
@@ -230,8 +236,8 @@ export default function OnboardingPage() {
           {/* Detalle del país seleccionado */}
           {pais && pais.disponible && (
             <div style={{
-              background: pais.code === 'ES' ? 'rgba(79,70,229,.06)' : T.greenSoft,
-              border: `.5px solid ${pais.code === 'ES' ? 'rgba(79,70,229,.2)' : 'rgba(52,199,89,.2)'}`,
+              background: pais.code === 'ES' ? 'rgba(61,43,255,.06)' : T.greenSoft,
+              border: `.5px solid ${pais.code === 'ES' ? 'rgba(61,43,255,.2)' : 'rgba(52,199,89,.2)'}`,
               borderRadius:12, padding:'14px 18px',
               display:'flex', alignItems:'center', gap:12, marginBottom:24,
             }}>

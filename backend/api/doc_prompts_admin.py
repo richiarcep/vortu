@@ -16,10 +16,11 @@ router = APIRouter(prefix="/api/admin/doc-prompts", tags=["Doc Prompts Admin"])
 
 
 def _check_admin(user: User):
-    is_super = getattr(user, "is_super_admin", False)
-    is_admin = getattr(user, "is_admin", False)
-    if not (is_super or is_admin):
-        raise HTTPException(403, "Solo admin")
+    # Platform-wide doc prompts: gate on superadmin only.
+    # (Note: the column is `is_superadmin` — the old `is_super_admin` check was a
+    # permanently-dead branch that silently collapsed the gate to any is_admin user.)
+    if not getattr(user, "is_superadmin", False):
+        raise HTTPException(403, "Solo administradores de plataforma")
 
 
 class PromptPayload(BaseModel):

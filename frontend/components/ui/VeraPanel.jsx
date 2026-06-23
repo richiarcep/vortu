@@ -151,8 +151,8 @@ export default function VeraPanel({
           <div style={{
             width: 28, height: 28, borderRadius: 8,
             background: isPlus
-              ? 'linear-gradient(135deg,#3730A3,#4F46E5)'
-              : 'linear-gradient(135deg,#4F46E5,#A5B1FF)',
+              ? 'linear-gradient(135deg,#3730A3,#3D2BFF)'
+              : 'linear-gradient(135deg,#3D2BFF,#A5B1FF)',
             color: '#fff', display: 'grid', placeItems: 'center',
             fontSize: 12, fontWeight: 600,
           }}>V</div>
@@ -169,7 +169,7 @@ export default function VeraPanel({
         </div>
         <span style={{
           fontSize: 10, fontWeight: 700, color: isPlus ? '#fff' : T.blue,
-          background: isPlus ? '#3730A3' : 'rgba(79,70,229,.08)',
+          background: isPlus ? '#3730A3' : 'rgba(61,43,255,.08)',
           padding: '3px 10px', borderRadius: 999, letterSpacing: 0.4,
         }}>
           {isPlus ? '★ PLUS' : 'BASE'}

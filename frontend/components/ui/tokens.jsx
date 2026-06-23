@@ -13,14 +13,14 @@ export const T_LIGHT = {
   text: '#0F172A',
   text2: '#334155',
   text3: '#64748B',
-  text4: '#778598', // a11y: subido de #94A3B8 (2.7:1) → ~3.3:1 sobre blanco, sigue siendo el tono más tenue
-  blue: '#4F46E5',  // Vela Blue Violet (acento principal)
-  cyan: '#6366F1',  // Vela violeta-claro (compañero de gradiente)
-  green: '#059669',
+  text4: '#586474', // a11y: ≥4.5:1 sobre card/bg/sidebar (texto pequeño cumple AA)
+  blue: '#3D2BFF',  // Vela Electric Blue Violet (acento principal, logo oficial)
+  cyan: '#6E5DFF',  // Vela violeta-claro (compañero de gradiente)
+  green: '#047857', // a11y: ≥4.5:1 sobre greenSoft/card (texto de badge AA)
   greenSoft: 'rgba(5,150,105,.10)',
-  amber: '#D97706',
+  amber: '#B45309', // a11y: ≥4.5:1 sobre amberSoft/card
   amberSoft: 'rgba(217,119,6,.12)',
-  red: '#DC2626',
+  red: '#B91C1C',   // a11y: ≥4.5:1 sobre redSoft/card
   redSoft: 'rgba(220,38,38,.10)',
   purple: '#6366F1',
   purpleSoft: 'rgba(99,102,241,.1)',
@@ -37,7 +37,7 @@ export const T_DARK = {
   text2: '#C9D1D9',
   text3: '#8B949E',
   text4: '#7C8593', // a11y: subido de #6E7681 → ~4.5:1 sobre el fondo oscuro
-  blue: '#6366F1',  // violeta más claro para contraste sobre navy
+  blue: '#6E5DFF',  // azul-violeta más claro para contraste sobre navy (alineado al logo)
   cyan: '#A5B1FF',  // Soft Periwinkle (acento claro)
   green: '#3FB950',
   greenSoft: 'rgba(63,185,80,.16)',

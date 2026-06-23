@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
 import VeraPanel from '@/components/ui/VeraPanel'
 import { FONT, useT, useTheme } from '@/components/ui/tokens'
-import { Skeleton, EmptyState, HeaderActions } from '@/components/ui/primitives'
+import { Skeleton, EmptyState, PageHeader } from '@/components/ui/primitives'
 import VeraDrawer from '@/components/ui/VeraDrawer'
 
 import { API_BASE as API } from '@/lib/api'
@@ -144,7 +144,7 @@ function VeraInsight({ insight, loading, onOpenChat, onRegenerate }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{
             width: 28, height: 28, borderRadius: 8,
-            background: 'linear-gradient(135deg,#4F46E5,#A5B1FF)',
+            background: 'linear-gradient(135deg,#3D2BFF,#A5B1FF)',
             display: 'grid', placeItems: 'center',
           }}>
             <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
@@ -162,8 +162,8 @@ function VeraInsight({ insight, loading, onOpenChat, onRegenerate }) {
         </div>
         <button onClick={onOpenChat} style={{
           padding: '5px 12px', borderRadius: 7,
-          border: `.5px solid rgba(79,70,229,.18)`,
-          background: 'rgba(79,70,229,.05)', color: T.blue,
+          border: `.5px solid rgba(61,43,255,.18)`,
+          background: 'rgba(61,43,255,.05)', color: T.blue,
           fontSize: 12, fontWeight: 500, cursor: 'pointer',
           fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 5,
         }}>
@@ -188,9 +188,9 @@ function VeraInsight({ insight, loading, onOpenChat, onRegenerate }) {
       {insight && !loading && (
         <div style={{
           padding: '16px 18px',
-          background: 'linear-gradient(180deg, rgba(79,70,229,.025), rgba(79,70,229,.01))',
+          background: 'linear-gradient(180deg, rgba(61,43,255,.025), rgba(61,43,255,.01))',
           borderRadius: 10,
-          border: `.5px solid rgba(79,70,229,.1)`,
+          border: `.5px solid rgba(61,43,255,.1)`,
           fontSize: 13, color: T.text2, lineHeight: 1.65,
           whiteSpace: 'pre-wrap',
         }}>
@@ -242,6 +242,14 @@ export default function Ventas() {
   const [resumen, setResumen] = useState(null)
   const [stockAlerts, setStockAlerts] = useState([])
 
+  // Devoluciones
+  const [devoluciones, setDevoluciones] = useState([])
+  const [refundSale, setRefundSale] = useState(null)        // venta cargada en el modal de devolución
+  const [refundLines, setRefundLines] = useState({})        // { sale_item_id: cantidad a devolver }
+  const [refundReason, setRefundReason] = useState('')
+  const [refundRestock, setRefundRestock] = useState(true)
+  const [refundLoading, setRefundLoading] = useState(false)
+
   // Productos
   const [newProduct, setNewProduct] = useState({
     name: '', category: '', sale_price: '', cost_price: '',
@@ -270,6 +278,96 @@ export default function Ventas() {
     loadResumen()
     loadStockAlerts()
     loadVeraInsight()
+    loadDevoluciones()
+  }
+
+  async function loadDevoluciones() {
+    try {
+      const res = await fetch(`${API}/api/ventas/devoluciones`, {
+        headers: { Authorization: `Bearer ${getToken()}` },
+      })
+      if (res.ok) {
+        const d = await res.json()
+        setDevoluciones(d.refunds || [])
+      }
+    } catch { }
+  }
+
+  // Abre el modal de devolución cargando el detalle fresco de la venta
+  // (incluye returnable_quantity por línea y las devoluciones previas).
+  async function openRefund(saleId) {
+    setMsg(null)
+    try {
+      const res = await fetch(`${API}/api/ventas/venta/${saleId}`, {
+        headers: { Authorization: `Bearer ${getToken()}` },
+      })
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}))
+        setMsg({ type: 'error', text: d.detail || 'No se pudo abrir la venta' })
+        return
+      }
+      const sale = await res.json()
+      // Precarga cantidades a 0 por línea.
+      const lines = {}
+      for (const it of (sale.items || [])) lines[it.id] = 0
+      setRefundSale(sale)
+      setRefundLines(lines)
+      setRefundReason('')
+      setRefundRestock(true)
+    } catch {
+      setMsg({ type: 'error', text: 'Error de conexión' })
+    }
+  }
+
+  function setRefundQty(itemId, qty, max) {
+    const v = Math.max(0, Math.min(Number(qty) || 0, max))
+    setRefundLines(prev => ({ ...prev, [itemId]: v }))
+  }
+
+  const refundTotal = refundSale
+    ? (refundSale.items || []).reduce((sum, it) => {
+        const q = refundLines[it.id] || 0
+        return sum + it.unit_price * q * (1 + (it.iva_rate || 0) / 100)
+      }, 0)
+    : 0
+  const refundUnits = Object.values(refundLines).reduce((a, b) => a + (b || 0), 0)
+
+  async function submitRefund() {
+    if (!refundSale || refundUnits <= 0) return
+    setRefundLoading(true)
+    setMsg(null)
+    const items = Object.entries(refundLines)
+      .filter(([, q]) => q > 0)
+      .map(([sale_item_id, quantity]) => ({ sale_item_id: Number(sale_item_id), quantity }))
+    // Clave de idempotencia: evita doble devolución por doble clic / reintento.
+    const idem = (typeof crypto !== 'undefined' && crypto.randomUUID)
+      ? crypto.randomUUID() : `refund-${refundSale.id}-${refundUnits}`
+    try {
+      const res = await fetch(`${API}/api/ventas/venta/${refundSale.id}/devolucion`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+        body: JSON.stringify({
+          items,
+          reason: refundReason || null,
+          restock: refundRestock,
+          idempotency_key: idem,
+        }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setMsg({ type: 'success', text: `Devolución registrada · ${data.credit_note_number} · €${data.total?.toFixed(2)}` })
+        setRefundSale(null)
+        loadHistorial()
+        loadResumen()
+        loadDevoluciones()
+      } else {
+        setMsg({ type: 'error', text: data.detail || 'Error registrando la devolución' })
+      }
+    } catch {
+      setMsg({ type: 'error', text: 'Error de conexión' })
+    } finally {
+      setRefundLoading(false)
+    }
   }
 
   async function loadProducts() {
@@ -455,7 +553,8 @@ export default function Ventas() {
   }
 
   const cartSubtotal = cart.reduce((s, c) => s + c.sale_price * c.qty, 0)
-  const cartIva = cartSubtotal * 0.21
+  // Per-line IVA from each product's rate (?? 21 so 0%/exempt goods stay 0, not defaulted up).
+  const cartIva = cart.reduce((s, c) => s + c.sale_price * c.qty * ((c.iva_rate ?? 21) / 100), 0)
   const cartTotal = cartSubtotal + cartIva
 
   const filteredProducts = products.filter(p =>
@@ -467,9 +566,26 @@ export default function Ventas() {
   const sections = [
     { key: 'pos', label: 'Punto de venta' },
     { key: 'historial', label: 'Historial' },
+    { key: 'devoluciones', label: 'Devoluciones' },
     { key: 'productos', label: 'Productos' },
     { key: 'alertas', label: 'Alertas' },
   ]
+
+  // Badge de estado de una venta (completed | partially_refunded | refunded).
+  const SALE_STATUS = {
+    completed:          { label: 'Completada', color: T.green,  bg: T.greenSoft },
+    partially_refunded: { label: 'Devuelta parcial', color: T.amber, bg: T.amberSoft },
+    refunded:           { label: 'Devuelta', color: T.red, bg: T.redSoft },
+  }
+  function StatusBadge({ status }) {
+    const c = SALE_STATUS[status] || SALE_STATUS.completed
+    return (
+      <span style={{
+        padding: '2px 8px', borderRadius: 999, fontSize: 11, fontWeight: 600,
+        color: c.color, background: c.bg, whiteSpace: 'nowrap',
+      }}>{c.label}</span>
+    )
+  }
 
   return (
     <div style={{
@@ -486,6 +602,9 @@ export default function Ventas() {
           .ven-pos-row{grid-template-columns:1fr!important}
           .ven-insight-row{grid-template-columns:1fr!important}
           .ven-prod-name-row{grid-template-columns:1fr!important}
+        }
+        @media (prefers-reduced-motion: reduce){
+          *{animation:none!important;transition:none!important}
         }
       `}</style>
 
@@ -545,7 +664,7 @@ export default function Ventas() {
                     <button key={p.key} type="button" onClick={() => setPayment(p.key)} style={{
                       padding: '9px 6px', borderRadius: 9,
                       border: `.5px solid ${payment === p.key ? T.blue : T.hairline}`,
-                      background: payment === p.key ? 'rgba(79,70,229,.06)' : T.sidebar,
+                      background: payment === p.key ? 'rgba(61,43,255,.06)' : T.sidebar,
                       color: payment === p.key ? T.blue : T.text2,
                       fontSize: 12, fontWeight: payment === p.key ? 500 : 400,
                       cursor: 'pointer', fontFamily: 'inherit', transition: 'all .15s',
@@ -559,8 +678,8 @@ export default function Ventas() {
                 {clienteSelected ? (
                   <div style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '10px 12px', background: 'rgba(79,70,229,.06)',
-                    border: `.5px solid rgba(79,70,229,.2)`, borderRadius: 8,
+                    padding: '10px 12px', background: 'rgba(61,43,255,.06)',
+                    border: `.5px solid rgba(61,43,255,.2)`, borderRadius: 8,
                   }}>
                     <div>
                       <div style={{ fontSize: 13, fontWeight: 500, color: T.text }}>{clienteSelected.name}</div>
@@ -660,49 +779,160 @@ export default function Ventas() {
         </div>
       )}
 
+      {/* ── REFUND MODAL ── */}
+      {refundSale && (() => {
+        const items = refundSale.items || []
+        const anyReturnable = items.some(it => (it.returnable_quantity || 0) > 0)
+        return (
+          <div style={{
+            position: 'fixed', inset: 0, zIndex: 600,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: 'rgba(0,0,0,.45)', padding: 16,
+          }} onClick={e => { if (e.target === e.currentTarget) setRefundSale(null) }}>
+            <div style={{
+              background: T.card, borderRadius: 16, width: '100%', maxWidth: 560,
+              maxHeight: '90vh', overflowY: 'auto',
+              boxShadow: '0 24px 64px rgba(0,0,0,.28)',
+              animation: 'modalIn .2s cubic-bezier(0.16,1,0.3,1)',
+            }}>
+              <style>{`@keyframes modalIn{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:scale(1)}}`}</style>
+              <div style={{ padding: 22 }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <div>
+                    <div style={{ fontSize: 16, fontWeight: 700, color: T.text, letterSpacing: -0.3 }}>
+                      Devolución · Venta #{refundSale.id}
+                    </div>
+                    <div style={{ fontSize: 12, color: T.text4, marginTop: 2 }}>
+                      {refundSale.sale_date} · {refundSale.sale_time} · Total €{refundSale.total?.toFixed(2)}
+                    </div>
+                  </div>
+                  <button onClick={() => setRefundSale(null)} aria-label="Cerrar" style={{
+                    border: 'none', background: T.soft, color: T.text3, width: 30, height: 30,
+                    borderRadius: 8, cursor: 'pointer', fontSize: 16, lineHeight: 1,
+                  }}>×</button>
+                </div>
+
+                {refundSale.status !== 'completed' && (
+                  <div style={{ margin: '8px 0 4px' }}><StatusBadge status={refundSale.status} /></div>
+                )}
+
+                {!anyReturnable ? (
+                  <div style={{
+                    margin: '16px 0', padding: 16, borderRadius: 10, background: T.soft,
+                    fontSize: 13, color: T.text3, textAlign: 'center',
+                  }}>
+                    Esta venta ya está completamente devuelta. No quedan unidades por devolver.
+                  </div>
+                ) : (
+                  <>
+                    <div style={{
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      margin: '14px 0 8px',
+                    }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: T.text3, textTransform: 'uppercase', letterSpacing: 0.4 }}>
+                        Líneas a devolver
+                      </div>
+                      <button onClick={() => {
+                        const all = {}
+                        for (const it of items) all[it.id] = it.returnable_quantity || 0
+                        setRefundLines(all)
+                      }} style={{
+                        border: 'none', background: 'transparent', color: T.blue,
+                        fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                      }}>Devolver todo</button>
+                    </div>
+
+                    <div style={{ border: `.5px solid ${T.hairline}`, borderRadius: 10, overflow: 'hidden' }}>
+                      {items.map((it, idx) => {
+                        const returnable = it.returnable_quantity || 0
+                        const q = refundLines[it.id] || 0
+                        return (
+                          <div key={it.id} style={{
+                            display: 'flex', alignItems: 'center', gap: 10,
+                            padding: '10px 12px',
+                            borderTop: idx ? `.5px solid ${T.soft}` : 'none',
+                            opacity: returnable === 0 ? 0.5 : 1,
+                          }}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: 13, fontWeight: 500, color: T.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {it.product_name}
+                              </div>
+                              <div style={{ fontSize: 11, color: T.text4 }}>
+                                €{it.unit_price?.toFixed(2)} · IVA {it.iva_rate}% · {returnable} de {it.quantity} devolvibles
+                              </div>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <button disabled={returnable === 0 || q <= 0}
+                                onClick={() => setRefundQty(it.id, q - 1, returnable)}
+                                style={{ width: 26, height: 26, borderRadius: 7, border: `.5px solid ${T.hairline}`, background: T.card, color: T.text2, cursor: 'pointer', fontSize: 15 }}>−</button>
+                              <input type="number" min="0" max={returnable} value={q}
+                                disabled={returnable === 0}
+                                onChange={e => setRefundQty(it.id, e.target.value, returnable)}
+                                style={{ width: 44, textAlign: 'center', padding: '5px 4px', borderRadius: 7, border: `.5px solid ${T.hairline}`, background: T.card, color: T.text, fontSize: 13, fontFamily: 'inherit' }} />
+                              <button disabled={returnable === 0 || q >= returnable}
+                                onClick={() => setRefundQty(it.id, q + 1, returnable)}
+                                style={{ width: 26, height: 26, borderRadius: 7, border: `.5px solid ${T.hairline}`, background: T.card, color: T.text2, cursor: 'pointer', fontSize: 15 }}>+</button>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+
+                    <div style={{ marginTop: 14 }}>
+                      <Field label="Motivo (opcional)">
+                        <Input value={refundReason} onChange={e => setRefundReason(e.target.value)}
+                          placeholder="Ej. producto defectuoso, talla incorrecta…" />
+                      </Field>
+                    </div>
+
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, fontSize: 13, color: T.text2, cursor: 'pointer' }}>
+                      <input type="checkbox" checked={refundRestock} onChange={e => setRefundRestock(e.target.checked)} />
+                      Reponer stock de las unidades devueltas
+                    </label>
+
+                    <div style={{
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      marginTop: 16, padding: '12px 14px', borderRadius: 10, background: T.soft,
+                    }}>
+                      <span style={{ fontSize: 13, color: T.text3 }}>{refundUnits} unidad{refundUnits === 1 ? '' : 'es'} · a reembolsar</span>
+                      <span style={{ fontSize: 18, fontWeight: 700, color: T.text, fontVariantNumeric: 'tabular-nums' }}>€{refundTotal.toFixed(2)}</span>
+                    </div>
+                  </>
+                )}
+
+                <Toast msg={msg} />
+
+                <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+                  <BtnSec onClick={() => setRefundSale(null)} style={{ flex: 1, justifyContent: 'center' }}>
+                    {anyReturnable ? 'Cancelar' : 'Cerrar'}
+                  </BtnSec>
+                  {anyReturnable && (
+                    <Btn onClick={submitRefund} disabled={refundLoading || refundUnits <= 0} color={T.red}
+                      style={{ flex: 2, justifyContent: 'center', padding: '11px', borderRadius: 10, fontSize: 14, fontWeight: 600 }}>
+                      {refundLoading ? 'Procesando…' : `Devolver · €${refundTotal.toFixed(2)}`}
+                    </Btn>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
+
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
-        {/* HEADER */}
-        <header style={{
-          height: 64, background: theme === 'dark' ? 'rgba(11,11,12,.85)' : 'rgba(251,251,253,.85)',
-          backdropFilter: 'saturate(180%) blur(20px)',
-          WebkitBackdropFilter: 'saturate(180%) blur(20px)',
-          borderBottom: `.5px solid ${T.hairline}`,
-          display: 'flex', alignItems: 'center', padding: '0 28px',
-          flexShrink: 0, position: 'sticky', top: 0, zIndex: 10, gap: 20,
-        }}>
-          <div>
-            <div style={{
-              fontSize: 16, fontWeight: 600, color: T.text,
-              letterSpacing: -0.3, lineHeight: 1.1,
-              display: 'flex', alignItems: 'center', gap: 8,
-            }}>
-              Ventas
-              {resumen?.today && (
-                <span style={{
-                  fontSize: 11, fontWeight: 500, color: T.green,
-                  background: 'rgba(52,199,89,.08)', padding: '2px 8px',
-                  borderRadius: 999, marginLeft: 4,
-                }}>
-                  €{(resumen.today.total_revenue || 0).toFixed(0)} hoy
-                </span>
-              )}
-            </div>
-            <div style={{
-              fontSize: 11, color: T.text4, marginTop: 3,
-              display: 'flex', alignItems: 'center', gap: 6,
-            }}>
-              <FlagES size={12} />
-              <span>Punto de venta · IVA 21%</span>
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <PillGroup items={sections} active={section} onChange={setSection} />
-          </div>
-
-          <HeaderActions onVera={() => setVeraOpen(true)} user={user} router={router} />
-        </header>
+        <PageHeader
+          title="Ventas"
+          subtitle={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><FlagES size={12} />{resumen?.today ? `€${(resumen.today.total_revenue || 0).toFixed(0)} hoy · ` : ''}Punto de venta · IVA 21%</span>}
+          tabs={sections}
+          activeTab={section}
+          onTab={setSection}
+          primary={section === 'productos'
+            ? { label: 'Nuevo producto', onClick: () => setShowProductForm(true), icon: <span aria-hidden="true" style={{ fontSize: 16, lineHeight: 0, marginRight: 1 }}>+</span> }
+            : undefined}
+          onVera={() => setVeraOpen(true)}
+          user={user} router={router}
+        />
 
         {/* CONTENIDO */}
         <div className="fade-in" style={{ flex: 1, overflowY: 'auto', padding: '24px 28px' }}>
@@ -946,7 +1176,7 @@ export default function Ventas() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <div style={{
                         width: 28, height: 28, borderRadius: 8,
-                        background: 'rgba(79,70,229,.08)',
+                        background: 'rgba(61,43,255,.08)',
                         display: 'grid', placeItems: 'center',
                       }}>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={T.blue} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1001,9 +1231,9 @@ export default function Ventas() {
 
                   <div style={{
                     padding: '12px 14px',
-                    background: 'linear-gradient(180deg, rgba(79,70,229,.04), rgba(79,70,229,.01))',
+                    background: 'linear-gradient(180deg, rgba(61,43,255,.04), rgba(61,43,255,.01))',
                     borderRadius: 10,
-                    border: `.5px solid rgba(79,70,229,.12)`,
+                    border: `.5px solid rgba(61,43,255,.12)`,
                     marginBottom: 12,
                   }}>
                     <div style={{ fontSize: 12, color: T.text2, lineHeight: 1.5 }}>
@@ -1037,11 +1267,14 @@ export default function Ventas() {
                   {historial.length} transacciones
                 </div>
               </div>
+              <div style={{ padding: '8px 20px 0', fontSize: 11, color: T.text4 }}>
+                Haz clic en una venta para devolverla.
+              </div>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ background: T.sidebar, borderBottom: `.5px solid ${T.hairline}` }}>
-                    {['Fecha', 'Hora', 'Método', 'Productos', 'Subtotal', 'IVA', 'Total'].map(h => (
-                      <th key={h} style={{
+                    {['Fecha', 'Hora', 'Método', 'Uds', 'Estado', 'Subtotal', 'IVA', 'Total', ''].map((h, hi) => (
+                      <th key={hi} style={{
                         padding: '10px 14px',
                         textAlign: ['Subtotal', 'IVA', 'Total'].includes(h) ? 'right' : 'left',
                         fontSize: 11, fontWeight: 600, color: T.text3,
@@ -1052,7 +1285,7 @@ export default function Ventas() {
                 </thead>
                 <tbody>
                   {historial.length === 0 && (
-                    <tr><td colSpan="7">
+                    <tr><td colSpan="9">
                       <EmptyState
                         icon={<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" /><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" /></svg>}
                         title="Sin ventas registradas"
@@ -1060,8 +1293,15 @@ export default function Ventas() {
                       />
                     </td></tr>
                   )}
-                  {historial.slice(0, 50).map((s, i) => (
-                    <tr key={i} style={{ borderBottom: `.5px solid ${T.soft}` }}>
+                  {historial.slice(0, 50).map((s, i) => {
+                    const units = (s.items || []).reduce((a, it) => a + (it.quantity || 0), 0)
+                    return (
+                    <tr key={s.id ?? i}
+                      onClick={() => openRefund(s.id)}
+                      style={{ borderBottom: `.5px solid ${T.soft}`, cursor: 'pointer' }}
+                      onMouseEnter={e => e.currentTarget.style.background = T.soft}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    >
                       <td style={{ padding: '10px 14px', fontSize: 13, color: T.text }}>{s.sale_date}</td>
                       <td style={{ padding: '10px 14px', fontSize: 13, color: T.text3 }}>{s.sale_time}</td>
                       <td style={{ padding: '10px 14px', fontSize: 12, color: T.text3 }}>
@@ -1070,9 +1310,8 @@ export default function Ventas() {
                           borderRadius: 999, fontSize: 11,
                         }}>{s.payment_method}</span>
                       </td>
-                      <td style={{ padding: '10px 14px', fontSize: 13, color: T.text3 }}>
-                        {s.items_count || s.item_count || '—'}
-                      </td>
+                      <td style={{ padding: '10px 14px', fontSize: 13, color: T.text3 }}>{units || '—'}</td>
+                      <td style={{ padding: '10px 14px' }}><StatusBadge status={s.status} /></td>
                       <td style={{
                         padding: '10px 14px', fontSize: 13, color: T.text2,
                         textAlign: 'right', fontVariantNumeric: 'tabular-nums',
@@ -1085,8 +1324,63 @@ export default function Ventas() {
                         padding: '10px 14px', fontSize: 13, fontWeight: 600, color: T.text,
                         textAlign: 'right', fontVariantNumeric: 'tabular-nums',
                       }}>€{s.total?.toFixed(2)}</td>
+                      <td style={{ padding: '10px 14px', fontSize: 11, color: T.blue, fontWeight: 600, whiteSpace: 'nowrap' }}>
+                        {s.status === 'refunded' ? 'Ver' : 'Devolver →'}
+                      </td>
                     </tr>
-                  ))}
+                    )
+                  })}
+                </tbody>
+              </table>
+            </Card>
+          )}
+
+          {/* ──── DEVOLUCIONES ──── */}
+          {section === 'devoluciones' && (
+            <Card padding={0} style={{ overflow: 'hidden' }}>
+              <div style={{ padding: 20, borderBottom: `.5px solid ${T.hairline}` }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: T.text, letterSpacing: -0.2 }}>
+                  Devoluciones y notas de crédito
+                </div>
+                <div style={{ fontSize: 11, color: T.text4, marginTop: 2 }}>
+                  {devoluciones.length} devoluciones
+                </div>
+              </div>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ background: T.sidebar, borderBottom: `.5px solid ${T.hairline}` }}>
+                    {['Fecha', 'Venta', 'Nota de crédito', 'Uds', 'Motivo', 'Total'].map((h, hi) => (
+                      <th key={hi} style={{
+                        padding: '10px 14px', textAlign: h === 'Total' ? 'right' : 'left',
+                        fontSize: 11, fontWeight: 600, color: T.text3,
+                        textTransform: 'uppercase', letterSpacing: 0.5,
+                      }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {devoluciones.length === 0 && (
+                    <tr><td colSpan="6">
+                      <EmptyState
+                        icon={<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 7v6h6" /><path d="M21 17a9 9 0 0 0-15-6.7L3 13" /></svg>}
+                        title="Sin devoluciones"
+                        hint="Las devoluciones que registres aparecerán aquí. Devuelve una venta desde el Historial."
+                      />
+                    </td></tr>
+                  )}
+                  {devoluciones.map((r, i) => {
+                    const units = (r.items || []).reduce((a, it) => a + (it.quantity || 0), 0)
+                    return (
+                      <tr key={r.id ?? i} style={{ borderBottom: `.5px solid ${T.soft}` }}>
+                        <td style={{ padding: '10px 14px', fontSize: 13, color: T.text }}>{r.refund_date}</td>
+                        <td style={{ padding: '10px 14px', fontSize: 13, color: T.text3 }}>#{r.sale_id}</td>
+                        <td style={{ padding: '10px 14px', fontSize: 12, color: T.text3, fontVariantNumeric: 'tabular-nums' }}>{r.credit_note_number}</td>
+                        <td style={{ padding: '10px 14px', fontSize: 13, color: T.text3 }}>{units}</td>
+                        <td style={{ padding: '10px 14px', fontSize: 13, color: T.text3, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.reason || '—'}</td>
+                        <td style={{ padding: '10px 14px', fontSize: 13, fontWeight: 600, color: T.red, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>−€{r.total?.toFixed(2)}</td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </Card>
@@ -1097,7 +1391,6 @@ export default function Ventas() {
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                 <div style={{ fontSize: 14, color: T.text3 }}>{products.length} productos en catálogo</div>
-                <Btn onClick={() => setShowProductForm(true)}>+ Nuevo producto</Btn>
               </div>
 
               {showProductForm && (

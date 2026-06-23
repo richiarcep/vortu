@@ -9,7 +9,7 @@ const toneColor = {
   good:    '#34c759',
   amber:   '#ff9500',
   red:     '#ff3b30',
-  neutral: '#4F46E5',
+  neutral: '#3D2BFF',
 }
 
 /**
@@ -80,7 +80,7 @@ export default function VeraInsights({ modulo, title, subtitle }) {
           alignItems: 'center',
           justifyContent: 'space-between',
           borderBottom: expanded ? `.5px solid ${T.hairline}` : 'none',
-          background: 'linear-gradient(180deg, rgba(79,70,229,.025), transparent)',
+          background: 'linear-gradient(180deg, rgba(61,43,255,.025), transparent)',
           cursor: 'pointer',
           userSelect: 'none',
         }}
@@ -88,7 +88,7 @@ export default function VeraInsights({ modulo, title, subtitle }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{
             width: 26, height: 26, borderRadius: 7,
-            background: 'linear-gradient(135deg, #4F46E5, #A5B1FF)',
+            background: 'linear-gradient(135deg, #3D2BFF, #A5B1FF)',
             display: 'grid', placeItems: 'center',
           }}>
             <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
@@ -134,9 +134,9 @@ export default function VeraInsights({ modulo, title, subtitle }) {
               onClick={(e) => { e.stopPropagation(); openVeraDrawer({ modulo }) }}
               style={{
                 padding: '5px 12px', borderRadius: 7,
-                border: `.5px solid rgba(79,70,229,.18)`,
-                background: 'rgba(79,70,229,.05)',
-                color: '#4F46E5', fontSize: 11.5, fontWeight: 500,
+                border: `.5px solid rgba(61,43,255,.18)`,
+                background: 'rgba(61,43,255,.05)',
+                color: '#3D2BFF', fontSize: 11.5, fontWeight: 500,
                 cursor: 'pointer', fontFamily: 'inherit',
                 display: 'inline-flex', alignItems: 'center', gap: 4,
                 whiteSpace: 'nowrap',

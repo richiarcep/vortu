@@ -10,7 +10,7 @@ const T = {
   bg: '#FBFBFD', card: '#FFFFFF', sidebar: '#F5F5F7',
   hairline: 'rgba(0,0,0,0.08)', soft: 'rgba(0,0,0,0.05)',
   text: '#1D1D1F', text2: '#424245', text3: '#6E6E73', text4: '#86868B',
-  blue: '#4F46E5', cyan: '#4F46E5',
+  blue: '#3D2BFF', cyan: '#3D2BFF',
   green: '#34C759', greenSoft: 'rgba(52,199,89,.1)',
   amber: '#FF9500', amberSoft: 'rgba(255,149,0,.1)',
   red: '#FF3B30', redSoft: 'rgba(255,59,48,.08)',
@@ -339,7 +339,7 @@ function PulsoTab({ h }) {
                 display: 'grid', placeItems: 'center', fontSize: 11, fontWeight: 700,
               }}>{i + 1}</span>
               <span style={{ fontWeight: 500 }}>{c.name}</span>
-              <Pill color={c.plan === 'plus' ? T.blue : T.text3} bg={c.plan === 'plus' ? 'rgba(79,70,229,.08)' : T.sidebar}>{c.plan}</Pill>
+              <Pill color={c.plan === 'plus' ? T.blue : T.text3} bg={c.plan === 'plus' ? 'rgba(61,43,255,.08)' : T.sidebar}>{c.plan}</Pill>
               <span style={{ textAlign: 'right', fontWeight: 600, color: T.green, fontVariantNumeric: 'tabular-nums' }}>{eurShort(c.sales_ytd)}</span>
             </div>
           ))}
@@ -817,7 +817,7 @@ function EmpresasTab({ h, onOpenChat }) {
                 <div style={{ fontSize: 13, fontWeight: 600 }}>{c.name}</div>
                 <div style={{ fontSize: 10.5, color: T.text4, marginTop: 2 }}>{c.country || '—'} · ID {c.id}</div>
               </div>
-              <Pill color={c.plan === 'plus' ? T.blue : T.text3} bg={c.plan === 'plus' ? 'rgba(79,70,229,.08)' : T.sidebar}>{c.plan}</Pill>
+              <Pill color={c.plan === 'plus' ? T.blue : T.text3} bg={c.plan === 'plus' ? 'rgba(61,43,255,.08)' : T.sidebar}>{c.plan}</Pill>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: T.text3 }}>
               <span><strong style={{ color: T.green, fontWeight: 600 }}>{eurShort(c.sales_ytd)}</strong> YTD</span>
@@ -920,7 +920,7 @@ function CompanyDrilldown({ data, onOpenChat }) {
               const colors = {
                 alert: { c: T.red, bg: T.redSoft, label: 'Alerta' },
                 warning: { c: T.amber, bg: T.amberSoft, label: 'Atención' },
-                upsell: { c: T.blue, bg: 'rgba(79,70,229,.08)', label: 'Upsell' },
+                upsell: { c: T.blue, bg: 'rgba(61,43,255,.08)', label: 'Upsell' },
                 churn: { c: T.red, bg: T.redSoft, label: 'Riesgo' },
                 engagement: { c: T.amber, bg: T.amberSoft, label: 'Engagement' },
                 success: { c: T.green, bg: T.greenSoft, label: 'Éxito' },
@@ -1005,7 +1005,7 @@ function CompanyDrilldown({ data, onOpenChat }) {
               <div style={{ fontSize: 11, color: T.text4 }}>{u.email}</div>
             </div>
             {u.is_superadmin && <Pill color={T.gold} bg={T.goldSoft}>Superadmin</Pill>}
-            {u.is_admin && !u.is_superadmin && <Pill color={T.blue} bg="rgba(79,70,229,.08)">Admin</Pill>}
+            {u.is_admin && !u.is_superadmin && <Pill color={T.blue} bg="rgba(61,43,255,.08)">Admin</Pill>}
           </div>
         ))}
       </Card>

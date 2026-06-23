@@ -18,8 +18,10 @@ router = APIRouter(prefix="/api/backoffice/vera-routing", tags=["Backoffice Vera
 
 
 def require_admin(user: User = Depends(get_current_user)):
-    if not user.is_admin:
-        raise HTTPException(status_code=403, detail="Solo admins")
+    # Platform backoffice (LLM routing rules + global provider API keys):
+    # must be a platform superadmin, NOT a per-company admin.
+    if not getattr(user, "is_superadmin", False):
+        raise HTTPException(status_code=403, detail="Solo administradores de plataforma")
     return user
 
 

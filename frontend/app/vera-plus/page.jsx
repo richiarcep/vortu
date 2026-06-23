@@ -6,7 +6,7 @@ import { API_BASE as API } from '@/lib/api'
 import { FONT, useT, useTheme } from '@/components/ui/tokens'
 
 // ─── Theme (matches /vera) ────────────────────────────────────
-const VERA_BLUE = '#4F46E5'
+const VERA_BLUE = '#3D2BFF'
 const VERA_PLUS_BLUE = '#3730A3'
 const GOLD = '#B8860B'
 

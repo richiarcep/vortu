@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useT, useTheme } from '@/components/ui/tokens'
 
 import { API_BASE as API } from '@/lib/api'
+import BrandLogo from '@/components/ui/BrandLogo'
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -101,8 +102,8 @@ export default function RegisterPage() {
           position: absolute;
           inset: 0;
           background:
-            radial-gradient(ellipse 60% 50% at 10% 20%, rgba(79,70,229,0.12) 0%, transparent 60%),
-            radial-gradient(ellipse 50% 60% at 90% 80%, rgba(79,70,229,0.15) 0%, transparent 60%);
+            radial-gradient(ellipse 60% 50% at 10% 20%, rgba(61,43,255,0.12) 0%, transparent 60%),
+            radial-gradient(ellipse 50% 60% at 90% 80%, rgba(61,43,255,0.15) 0%, transparent 60%);
           pointer-events: none;
         }
         .left-panel::after {
@@ -120,9 +121,9 @@ export default function RegisterPage() {
         .vela-logo { display: flex; align-items: center; gap: 14px; margin-bottom: 64px; }
         .vela-icon {
           width: 48px; height: 48px; border-radius: 12px;
-          background: linear-gradient(135deg, #4F46E5, #6366F1);
+          background: linear-gradient(135deg, #3D2BFF, #6366F1);
           display: flex; align-items: center; justify-content: center;
-          flex-shrink: 0; box-shadow: 0 8px 24px rgba(79,70,229,0.3);
+          flex-shrink: 0; box-shadow: 0 8px 24px rgba(61,43,255,0.3);
         }
         .vela-name { font-size: 24px; font-weight: 800; color: white; letter-spacing: -0.6px; line-height: 1; }
         .vela-sub  { font-size: 11px; color: rgba(255,255,255,0.35); letter-spacing: 0.08em; text-transform: uppercase; margin-top: 3px; }
@@ -134,7 +135,7 @@ export default function RegisterPage() {
         }
         .hero-headline em {
           font-style: italic;
-          background: linear-gradient(90deg, #4F46E5, #A5B1FF);
+          background: linear-gradient(90deg, #3D2BFF, #A5B1FF);
           -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
         }
         .hero-desc { font-size: 14px; color: rgba(255,255,255,0.5); line-height: 1.7; max-width: 340px; margin-bottom: 40px; }
@@ -143,9 +144,9 @@ export default function RegisterPage() {
         .step-item { display: flex; align-items: flex-start; gap: 14px; }
         .step-num {
           width: 28px; height: 28px; border-radius: 999px;
-          background: rgba(79,70,229,0.2); border: 1px solid rgba(79,70,229,0.4);
+          background: rgba(61,43,255,0.2); border: 1px solid rgba(61,43,255,0.4);
           display: flex; align-items: center; justify-content: center;
-          font-size: 12px; font-weight: 700; color: #4F46E5; flex-shrink: 0; margin-top: 1px;
+          font-size: 12px; font-weight: 700; color: #3D2BFF; flex-shrink: 0; margin-top: 1px;
         }
         .step-text { font-size: 13px; color: rgba(255,255,255,0.55); line-height: 1.5; }
         .step-text strong { color: rgba(255,255,255,0.85); font-weight: 600; }
@@ -265,16 +266,7 @@ export default function RegisterPage() {
           <div className="left-content">
 
             <div className="vela-logo">
-              <div className="vela-icon">
-                <svg width="26" height="22" viewBox="0 0 26 22" fill="none">
-                  <rect x="1"  y="12" width="6" height="10" rx="1.5" fill="rgba(255,255,255,0.6)"/>
-                  <rect x="10" y="6"  width="6" height="16" rx="1.5" fill="rgba(255,255,255,0.8)"/>
-                  <rect x="19" y="1"  width="6" height="21" rx="1.5" fill="white"/>
-                </svg>
-              </div>
-              <div>
-                <div className="vela-name">Vela</div>
-              </div>
+              <BrandLogo size={40} tone="dark" />
             </div>
 
             <h1 className="hero-headline">
@@ -310,7 +302,7 @@ export default function RegisterPage() {
                 <line x1="5"  y1="5"  x2="23" y2="23" stroke="url(#ng)" strokeWidth="1.5"/>
                 <defs>
                   <linearGradient id="ng" x1="5" y1="5" x2="23" y2="23" gradientUnits="userSpaceOnUse">
-                    <stop stopColor="#4F46E5"/>
+                    <stop stopColor="#3D2BFF"/>
                     <stop offset="1" stopColor="#0B0D2B"/>
                   </linearGradient>
                 </defs>

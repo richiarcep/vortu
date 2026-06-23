@@ -804,22 +804,53 @@ def _cash_account_code(db, company_id):
     return a.code if a else None
 
 
+def _vat_account_code(db, company_id, kind):
+    """Localiza la cuenta de IVA de la empresa por nombre (PGC ES: 477 repercutido,
+    472 soportado). kind = 'repercutido' | 'soportado'. None si no existe."""
+    from modules.accounting.journal import Account
+    word = "repercut" if kind == "repercutido" else "soport"
+    a = (db.query(Account)
+           .filter(Account.company_id == company_id)
+           .filter(Account.name.ilike("%iva%"))
+           .filter(Account.name.ilike(f"%{word}%"))
+           .order_by(Account.code).first())
+    return a.code if a else None
+
+
+def _split_iva(monto, iva_rate):
+    """Desglosa un importe CON IVA incluido en (base, cuota). base+cuota == monto."""
+    base = round(monto / (1 + iva_rate / 100.0), 2)
+    cuota = round(monto - base, 2)
+    return base, cuota
+
+
 def registrar_ingreso(db, company_id, fecha, categoria,
                        descripcion, monto,
-                       referencia=None, notas=None):
+                       referencia=None, notas=None, iva_rate=21.0):
     from modules.accounting.journal import record_transaction
     from country.registry import get_entry_accounts
     country = _company_country(db, company_id)
-    # Cobro al contado: DEBE caja/banco · HABER cuenta de ingresos del país.
+    # Cobro al contado (monto IVA incluido): DEBE caja/banco (total) ·
+    # HABER ingresos (base) · HABER IVA repercutido (cuota).
     clientes_code, ingreso_code = get_entry_accounts(country, "ingreso", "Ventas")
     cash_code = _cash_account_code(db, company_id) or clientes_code
-    asiento = record_transaction(
-        db=db, company_id=company_id, date=fecha,
-        description=descripcion,
-        entries=[
+    iva_code = _vat_account_code(db, company_id, "repercutido") if (iva_rate and iva_rate > 0) else None
+
+    if iva_code:
+        base, cuota = _split_iva(monto, iva_rate)
+        entries = [
+            {"account_code": cash_code, "debit": monto, "credit": 0},
+            {"account_code": ingreso_code, "debit": 0, "credit": base},
+            {"account_code": iva_code, "debit": 0, "credit": cuota},
+        ]
+    else:
+        entries = [
             {"account_code": cash_code, "debit": monto, "credit": 0},
             {"account_code": ingreso_code, "debit": 0, "credit": monto},
-        ],
+        ]
+    asiento = record_transaction(
+        db=db, company_id=company_id, date=fecha,
+        description=descripcion, entries=entries,
         module_source="cierre_caja", reference=referencia
     )
     db.commit()
@@ -827,27 +858,38 @@ def registrar_ingreso(db, company_id, fecha, categoria,
         "mensaje": "Ingreso registrado exitosamente",
         "fecha": str(fecha), "tipo": "ingreso",
         "categoria": categoria,
-        "descripcion": descripcion, "monto": monto,
+        "descripcion": descripcion, "monto": monto, "iva_rate": iva_rate,
         "asiento_contable": asiento["transaction_id"]
     }
 
 
 def registrar_gasto(db, company_id, fecha, categoria,
                      descripcion, monto,
-                     referencia=None, notas=None):
+                     referencia=None, notas=None, iva_rate=21.0):
     from modules.accounting.journal import record_transaction
     from country.registry import get_entry_accounts
     country = _company_country(db, company_id)
-    # Pago al contado: DEBE cuenta de gasto del país · HABER caja/banco.
+    # Pago al contado (monto IVA incluido): DEBE gasto (base) ·
+    # DEBE IVA soportado (cuota) · HABER caja/banco (total).
     gasto_code, acreedor_code = get_entry_accounts(country, "gasto", "Otro")
     cash_code = _cash_account_code(db, company_id) or acreedor_code
-    asiento = record_transaction(
-        db=db, company_id=company_id, date=fecha,
-        description=descripcion,
-        entries=[
+    iva_code = _vat_account_code(db, company_id, "soportado") if (iva_rate and iva_rate > 0) else None
+
+    if iva_code:
+        base, cuota = _split_iva(monto, iva_rate)
+        entries = [
+            {"account_code": gasto_code, "debit": base, "credit": 0},
+            {"account_code": iva_code, "debit": cuota, "credit": 0},
+            {"account_code": cash_code, "debit": 0, "credit": monto},
+        ]
+    else:
+        entries = [
             {"account_code": gasto_code, "debit": monto, "credit": 0},
             {"account_code": cash_code, "debit": 0, "credit": monto},
-        ],
+        ]
+    asiento = record_transaction(
+        db=db, company_id=company_id, date=fecha,
+        description=descripcion, entries=entries,
         module_source="cierre_caja", reference=referencia
     )
     db.commit()
@@ -855,7 +897,7 @@ def registrar_gasto(db, company_id, fecha, categoria,
         "mensaje": "Gasto registrado exitosamente",
         "fecha": str(fecha), "tipo": "gasto",
         "categoria": categoria,
-        "descripcion": descripcion, "monto": monto,
+        "descripcion": descripcion, "monto": monto, "iva_rate": iva_rate,
         "asiento_contable": asiento["transaction_id"]
     }
 

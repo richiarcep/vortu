@@ -32,3 +32,25 @@ export function authHeaders(extra = {}) {
   const token = getToken()
   return token ? { Authorization: `Bearer ${token}`, ...extra } : { ...extra }
 }
+
+/** React to an expired/invalid session: clear the token and bounce to /login
+ *  (preserving where the user was). Centralized so every caller handles a 401
+ *  the same way instead of silently rendering an empty/broken page. */
+export function handleUnauthorized() {
+  clearToken()
+  if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+    const redirect = encodeURIComponent(window.location.pathname + window.location.search)
+    window.location.href = `/login?redirect=${redirect}`
+  }
+}
+
+/** Centralized API fetch — PREFER THIS over raw fetch() in pages/components.
+ *  Prefixes API_BASE, attaches auth headers, and routes 401s through
+ *  handleUnauthorized(). Returns the Response (callers still check res.ok). */
+export async function apiFetch(path, options = {}) {
+  const { headers, ...rest } = options
+  const url = path.startsWith('http') ? path : `${API_BASE}${path}`
+  const res = await fetch(url, { ...rest, headers: authHeaders(headers || {}) })
+  if (res.status === 401) handleUnauthorized()
+  return res
+}

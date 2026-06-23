@@ -9,7 +9,7 @@ import ReactFlow, {
 import 'reactflow/dist/style.css'
 
 import { API_BASE as API } from '@/lib/api'
-const VERA_BLUE = '#4F46E5'
+const VERA_BLUE = '#3D2BFF'
 
 // ─────────────────────────────────────────────────────────
 // NODOS PERSONALIZADOS
@@ -20,7 +20,7 @@ function TriggerNode({ data }) {
     <div style={{
       background: '#fff', border: `1.5px solid ${VERA_BLUE}`,
       borderRadius: 10, padding: 12, minWidth: 180,
-      boxShadow: '0 2px 8px rgba(79,70,229,.1)',
+      boxShadow: '0 2px 8px rgba(61,43,255,.1)',
     }}>
       <div style={{
         display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6,
@@ -78,10 +78,10 @@ function ConditionNode({ data }) {
 
 function ModelNode({ data }) {
   const colors = {
-    claude: { bg: '#F0EEFF', border: '#4F46E5', text: '#3730A3' },
+    claude: { bg: '#F0EEFF', border: '#3D2BFF', text: '#3730A3' },
     openai: { bg: '#F0FAF4', border: '#10A37F', text: '#0F6E56' },
     gemini: { bg: '#FFF7ED', border: '#EA580C', text: '#9A3412' },
-    perplexity: { bg: '#F5F3FF', border: '#4F46E5', text: '#4C1D95' },
+    perplexity: { bg: '#F5F3FF', border: '#3D2BFF', text: '#4C1D95' },
   }
   const c = colors[data.provider] || colors.claude
   return (
@@ -114,10 +114,10 @@ function StrategyNode({ data }) {
   }
   return (
     <div style={{
-      background: '#F5F3FF', border: `1.5px solid #4F46E5`,
+      background: '#F5F3FF', border: `1.5px solid #3D2BFF`,
       borderRadius: 10, padding: 12, minWidth: 200,
     }}>
-      <Handle type="target" position={Position.Left} style={{ background: '#4F46E5' }} />
+      <Handle type="target" position={Position.Left} style={{ background: '#3D2BFF' }} />
       <div style={{ fontSize: 10, fontWeight: 600, color: '#4C1D95', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>
         Estrategia
       </div>
@@ -127,7 +127,7 @@ function StrategyNode({ data }) {
       <div style={{ fontSize: 11, color: '#6B21A8', marginTop: 4 }}>
         {labels[data.strategy] || ''}
       </div>
-      <Handle type="source" position={Position.Right} style={{ background: '#4F46E5' }} />
+      <Handle type="source" position={Position.Right} style={{ background: '#3D2BFF' }} />
     </div>
   )
 }
@@ -266,8 +266,8 @@ export default function VeraRoutingEditor({ token }) {
       ...ruleModels.map(m => ({
         id: `e-strategy-${m}`, source: 'strategy', target: `model-${m}`,
         animated: rule.strategy === 'parallel',
-        style: { stroke: '#4F46E5', strokeWidth: 2 },
-        markerEnd: { type: MarkerType.ArrowClosed, color: '#4F46E5' },
+        style: { stroke: '#3D2BFF', strokeWidth: 2 },
+        markerEnd: { type: MarkerType.ArrowClosed, color: '#3D2BFF' },
       })),
       ...ruleModels.map(m => ({
         id: `e-${m}-output`, source: `model-${m}`, target: 'output',
@@ -387,7 +387,7 @@ export default function VeraRoutingEditor({ token }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{
               width: 28, height: 28, borderRadius: 7,
-              background: 'linear-gradient(135deg,#4F46E5,#4F46E5)',
+              background: 'linear-gradient(135deg,#3D2BFF,#3D2BFF)',
               display: 'grid', placeItems: 'center',
             }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
@@ -524,7 +524,7 @@ export default function VeraRoutingEditor({ token }) {
                         {r.strategy}
                       </span>
                       {r.models?.map(m => (
-                        <span key={m} style={{ padding: '1px 6px', background: '#EFEDFF', color: '#4F46E5', borderRadius: 3 }}>
+                        <span key={m} style={{ padding: '1px 6px', background: '#EFEDFF', color: '#3D2BFF', borderRadius: 3 }}>
                           {m}
                         </span>
                       ))}
@@ -557,7 +557,7 @@ export default function VeraRoutingEditor({ token }) {
                   <MiniMap nodeColor={n => {
                     if (n.type === 'trigger') return VERA_BLUE
                     if (n.type === 'model') return '#10B981'
-                    if (n.type === 'strategy') return '#4F46E5'
+                    if (n.type === 'strategy') return '#3D2BFF'
                     if (n.type === 'output') return '#1d1d1f'
                     return '#999'
                   }} />
@@ -711,7 +711,7 @@ export default function VeraRoutingEditor({ token }) {
                       {activeRule && m.is_active && m.has_api_key && (
                         <button onClick={() => addModelToFlow(m.provider)} style={{
                           marginTop: 6, fontSize: 10, padding: '3px 8px',
-                          background: 'rgba(79,70,229,.08)', color: VERA_BLUE,
+                          background: 'rgba(61,43,255,.08)', color: VERA_BLUE,
                           border: 'none', borderRadius: 4, cursor: 'pointer',
                           fontFamily: 'inherit',
                         }}>+ Añadir al flujo</button>
@@ -752,7 +752,7 @@ export default function VeraRoutingEditor({ token }) {
                     <td style={{ padding: 8, color: T.text3, fontSize: 11 }}>{l.created_at?.substring(0, 19)}</td>
                     <td style={{ padding: 8 }}>{l.question?.substring(0, 60)}{l.question?.length > 60 ? '…' : ''}</td>
                     <td style={{ padding: 8 }}>
-                      <span style={{ padding: '1px 6px', background: '#EFEDFF', color: '#4F46E5', borderRadius: 3, fontSize: 10 }}>
+                      <span style={{ padding: '1px 6px', background: '#EFEDFF', color: '#3D2BFF', borderRadius: 3, fontSize: 10 }}>
                         {l.winning_model || '—'}
                       </span>
                     </td>

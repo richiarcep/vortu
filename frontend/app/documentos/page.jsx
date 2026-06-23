@@ -3,9 +3,10 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
 import { FONT, useT, useTheme } from '@/components/ui/tokens'
+import { PageHeader } from '@/components/ui/primitives'
 
 import { API_BASE as API } from '@/lib/api'
-const VERA_BLUE = '#4F46E5'
+const VERA_BLUE = '#3D2BFF'
 
 // ─────────────────────────────────────────────
 // CONFIGS
@@ -13,13 +14,13 @@ const VERA_BLUE = '#4F46E5'
 const DOC_TYPES = [
   { k: 'all',         label: 'Todos',        icon: 'folder', color: null },
   { k: 'factura',     label: 'Facturas',     icon: 'invoice', color: '#059669' },
-  { k: 'contrato',    label: 'Contratos',    icon: 'contract', color: '#4F46E5' },
+  { k: 'contrato',    label: 'Contratos',    icon: 'contract', color: '#3D2BFF' },
   { k: 'nomina',      label: 'Nóminas',      icon: 'people', color: '#0EA5E9' },
   { k: 'legal',       label: 'Legal',        icon: 'shield', color: '#dc2626' },
   { k: 'reporte',     label: 'Reportes',     icon: 'report', color: '#d97706' },
   { k: 'presupuesto', label: 'Presupuestos', icon: 'calc', color: '#0EA5E9' },
   { k: 'recibo',      label: 'Recibos',      icon: 'receipt', color: '#6b7280' },
-  { k: 'certificado', label: 'Certificados', icon: 'cert', color: '#4F46E5' },
+  { k: 'certificado', label: 'Certificados', icon: 'cert', color: '#3D2BFF' },
   { k: 'otro',        label: 'Otros',        icon: 'doc', color: '#6b7280' },
 ]
 
@@ -30,9 +31,9 @@ const TYPE_LABELS = {
 }
 
 const TYPE_COLORS = {
-  factura: '#059669', contrato: '#4F46E5', nomina: '#0EA5E9',
+  factura: '#059669', contrato: '#3D2BFF', nomina: '#0EA5E9',
   legal: '#dc2626', reporte: '#d97706', presupuesto: '#0EA5E9',
-  recibo: '#6b7280', certificado: '#4F46E5', otro: '#6b7280',
+  recibo: '#6b7280', certificado: '#3D2BFF', otro: '#6b7280',
 }
 
 const MODULE_LABELS = {
@@ -97,11 +98,11 @@ function FileIcon({ ext, size = 32 }) {
     csv: { color: '#059669', label: 'CSV' },
     xlsx: { color: '#059669', label: 'XLS' },
     xls: { color: '#059669', label: 'XLS' },
-    docx: { color: '#4F46E5', label: 'DOC' },
+    docx: { color: '#3D2BFF', label: 'DOC' },
     txt: { color: '#6b7280', label: 'TXT' },
-    jpg: { color: '#4F46E5', label: 'IMG' },
-    jpeg: { color: '#4F46E5', label: 'IMG' },
-    png: { color: '#4F46E5', label: 'IMG' },
+    jpg: { color: '#3D2BFF', label: 'IMG' },
+    jpeg: { color: '#3D2BFF', label: 'IMG' },
+    png: { color: '#3D2BFF', label: 'IMG' },
   }
   const cfg = map[ext?.toLowerCase()] || { color: '#6b7280', label: ext?.toUpperCase().slice(0,3) || 'DOC' }
   return (
@@ -175,7 +176,7 @@ function ApprovalModal({ analysis, onApprove, onReject, onClose }) {
         <div style={{
           padding: '20px 24px 18px',
           borderBottom: `.5px solid ${T.hairline}`,
-          background: 'linear-gradient(180deg, rgba(79,70,229,.025) 0%, transparent 100%)',
+          background: 'linear-gradient(180deg, rgba(61,43,255,.025) 0%, transparent 100%)',
           display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12,
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -183,7 +184,7 @@ function ApprovalModal({ analysis, onApprove, onReject, onClose }) {
               width: 36, height: 36, borderRadius: 10,
               background: VERA_BLUE,
               display: 'grid', placeItems: 'center',
-              boxShadow: '0 4px 12px rgba(79,70,229,.25)',
+              boxShadow: '0 4px 12px rgba(61,43,255,.25)',
             }}>
               <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
                 <path d="M8 1l1.5 5.5L15 8l-5.5 1.5L8 15l-1.5-5.5L1 8l5.5-1.5L8 1z" fill="#fff" />
@@ -331,7 +332,7 @@ function ApprovalModal({ analysis, onApprove, onReject, onClose }) {
             <div style={{
               border: `.5px solid ${T.hairline}`,
               borderRadius: 12, padding: 14, marginBottom: 8,
-              background: 'linear-gradient(135deg, rgba(79,70,229,.03), rgba(79,70,229,.03))',
+              background: 'linear-gradient(135deg, rgba(61,43,255,.03), rgba(61,43,255,.03))',
               display: 'flex', alignItems: 'flex-start', gap: 12,
             }}>
               <div style={{
@@ -360,7 +361,7 @@ function ApprovalModal({ analysis, onApprove, onReject, onClose }) {
                     {analysis.semantic_tags.map(t => (
                       <span key={t} style={{
                         padding: '2px 7px', borderRadius: 5,
-                        background: 'rgba(79,70,229,.08)', color: VERA_BLUE,
+                        background: 'rgba(61,43,255,.08)', color: VERA_BLUE,
                         fontSize: 10, fontWeight: 500,
                       }}>#{t}</span>
                     ))}
@@ -469,18 +470,18 @@ function ApprovalModal({ analysis, onApprove, onReject, onClose }) {
                 Asiento contable (PGC)
               </div>
               <div style={{
-                border: '.5px solid rgba(79,70,229,.3)',
+                border: '.5px solid rgba(61,43,255,.3)',
                 borderRadius: 12, overflow: 'hidden',
-                background: 'rgba(79,70,229,.02)',
+                background: 'rgba(61,43,255,.02)',
               }}>
                 <div style={{
                   padding: '10px 14px',
-                  background: 'rgba(79,70,229,.06)',
-                  borderBottom: '.5px solid rgba(79,70,229,.15)',
+                  background: 'rgba(61,43,255,.06)',
+                  borderBottom: '.5px solid rgba(61,43,255,.15)',
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                 }}>
                   <div>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#4F46E5', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#3D2BFF', textTransform: 'uppercase', letterSpacing: 0.5 }}>
                       Libro diario
                     </div>
                     <div style={{ fontSize: 10.5, color: T.text4, marginTop: 2 }}>
@@ -508,7 +509,7 @@ function ApprovalModal({ analysis, onApprove, onReject, onClose }) {
                   <tbody>
                     {journalEntry.lines.map((l, i) => (
                       <tr key={i} style={{ borderTop: '.5px solid rgba(0,0,0,.04)' }}>
-                        <td style={{ padding: '8px 10px', fontFamily: 'monospace', fontWeight: 700, color: '#4F46E5', fontSize: 11 }}>{l.account_code}</td>
+                        <td style={{ padding: '8px 10px', fontFamily: 'monospace', fontWeight: 700, color: '#3D2BFF', fontSize: 11 }}>{l.account_code}</td>
                         <td style={{ padding: '8px 10px', color: T.text2 }}>
                           <div style={{ fontWeight: 500 }}>{l.description}</div>
                           <div style={{ fontSize: 10, color: T.text4, marginTop: 1 }}>{l.account_name}</div>
@@ -521,7 +522,7 @@ function ApprovalModal({ analysis, onApprove, onReject, onClose }) {
                         </td>
                       </tr>
                     ))}
-                    <tr style={{ background: 'rgba(79,70,229,.05)', borderTop: '.5px solid rgba(79,70,229,.2)' }}>
+                    <tr style={{ background: 'rgba(61,43,255,.05)', borderTop: '.5px solid rgba(61,43,255,.2)' }}>
                       <td colSpan={2} style={{ padding: '8px 10px', fontWeight: 700, fontSize: 10.5, color: T.text2, textTransform: 'uppercase', letterSpacing: 0.4 }}>Totales</td>
                       <td style={{ padding: '8px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 700, color: T.text }}>
                         {fmtEuro(journalEntry.lines.reduce((s, l) => s + (l.debit || 0), 0))}
@@ -604,7 +605,7 @@ function ApprovalModal({ analysis, onApprove, onReject, onClose }) {
             fontSize: 12.5, fontWeight: 600, cursor: submitting ? 'wait' : 'pointer',
             fontFamily: 'inherit',
             display: 'flex', alignItems: 'center', gap: 6,
-            boxShadow: '0 2px 8px rgba(79,70,229,.25)',
+            boxShadow: '0 2px 8px rgba(61,43,255,.25)',
           }}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
               <polyline points="20 6 9 17 4 12"/>
@@ -738,8 +739,8 @@ function DocPreview({ doc, token, onClose, onDelete }) {
             {/* Resumen Vera */}
             {d.summary && (
               <div style={{
-                background: 'linear-gradient(135deg, rgba(79,70,229,.04), rgba(79,70,229,.04))',
-                border: '.5px solid rgba(79,70,229,.15)',
+                background: 'linear-gradient(135deg, rgba(61,43,255,.04), rgba(61,43,255,.04))',
+                border: '.5px solid rgba(61,43,255,.15)',
                 borderRadius: 10, padding: 12,
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
@@ -785,7 +786,7 @@ function DocPreview({ doc, token, onClose, onDelete }) {
                   {d.semantic_tags.map(t => (
                     <span key={t} style={{
                       padding: '2px 8px', borderRadius: 5,
-                      background: 'rgba(79,70,229,.08)', color: VERA_BLUE,
+                      background: 'rgba(61,43,255,.08)', color: VERA_BLUE,
                       fontSize: 10.5, fontWeight: 500,
                     }}>#{t}</span>
                   ))}
@@ -837,9 +838,10 @@ function DocPreview({ doc, token, onClose, onDelete }) {
 // ─────────────────────────────────────────────
 export default function DocumentosPage() {
   const T = useT()
-  const { theme } = useTheme()
+  useTheme()
   const router = useRouter()
   const [token, setToken] = useState(null)
+  const [user, setUser] = useState(null)
   const [docs, setDocs] = useState([])
   const [stats, setStats] = useState({ total: 0, by_type: {}, by_module: {} })
   const [activeType, setActiveType] = useState('all')
@@ -857,6 +859,10 @@ export default function DocumentosPage() {
     const t = typeof window !== 'undefined' ? localStorage.getItem('vela_token') : null
     if (!t) { router.push('/login'); return }
     setToken(t)
+    try {
+      const p = JSON.parse(atob(t.split('.')[1]))
+      setUser({ email: p.sub || '', name: p.name || p.sub || 'Usuario' })
+    } catch { setUser({ email: '', name: 'Usuario' }) }
     loadAll(t)
   }, [])
 
@@ -945,110 +951,71 @@ export default function DocumentosPage() {
     return true
   })
 
+  const docTabs = DOC_TYPES.map(dt => ({
+    key: dt.k,
+    label: dt.label,
+    badge: dt.k === 'all' ? docs.length : (stats.by_type?.[dt.k] || 0),
+  }))
+
+  const searchFilter = (
+    <div style={{ position: 'relative', width: 220, flexShrink: 0 }}>
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+        style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: T.text4 }} aria-hidden="true">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <input value={search} onChange={e => setSearch(e.target.value)}
+        placeholder="Buscar..." aria-label="Buscar documentos"
+        style={{
+          width: '100%', padding: '7px 12px 7px 32px',
+          borderRadius: 999, border: `.5px solid ${T.hairline}`,
+          background: T.sidebar, fontSize: 12, fontFamily: 'inherit',
+          color: T.text, outline: 'none',
+        }} />
+    </div>
+  )
+
   return (
     <div style={{
       minHeight: '100dvh', background: T.bg, display: 'flex',
       fontFamily: FONT, WebkitFontSmoothing: 'antialiased',
     }}>
-      <style>{`*{box-sizing:border-box}::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-thumb{background:${T.hairline};border-radius:999px}input:focus,select:focus{border-color:${T.blue}!important;outline:none}@media(max-width:760px){.doc-layout{flex-direction:column!important}.doc-preview{width:100%!important;height:auto!important;border-left:none!important;border-top:.5px solid ${T.hairline}!important}}`}</style>
+      <style>{`
+        *{box-sizing:border-box}
+        ::-webkit-scrollbar{width:5px;height:5px}
+        ::-webkit-scrollbar-thumb{background:${T.hairline};border-radius:999px}
+        input:focus,select:focus{border-color:${T.blue}!important;outline:none}
+        @media(max-width:760px){.doc-layout{flex-direction:column!important}.doc-preview{width:100%!important;height:auto!important;border-left:none!important;border-top:.5px solid ${T.hairline}!important}}
+        @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+      `}</style>
 
       <Sidebar active="/documentos" />
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', height: '100dvh', minWidth: 0 }}>
-        {/* HEADER */}
-        <header style={{
-          padding: '20px 32px',
-          background: theme === 'dark' ? 'rgba(11,11,12,.85)' : 'rgba(251,251,253,.85)',
-          backdropFilter: 'saturate(180%) blur(20px)',
-          WebkitBackdropFilter: 'saturate(180%) blur(20px)',
-          borderBottom: `.5px solid ${T.hairline}`,
-        }}>
-          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-                <h1 style={{ fontSize: 22, fontWeight: 600, color: T.text, margin: 0, letterSpacing: -0.3 }}>Documentos</h1>
-                <span style={{ width: 6, height: 6, borderRadius: 999, background: '#059669' }} />
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: T.text4 }}>
-                <FlagES size={11} />
-                <span>España</span>
-                <span>·</span>
-                <span>{stats.total} documentos · Vera revisa cada uno antes de guardar</span>
-              </div>
-            </div>
+        {/* hidden file input — activated by the primary CTA */}
+        <input ref={fileInputRef} type="file" onChange={handleFileSelect}
+          accept=".pdf,.csv,.xlsx,.xls,.docx,.txt,.jpg,.jpeg,.png"
+          style={{ display: 'none' }} />
 
-            <div style={{ display: 'flex', gap: 8 }}>
-              <input ref={fileInputRef} type="file" onChange={handleFileSelect}
-                accept=".pdf,.csv,.xlsx,.xls,.docx,.txt,.jpg,.jpeg,.png"
-                style={{ display: 'none' }} />
-              <button onClick={() => fileInputRef.current?.click()} style={{
-                padding: '8px 16px', borderRadius: 8,
-                background: VERA_BLUE, color: '#fff', border: 'none',
-                fontSize: 12.5, fontWeight: 500, cursor: 'pointer',
-                fontFamily: 'inherit',
-                display: 'flex', alignItems: 'center', gap: 6,
-              }}>
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-                </svg>
-                Subir documento
-              </button>
-            </div>
-          </div>
-        </header>
-
-        {/* TIPOS COMO TABS HORIZONTALES + BUSCADOR */}
-        <div style={{
-          padding: '14px 32px',
-          background: T.card,
-          borderBottom: `.5px solid ${T.hairline}`,
-          display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap',
-        }}>
-          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', flex: 1 }}>
-            {DOC_TYPES.map(dt => {
-              const count = dt.k === 'all' ? docs.length : (stats.by_type?.[dt.k] || 0)
-              const isActive = activeType === dt.k
-              return (
-                <button key={dt.k} onClick={() => setActiveType(dt.k)} style={{
-                  padding: '6px 12px', borderRadius: 999,
-                  background: isActive ? VERA_BLUE : (count > 0 ? T.sidebar : 'transparent'),
-                  color: isActive ? '#fff' : (count > 0 ? T.text2 : T.text4),
-                  border: isActive ? 'none' : `.5px solid ${count > 0 ? T.hairline : 'transparent'}`,
-                  cursor: 'pointer', fontFamily: 'inherit',
-                  display: 'flex', alignItems: 'center', gap: 6,
-                  fontSize: 12, fontWeight: isActive ? 600 : 500,
-                  transition: 'all .12s',
-                }}>
-                  <TypeIcon kind={dt.icon} size={12} color={isActive ? '#fff' : (count > 0 ? (dt.color || T.text3) : T.text4)} />
-                  <span>{dt.label}</span>
-                  {count > 0 && (
-                    <span style={{
-                      fontSize: 10, padding: '1px 6px', borderRadius: 999,
-                      background: isActive ? 'rgba(255,255,255,.25)' : 'rgba(0,0,0,.06)',
-                      color: isActive ? '#fff' : T.text4,
-                      fontWeight: 600, fontVariantNumeric: 'tabular-nums', minWidth: 16, textAlign: 'center',
-                    }}>{count}</span>
-                  )}
-                </button>
-              )
-            })}
-          </div>
-
-          <div style={{ position: 'relative', width: 280, flexShrink: 0 }}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-              style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: T.text4 }}>
-              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-            </svg>
-            <input value={search} onChange={e => setSearch(e.target.value)}
-              placeholder="Buscar..." aria-label="Buscar documentos"
-              style={{
-                width: '100%', padding: '7px 12px 7px 32px',
-                borderRadius: 999, border: `.5px solid ${T.hairline}`,
-                background: T.sidebar, fontSize: 12, fontFamily: 'inherit',
-                color: T.text, outline: 'none',
-              }} />
-          </div>
-        </div>
+        <PageHeader
+          title="Documentos"
+          subtitle={
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <FlagES size={11} />
+              España · {stats.total} documentos · Vera revisa cada uno antes de guardar
+            </span>
+          }
+          tabs={docTabs}
+          activeTab={activeType}
+          onTab={setActiveType}
+          primary={{
+            label: 'Subir documento',
+            onClick: () => fileInputRef.current?.click(),
+            icon: <span aria-hidden="true" style={{ fontSize: 16, lineHeight: 0, marginRight: 1 }}>+</span>,
+          }}
+          filters={searchFilter}
+          user={user}
+          router={router}
+        />
 
         {/* LAYOUT 2 COLUMNAS: lista + preview */}
         <div className="doc-layout" style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
@@ -1125,7 +1092,7 @@ export default function DocumentosPage() {
                           display: 'grid',
                           gridTemplateColumns: '40px 1fr 140px 130px 80px 90px',
                           gap: 16, padding: '12px 16px',
-                          background: isSelected ? 'rgba(79,70,229,.05)' : T.card,
+                          background: isSelected ? 'rgba(61,43,255,.05)' : T.card,
                           borderBottom: `.5px solid ${T.hairline}`,
                           borderLeft: isSelected ? `2px solid ${VERA_BLUE}` : '2px solid transparent',
                           cursor: 'pointer',
@@ -1179,7 +1146,7 @@ export default function DocumentosPage() {
                             <span title="Asiento contable creado en PGC" style={{
                               display: 'inline-flex', alignItems: 'center', gap: 3,
                               padding: '2px 7px', borderRadius: 999,
-                              background: 'rgba(79,70,229,.1)', color: '#4F46E5',
+                              background: 'rgba(61,43,255,.1)', color: '#3D2BFF',
                               fontSize: 10, fontWeight: 700,
                             }}>
                               <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>

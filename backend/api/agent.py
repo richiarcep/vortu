@@ -1,3 +1,4 @@
+import logging
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
@@ -41,8 +42,9 @@ def get_digest(
 ):
     try:
         return generate_weekly_digest(db, current_user.company_id)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        logging.getLogger("vela.agent").exception("Error generando digest")
+        raise HTTPException(status_code=500, detail="Error generando el resumen")
 
 
 @router.post("/chat")
@@ -58,8 +60,9 @@ def chat(
             message=data.mensaje,
             conversation_history=data.historial
         )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        logging.getLogger("vela.agent").exception("Error en chat del agente")
+        raise HTTPException(status_code=500, detail="Error procesando la conversación")
 
 
 @router.get("/resumen")

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from core.database import get_db
@@ -12,6 +12,10 @@ import json, os
 router = APIRouter(prefix="/api/fiscal", tags=["fiscal"])
 
 NOW = lambda: datetime.now().isoformat()
+
+# Columns of config_fiscal that must NEVER be returned to a client. We expose
+# `tiene_*` booleans instead so the UI can show "configured" state without the value.
+_FISCAL_SECRET_COLS = ("certificado_password", "api_key", "api_secret", "token_actual")
 
 class ConfigFiscalBase(BaseModel):
     nombre_comercial: Optional[str] = None
@@ -46,12 +50,23 @@ def get_config_fiscal(db: Session = Depends(get_db), current_user: User = Depend
     d = dict(row._mapping)
     d["configurado"] = bool(d.get("nit") and d.get("nrc"))
     d["wizard_completado"] = bool(d.get("wizard_completado"))
+    # Never leak secrets to the client — expose only whether each is set.
+    d["tiene_api_key"] = bool(d.get("api_key"))
+    d["tiene_api_secret"] = bool(d.get("api_secret"))
+    d["tiene_certificado_password"] = bool(d.get("certificado_password"))
+    for col in _FISCAL_SECRET_COLS:
+        d.pop(col, None)
     return d
 
 @router.post("/config")
 def save_config_fiscal(data: ConfigFiscalBase, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     existing = db.execute(text("SELECT id FROM config_fiscal WHERE company_id=:cid"), {"cid": current_user.company_id}).fetchone()
     fields = {k: v for k, v in data.dict().items() if v is not None}
+    # Encrypt tax-authority secrets before they hit the DB (decrypted only when used).
+    from core.crypto import encrypt
+    for _sk in ("api_key", "api_secret"):
+        if _sk in fields:
+            fields[_sk] = encrypt(fields[_sk])
     fields["updated_at"] = NOW()
     if existing:
         set_clause = ", ".join(f"{k}=:{k}" for k in fields)
@@ -99,15 +114,19 @@ def set_pais_fiscal(data: dict, db: Session = Depends(get_db), current_user: Use
     return {"ok": True, "pais": pais}
 
 @router.post("/certificado")
-async def upload_certificado(file: UploadFile = File(...), password: str = "", db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+async def upload_certificado(file: UploadFile = File(...), password: str = Form(""), db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    # password must be Form() — it arrives as a multipart field, not a query param.
+    from core.files import enforce_upload_size
+    enforce_upload_size(file, max_mb=5)
     upload_dir = f"uploads/fiscal/{current_user.company_id}"
     os.makedirs(upload_dir, exist_ok=True)
     path = f"{upload_dir}/certificado_{current_user.company_id}.p12"
     content = await file.read()
     with open(path, "wb") as f:
         f.write(content)
+    from core.crypto import encrypt
     db.execute(text("UPDATE config_fiscal SET certificado_path=:path, certificado_password=:pwd, tiene_certificado=1, updated_at=:now WHERE company_id=:cid"),
-        {"path": path, "pwd": password, "now": NOW(), "cid": current_user.company_id})
+        {"path": path, "pwd": encrypt(password), "now": NOW(), "cid": current_user.company_id})
     db.commit()
     return {"ok": True, "mensaje": "Certificado subido correctamente"}
 

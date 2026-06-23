@@ -2,35 +2,35 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
-import { T, FONT, useT, useTheme } from '@/components/ui/tokens'
+import { T, FONT, useT } from '@/components/ui/tokens'
 import VeraDrawer from '@/components/ui/VeraDrawer'
-import { HeaderActions } from '@/components/ui/primitives'
+import { PageHeader } from '@/components/ui/primitives'
 
 import { API_BASE as API } from '@/lib/api'
-const VERA_BLUE = '#4F46E5'
+const VERA_BLUE = '#3D2BFF'
 
 // ─────────────────────────────────────────────────────────
 // CONFIGS
 // ─────────────────────────────────────────────────────────
 const DEPT_CFG = {
-  diseno:     { label: 'Diseño',     color: '#4F46E5', bg: 'rgba(79,70,229,.1)' },
+  diseno:     { label: 'Diseño',     color: '#3D2BFF', bg: 'rgba(61,43,255,.1)' },
   ventas:     { label: 'Ventas',     color: '#059669', bg: 'rgba(5,150,105,.1)' },
   almacen:    { label: 'Almacén',    color: '#d97706', bg: 'rgba(217,119,6,.1)' },
   marketing:  { label: 'Marketing',  color: '#0EA5E9', bg: 'rgba(14,165,233,.1)' },
   admin:      { label: 'Admin',      color: '#6b7280', bg: 'rgba(107,114,128,.1)' },
-  tecnologia: { label: 'Tecnología', color: '#4F46E5', bg: 'rgba(79,70,229,.1)' },
+  tecnologia: { label: 'Tecnología', color: '#3D2BFF', bg: 'rgba(61,43,255,.1)' },
 }
 const CONTRACT_CFG = {
   indefinido: { label: 'Indefinido', color: '#059669', bg: 'rgba(5,150,105,.1)', dot: '#059669' },
   temporal:   { label: 'Temporal',   color: '#d97706', bg: 'rgba(217,119,6,.1)', dot: '#F59E0B' },
   practicas:  { label: 'Prácticas',  color: '#0EA5E9', bg: 'rgba(14,165,233,.1)', dot: '#0EA5E9' },
-  becario:    { label: 'Becario',    color: '#4F46E5', bg: 'rgba(79,70,229,.1)', dot: '#4F46E5' },
+  becario:    { label: 'Becario',    color: '#3D2BFF', bg: 'rgba(61,43,255,.1)', dot: '#3D2BFF' },
   autonomo:   { label: 'Autónomo',   color: '#6b7280', bg: 'rgba(107,114,128,.1)', dot: '#9CA3AF' },
 }
 const VACATION_CFG = {
-  vacation: { label: 'Vacaciones', color: '#4F46E5', bg: 'rgba(79,70,229,.1)', dot: '#4F46E5' },
+  vacation: { label: 'Vacaciones', color: '#3D2BFF', bg: 'rgba(61,43,255,.1)', dot: '#3D2BFF' },
   sick:     { label: 'Baja',       color: '#dc2626', bg: 'rgba(220,38,38,.1)', dot: '#dc2626' },
-  personal: { label: 'Personal',   color: '#4F46E5', bg: 'rgba(79,70,229,.1)', dot: '#4F46E5' },
+  personal: { label: 'Personal',   color: '#3D2BFF', bg: 'rgba(61,43,255,.1)', dot: '#3D2BFF' },
   parental: { label: 'Maternidad', color: '#059669', bg: 'rgba(5,150,105,.1)', dot: '#059669' },
 }
 const STATUS_CFG = {
@@ -40,7 +40,7 @@ const STATUS_CFG = {
 }
 // Tipo de vínculo del empleado (alineado con el backend: employee_type).
 const EMPLOYEE_TYPE_CFG = {
-  permanente: { label: 'Plantilla',  color: T.blue,  bg: 'rgba(79,70,229,.1)', dot: T.blue },
+  permanente: { label: 'Plantilla',  color: T.blue,  bg: 'rgba(61,43,255,.1)', dot: T.blue },
   temporal:   { label: 'Temporal',   color: T.amber, bg: T.amberSoft,          dot: T.amber },
   voluntario: { label: 'Voluntario', color: T.green, bg: T.greenSoft,          dot: T.green },
 }
@@ -53,13 +53,13 @@ const TYPE_FILTERS = [
 // Estados/prioridad de las tareas de grupo (espejo de los enums del backend).
 const TASK_STATUS_CFG = {
   pendiente:   { label: 'Pendiente',   color: T.text3, bg: 'rgba(0,0,0,.05)',    dot: '#9CA3AF' },
-  en_progreso: { label: 'En progreso', color: T.blue,  bg: 'rgba(79,70,229,.1)', dot: T.blue },
+  en_progreso: { label: 'En progreso', color: T.blue,  bg: 'rgba(61,43,255,.1)', dot: T.blue },
   completada:  { label: 'Completada',  color: T.green, bg: T.greenSoft,          dot: T.green },
   bloqueada:   { label: 'Bloqueada',   color: T.red,   bg: T.redSoft,            dot: T.red },
 }
 const TASK_PRIORITY_CFG = {
   baja:    { label: 'Baja',    color: T.text3, bg: 'rgba(0,0,0,.05)' },
-  media:   { label: 'Media',   color: T.blue,  bg: 'rgba(79,70,229,.1)' },
+  media:   { label: 'Media',   color: T.blue,  bg: 'rgba(61,43,255,.1)' },
   alta:    { label: 'Alta',    color: T.amber, bg: T.amberSoft },
   urgente: { label: 'Urgente', color: T.red,   bg: T.redSoft },
 }
@@ -75,7 +75,7 @@ const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'O
 // HELPERS
 // ─────────────────────────────────────────────────────────
 function avatarColor(name) {
-  const colors = ['#4F46E5', '#4F46E5', '#059669', '#dc2626', '#d97706', '#0EA5E9', '#6366F1']
+  const colors = ['#3D2BFF', '#3D2BFF', '#059669', '#dc2626', '#d97706', '#0EA5E9', '#6366F1']
   let hash = 0
   for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash)
   return colors[Math.abs(hash) % colors.length]
@@ -137,7 +137,7 @@ function Tab({ active, onClick, label, badge }) {
       {badge != null && badge > 0 && (
         <span style={{
           fontSize: 10, padding: '1px 5px', borderRadius: 999,
-          background: active ? 'rgba(79,70,229,.12)' : 'rgba(0,0,0,.08)',
+          background: active ? 'rgba(61,43,255,.12)' : 'rgba(0,0,0,.08)',
           color: active ? VERA_BLUE : T.text3,
           fontVariantNumeric: 'tabular-nums', minWidth: 16, textAlign: 'center',
         }}>{badge}</span>
@@ -220,7 +220,7 @@ function VeraInsight({ dashboard, onAsk }) {
         <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>Lo que necesita tu atención</div>
         <button onClick={onAsk} style={{
           marginLeft: 'auto', padding: '5px 12px', borderRadius: 6,
-          background: 'rgba(79,70,229,.08)', color: VERA_BLUE,
+          background: 'rgba(61,43,255,.08)', color: VERA_BLUE,
           border: 'none', cursor: 'pointer',
           fontSize: 11.5, fontWeight: 500, fontFamily: 'inherit',
         }}>Pregunta a Vera →</button>
@@ -1423,7 +1423,6 @@ function GroupDrawer({ groupId, token, employees, onClose, onChanged }) {
 // ─────────────────────────────────────────────────────────
 export default function HRPage() {
   const T = useT()
-  const { theme } = useTheme()
   const router = useRouter()
   const [tab, setTab] = useState('equipo')
   const [employees, setEmployees] = useState([])
@@ -1480,80 +1479,72 @@ export default function HRPage() {
       minHeight: '100vh', background: T.bg, display: 'flex',
       fontFamily: FONT, WebkitFontSmoothing: 'antialiased',
     }}>
-      <style>{`*{box-sizing:border-box}::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-thumb{background:rgba(0,0,0,.12);border-radius:999px}input:focus{outline:none}`}</style>
+      <style>{`*{box-sizing:border-box}::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-thumb{background:rgba(0,0,0,.12);border-radius:999px}input:focus{outline:none}@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}`}</style>
 
       <Sidebar active="/hr" />
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', height: '100vh' }}>
-        <header style={{
-          padding: '20px 32px 0',
-          background: theme === 'dark' ? 'rgba(11,11,12,.85)' : 'rgba(251,251,253,.85)',
-          backdropFilter: 'saturate(180%) blur(20px)',
-          borderBottom: `.5px solid ${T.hairline}`,
-        }}>
-          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 14 }}>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-                <h1 style={{ fontSize: 22, fontWeight: 600, color: T.text, margin: 0, letterSpacing: -0.3 }}>Recursos Humanos</h1>
-                <span style={{ width: 6, height: 6, borderRadius: 999, background: '#059669' }} />
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: T.text4 }}>
-                <span style={{ fontSize: 14 }}>🇪🇸</span>
-                <span>España</span>
-                {dashboard && (
-                  <>
-                    <span>·</span>
-                    <span>{dashboard.total_employees} personas · {fmtEuro(dashboard.monthly_cost)}/mes · {dashboard.out_today} fuera hoy</span>
-                  </>
-                )}
-              </div>
-            </div>
-
-            <HeaderActions onVera={() => setVeraOpen(true)} router={router}>
-              <button onClick={() => setNotificationsOpen(o => !o)}
-                aria-label={`Notificaciones${notificationCount > 0 ? ` (${notificationCount})` : ''}`}
-                aria-expanded={notificationsOpen}
-                style={{
+        <PageHeader
+          title="Recursos Humanos"
+          subtitle={
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <span>🇪🇸</span>
+              <span>España</span>
+              {dashboard && (
+                <>
+                  <span>·</span>
+                  <span style={{ fontVariantNumeric: 'tabular-nums' }}>{dashboard.total_employees} personas · {fmtEuro(dashboard.monthly_cost)}/mes · {dashboard.out_today} fuera hoy</span>
+                </>
+              )}
+            </span>
+          }
+          tabs={[
+            { key: 'equipo', label: 'Equipo' },
+            { key: 'grupos', label: 'Grupos' },
+            { key: 'vacaciones', label: 'Vacaciones', badge: pendingVacations },
+            { key: 'contratos', label: 'Contratos', badge: dashboard?.contracts_expiring_60d },
+            { key: 'nominas', label: 'Nóminas' },
+          ]}
+          activeTab={tab}
+          onTab={setTab}
+          primary={
+            tab === 'equipo'
+              ? { label: 'Nuevo empleado', onClick: () => setShowNewEmployee(true), icon: <span aria-hidden="true" style={{ fontSize: 16, lineHeight: 0, marginRight: 1 }}>+</span> }
+              : tab === 'grupos'
+              ? { label: 'Nuevo grupo', onClick: () => setShowNewGroup(true), icon: <span aria-hidden="true" style={{ fontSize: 16, lineHeight: 0, marginRight: 1 }}>+</span> }
+              : undefined
+          }
+          secondary={
+            <button
+              onClick={() => setNotificationsOpen(o => !o)}
+              aria-label={`Notificaciones${notificationCount > 0 ? ` (${notificationCount})` : ''}`}
+              aria-expanded={notificationsOpen}
+              style={{
                 position: 'relative',
-                padding: '7px 10px', borderRadius: 8,
-                minWidth: 36, minHeight: 36,
+                width: 44, height: 44, borderRadius: 8,
                 background: T.card, color: T.text2,
                 border: `.5px solid ${T.hairline}`,
                 cursor: 'pointer', fontFamily: 'inherit',
-                display: 'grid', placeItems: 'center',
+                display: 'grid', placeItems: 'center', flexShrink: 0,
               }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-                </svg>
-                {notificationCount > 0 && (
-                  <span style={{
-                    position: 'absolute', top: -4, right: -4,
-                    background: '#dc2626', color: '#fff',
-                    fontSize: 9, fontWeight: 600,
-                    padding: '1px 5px', borderRadius: 999,
-                    minWidth: 16, textAlign: 'center',
-                  }}>{notificationCount}</span>
-                )}
-              </button>
-              <button onClick={() => tab === 'grupos' ? setShowNewGroup(true) : setShowNewEmployee(true)} style={{
-                padding: '7px 14px', borderRadius: 8,
-                background: VERA_BLUE, color: '#fff',
-                border: 'none', fontSize: 12, fontWeight: 500, cursor: 'pointer',
-                fontFamily: 'inherit',
-              }}>{tab === 'grupos' ? '+ Nuevo grupo' : '+ Nuevo empleado'}</button>
-            </HeaderActions>
-          </div>
-
-          <div style={{ display: 'flex', gap: 2, background: T.sidebar, borderRadius: 8, padding: 3, width: 'fit-content' }}>
-            <Tab label="Equipo" active={tab === 'equipo'} onClick={() => setTab('equipo')} />
-            <Tab label="Grupos" active={tab === 'grupos'} onClick={() => setTab('grupos')} />
-            <Tab label="Vacaciones" active={tab === 'vacaciones'} onClick={() => setTab('vacaciones')} badge={pendingVacations} />
-            <Tab label="Contratos" active={tab === 'contratos'} onClick={() => setTab('contratos')} badge={dashboard?.contracts_expiring_60d} />
-            <Tab label="Nóminas" active={tab === 'nominas'} onClick={() => setTab('nominas')} />
-          </div>
-
-          <div style={{ height: 16 }} />
-        </header>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+              </svg>
+              {notificationCount > 0 && (
+                <span style={{
+                  position: 'absolute', top: -4, right: -4,
+                  background: '#dc2626', color: '#fff',
+                  fontSize: 9, fontWeight: 600,
+                  padding: '1px 5px', borderRadius: 999,
+                  minWidth: 16, textAlign: 'center',
+                }}>{notificationCount}</span>
+              )}
+            </button>
+          }
+          onVera={() => setVeraOpen(true)}
+          user={null}
+          router={router}
+        />
 
         <div id="main-content" tabIndex={-1} style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
           {loading ? (
@@ -1641,8 +1632,8 @@ export default function HRPage() {
                 {pendingVacations > 0 && (
                   <div onClick={() => { setNotificationsOpen(false); setTab('vacaciones') }} style={{
                     padding: '10px 12px', borderRadius: 8,
-                    background: 'rgba(79,70,229,.04)',
-                    border: '.5px solid rgba(79,70,229,.15)',
+                    background: 'rgba(61,43,255,.04)',
+                    border: '.5px solid rgba(61,43,255,.15)',
                     cursor: 'pointer',
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>

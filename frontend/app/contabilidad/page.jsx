@@ -5,7 +5,7 @@ import Sidebar from '@/components/Sidebar'
 import VeraPanel from '@/components/ui/VeraPanel'
 import { FONT, useT, useTheme } from '@/components/ui/tokens'
 import VeraDrawer from '@/components/ui/VeraDrawer'
-import { HeaderActions } from '@/components/ui/primitives'
+import { PageHeader } from '@/components/ui/primitives'
 
 import { API_BASE as API } from '@/lib/api'
 
@@ -155,7 +155,7 @@ function VeraInsight({ insight, loading, onOpenChat, onRegenerate }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{
             width: 28, height: 28, borderRadius: 8,
-            background: 'linear-gradient(135deg,#4F46E5,#A5B1FF)',
+            background: 'linear-gradient(135deg,#3D2BFF,#A5B1FF)',
             display: 'grid', placeItems: 'center', flexShrink: 0,
           }}>
             <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
@@ -173,13 +173,13 @@ function VeraInsight({ insight, loading, onOpenChat, onRegenerate }) {
         </div>
         <button onClick={onOpenChat} style={{
           padding: '5px 12px', borderRadius: 7,
-          border: `.5px solid rgba(79,70,229,.18)`,
-          background: 'rgba(79,70,229,.05)', color: T.blue,
+          border: `.5px solid rgba(61,43,255,.18)`,
+          background: 'rgba(61,43,255,.05)', color: T.blue,
           fontSize: 12, fontWeight: 500, cursor: 'pointer',
           fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 5,
         }}
-          onMouseEnter={e => e.currentTarget.style.background = 'rgba(79,70,229,.1)'}
-          onMouseLeave={e => e.currentTarget.style.background = 'rgba(79,70,229,.05)'}
+          onMouseEnter={e => e.currentTarget.style.background = 'rgba(61,43,255,.1)'}
+          onMouseLeave={e => e.currentTarget.style.background = 'rgba(61,43,255,.05)'}
         >
           Abrir chat
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -200,9 +200,9 @@ function VeraInsight({ insight, loading, onOpenChat, onRegenerate }) {
       {insight && !loading && (
         <div style={{
           padding: '16px 18px',
-          background: 'linear-gradient(180deg, rgba(79,70,229,.025), rgba(79,70,229,.01))',
+          background: 'linear-gradient(180deg, rgba(61,43,255,.025), rgba(61,43,255,.01))',
           borderRadius: 10,
-          border: `.5px solid rgba(79,70,229,.1)`,
+          border: `.5px solid rgba(61,43,255,.1)`,
           fontSize: 13, color: T.text2, lineHeight: 1.65,
           whiteSpace: 'pre-wrap',
         }}>
@@ -328,7 +328,7 @@ export default function Contabilidad() {
   const [mode, setMode] = useState('manual')
   const [form, setForm] = useState({
     fecha: new Date().toISOString().split('T')[0],
-    categoria: '', descripcion: '', monto: '', referencia: '',
+    categoria: '', descripcion: '', monto: '', referencia: '', iva_rate: 21,
   })
   const [loading, setLoading] = useState(false)
   const [msg, setMsg] = useState(null)
@@ -362,6 +362,31 @@ export default function Contabilidad() {
   const [veraOpen, setVeraOpen] = useState(false)
   const [veraInsight, setVeraInsight] = useState(null)
   const [veraInsightLoading, setVeraInsightLoading] = useState(false)
+
+  // Asiento manual
+  const [cuentas, setCuentas] = useState([])
+  const [asiento, setAsiento] = useState(() => {
+    const today = new Date().toISOString().split('T')[0]
+    return {
+      fecha: today, descripcion: '', referencia: '',
+      lineas: [
+        { account_code: '', debit: '', credit: '' },
+        { account_code: '', debit: '', credit: '' },
+      ],
+    }
+  })
+  const [asientoLoading, setAsientoLoading] = useState(false)
+
+  // IVA / 303
+  const [iva, setIva] = useState(null)
+  const [ivaLoading, setIvaLoading] = useState(false)
+  const [ivaRange, setIvaRange] = useState(() => {
+    const today = new Date().toISOString().split('T')[0]
+    return { inicio: today.substring(0, 4) + '-01-01', fin: today }
+  })
+
+  // Libro mayor: rango (month | year | all)
+  const [ledgerRange, setLedgerRange] = useState('month')
 
   const getToken = () => localStorage.getItem('vela_token')
 
@@ -401,6 +426,16 @@ export default function Contabilidad() {
     loadEstadosAuto('month')
     loadCuadre()
     loadVeraInsight()
+    loadCuentas()
+  }
+
+  async function loadCuentas() {
+    try {
+      const res = await fetch(`${API}/api/contabilidad/cuentas`, {
+        headers: { Authorization: `Bearer ${getToken()}` },
+      })
+      if (res.ok) { const d = await res.json(); setCuentas(d.cuentas || []) }
+    } catch (e) { console.error('Error de red:', e) }
   }
 
   function loadRegistro() {
@@ -486,7 +521,7 @@ export default function Contabilidad() {
       setMsg({ type: 'success', text: `Registrado. Asiento: ${data.asiento_contable}` })
       setForm({
         fecha: new Date().toISOString().split('T')[0],
-        categoria: '', descripcion: '', monto: '', referencia: '',
+        categoria: '', descripcion: '', monto: '', referencia: '', iva_rate: form.iva_rate,
       })
       loadRegistro()
     } else {
@@ -540,16 +575,89 @@ export default function Contabilidad() {
     setLoading(false)
   }
 
-  async function loadLedger() {
+  async function loadLedger(range = ledgerRange) {
     setLoading(true)
-    // Acotar al mes en curso para no pedir el histórico completo (~30 MB) que congela el navegador.
+    setLedgerRange(range)
+    // El backend ya sirve el histórico completo de forma eficiente (índices +
+    // agregados). 'all' = sin filtro de fechas.
     const today = new Date().toISOString().split('T')[0]
-    const monthStart = today.substring(0, 8) + '01'
-    const res = await fetch(`${API}/api/contabilidad/libro-mayor?fecha_inicio=${monthStart}&fecha_fin=${today}`, {
+    let qs = ''
+    if (range === 'month') {
+      qs = `?fecha_inicio=${today.substring(0, 8)}01&fecha_fin=${today}`
+    } else if (range === 'year') {
+      qs = `?fecha_inicio=${today.substring(0, 4)}-01-01&fecha_fin=${today}`
+    }
+    const res = await fetch(`${API}/api/contabilidad/libro-mayor${qs}`, {
       headers: { Authorization: `Bearer ${getToken()}` },
     })
     if (res.ok) setLedger(await res.json())
     setLoading(false)
+  }
+
+  // ── Asiento manual ──
+  function setLinea(idx, patch) {
+    setAsiento(a => ({ ...a, lineas: a.lineas.map((l, i) => i === idx ? { ...l, ...patch } : l) }))
+  }
+  function addLinea() {
+    setAsiento(a => ({ ...a, lineas: [...a.lineas, { account_code: '', debit: '', credit: '' }] }))
+  }
+  function removeLinea(idx) {
+    setAsiento(a => ({ ...a, lineas: a.lineas.length > 2 ? a.lineas.filter((_, i) => i !== idx) : a.lineas }))
+  }
+  const asientoTotals = {
+    debit: Math.round(asiento.lineas.reduce((s, l) => s + (parseFloat(l.debit) || 0), 0) * 100) / 100,
+    credit: Math.round(asiento.lineas.reduce((s, l) => s + (parseFloat(l.credit) || 0), 0) * 100) / 100,
+  }
+  const asientoBalanced = asientoTotals.debit === asientoTotals.credit && asientoTotals.debit > 0
+
+  async function submitAsiento(e) {
+    e.preventDefault()
+    const lineas = asiento.lineas
+      .filter(l => l.account_code && ((parseFloat(l.debit) || 0) > 0 || (parseFloat(l.credit) || 0) > 0))
+      .map(l => ({ account_code: l.account_code, debit: parseFloat(l.debit) || 0, credit: parseFloat(l.credit) || 0 }))
+    if (lineas.length < 2) { setMsg({ type: 'error', text: 'Añade al menos 2 líneas con cuenta e importe' }); return }
+    if (!asientoBalanced) {
+      setMsg({ type: 'error', text: `El asiento no cuadra: debe €${asientoTotals.debit.toFixed(2)} ≠ haber €${asientoTotals.credit.toFixed(2)}` })
+      return
+    }
+    setAsientoLoading(true); setMsg(null)
+    try {
+      const res = await fetch(`${API}/api/contabilidad/asiento`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+        body: JSON.stringify({
+          fecha: asiento.fecha, descripcion: asiento.descripcion,
+          referencia: asiento.referencia || null, lineas,
+        }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setMsg({ type: 'success', text: `Asiento registrado · ${data.transaction_id}` })
+        setAsiento(a => ({
+          ...a, descripcion: '', referencia: '',
+          lineas: [{ account_code: '', debit: '', credit: '' }, { account_code: '', debit: '', credit: '' }],
+        }))
+        loadCuadre()
+      } else {
+        setMsg({ type: 'error', text: data.detail || 'Error registrando el asiento' })
+      }
+    } catch { setMsg({ type: 'error', text: 'Error de conexión' }) }
+    finally { setAsientoLoading(false) }
+  }
+
+  // ── IVA / 303 ──
+  async function loadIva() {
+    if (!ivaRange.inicio || !ivaRange.fin) { setMsg({ type: 'error', text: 'Elige fecha de inicio y de fin' }); return }
+    setIvaLoading(true); setMsg(null)
+    try {
+      const res = await fetch(`${API}/api/contabilidad/iva?fecha_inicio=${ivaRange.inicio}&fecha_fin=${ivaRange.fin}`, {
+        headers: { Authorization: `Bearer ${getToken()}` },
+      })
+      const data = await res.json().catch(() => ({}))
+      if (res.ok) setIva(data)
+      else setMsg({ type: 'error', text: (typeof data.detail === 'string' ? data.detail : 'No se pudo calcular el IVA del periodo') })
+    } catch (e) { setMsg({ type: 'error', text: 'Error de conexión' }) }
+    finally { setIvaLoading(false) }
   }
 
   async function loadBalanza() {
@@ -598,7 +706,9 @@ export default function Contabilidad() {
     { key: 'resumen', label: 'Resumen' },
     { key: 'estados', label: 'Estados financieros' },
     { key: 'registro', label: 'Registro diario' },
+    { key: 'asiento', label: 'Asiento manual' },
     { key: 'libros', label: 'Libros' },
+    { key: 'iva', label: 'IVA / 303' },
   ]
 
   const periodos = [
@@ -621,6 +731,9 @@ export default function Contabilidad() {
         @media (max-width:768px){
           .cont-row{grid-template-columns:1fr!important}
         }
+        @media (prefers-reduced-motion: reduce){
+          *{animation:none!important;transition:none!important}
+        }
       `}</style>
 
       <Sidebar active="/contabilidad" />
@@ -636,53 +749,37 @@ export default function Contabilidad() {
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
-        {/* ═══════════════ HEADER ═══════════════ */}
-        <header style={{
-          height: 64, background: theme === 'dark' ? 'rgba(11,11,12,.85)' : 'rgba(251,251,253,.85)',
-          backdropFilter: 'saturate(180%) blur(20px)',
-          WebkitBackdropFilter: 'saturate(180%) blur(20px)',
-          borderBottom: `.5px solid ${T.hairline}`,
-          display: 'flex', alignItems: 'center', padding: '0 28px',
-          flexShrink: 0, position: 'sticky', top: 0, zIndex: 10,
-          gap: 20,
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div>
-              <div style={{
-                fontSize: 16, fontWeight: 600, color: T.text,
-                letterSpacing: -0.3, lineHeight: 1.1,
-                display: 'flex', alignItems: 'center', gap: 8,
-              }}>
-                Contabilidad
-                {cuadre && (
-                  <span
-                    title={cuadre.balanced
-                      ? `Libro cuadrado · DEBE €${cuadre.debe?.toLocaleString('es-ES')} = HABER €${cuadre.haber?.toLocaleString('es-ES')}`
-                      : `Descuadre · DEBE €${cuadre.debe?.toLocaleString('es-ES')} vs HABER €${cuadre.haber?.toLocaleString('es-ES')}`}
-                    style={{
-                      width: 7, height: 7, borderRadius: 999,
-                      background: cuadre.balanced ? T.green : T.red,
-                      boxShadow: `0 0 0 3px ${cuadre.balanced ? 'rgba(52,199,89,.15)' : 'rgba(255,59,48,.15)'}`,
-                    }} />
-                )}
-              </div>
-              <div style={{
-                fontSize: 11, color: T.text4, marginTop: 3,
-                display: 'flex', alignItems: 'center', gap: 6,
-              }}>
-                <FlagES size={12} />
-                <span>España · PGC RD 1514/2007</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Pills tabs */}
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <PillGroup items={sections} active={section} onChange={setSection} />
-          </div>
-
-          <HeaderActions onVera={() => setVeraOpen(true)} user={user} router={router} />
-        </header>
+        <PageHeader
+          title={
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+              Contabilidad
+              {cuadre && (
+                <span
+                  title={cuadre.balanced
+                    ? `Libro cuadrado · DEBE €${cuadre.debe?.toLocaleString('es-ES')} = HABER €${cuadre.haber?.toLocaleString('es-ES')}`
+                    : `Descuadre · DEBE €${cuadre.debe?.toLocaleString('es-ES')} vs HABER €${cuadre.haber?.toLocaleString('es-ES')}`}
+                  style={{
+                    width: 7, height: 7, borderRadius: 999,
+                    background: cuadre.balanced ? T.green : T.red,
+                    boxShadow: `0 0 0 3px ${cuadre.balanced ? 'rgba(52,199,89,.15)' : 'rgba(255,59,48,.15)'}`,
+                  }} />
+              )}
+            </span>
+          }
+          subtitle={
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <FlagES size={12} />
+              <span>España · PGC RD 1514/2007</span>
+            </span>
+          }
+          tabs={sections}
+          activeTab={section}
+          onTab={(s) => { setMsg(null); setSection(s) }}
+          primary={undefined}
+          onVera={() => setVeraOpen(true)}
+          user={user}
+          router={router}
+        />
 
         {/* ═══════════════ CONTENIDO ═══════════════ */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '24px 28px' }}>
@@ -942,7 +1039,7 @@ export default function Contabilidad() {
                       </div>
                       <div style={{ fontSize: 11, color: T.text4, marginTop: 2 }}>Últimas transacciones</div>
                     </div>
-                    <button onClick={() => setSection('registro')} style={{
+                    <button onClick={() => { setMsg(null); setSection('registro') }} style={{
                       background: 'none', border: 'none', color: T.blue,
                       fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
                     }}>Ver todo</button>
@@ -1090,8 +1187,8 @@ export default function Contabilidad() {
                       </div>
                       <div style={{
                         padding: '14px',
-                        background: 'linear-gradient(180deg, rgba(79,70,229,.04), rgba(79,70,229,.01))',
-                        borderRadius: 12, border: `.5px solid rgba(79,70,229,.1)`,
+                        background: 'linear-gradient(180deg, rgba(61,43,255,.04), rgba(61,43,255,.01))',
+                        borderRadius: 12, border: `.5px solid rgba(61,43,255,.1)`,
                       }}>
                         <div style={{
                           fontSize: 11, fontWeight: 500, color: T.blue,
@@ -1141,8 +1238,8 @@ export default function Contabilidad() {
                       </div>
                       <div style={{
                         padding: '14px',
-                        background: 'linear-gradient(180deg, rgba(79,70,229,.04), rgba(79,70,229,.01))',
-                        borderRadius: 12, border: `.5px solid rgba(79,70,229,.1)`,
+                        background: 'linear-gradient(180deg, rgba(61,43,255,.04), rgba(61,43,255,.01))',
+                        borderRadius: 12, border: `.5px solid rgba(61,43,255,.1)`,
                       }}>
                         <div style={{
                           fontSize: 11, fontWeight: 500, color: T.blue,
@@ -1185,8 +1282,8 @@ export default function Contabilidad() {
                     </div>
                     <div style={{
                       padding: '14px',
-                      background: 'linear-gradient(180deg, rgba(79,70,229,.04), rgba(79,70,229,.01))',
-                      borderRadius: 12, border: `.5px solid rgba(79,70,229,.1)`,
+                      background: 'linear-gradient(180deg, rgba(61,43,255,.04), rgba(61,43,255,.01))',
+                      borderRadius: 12, border: `.5px solid rgba(61,43,255,.1)`,
                     }}>
                       <div style={{
                         fontSize: 11, fontWeight: 500, color: T.blue,
@@ -1218,7 +1315,7 @@ export default function Contabilidad() {
                     padding: '14px 16px',
                     border: `.5px solid ${mode === m.key ? T.blue : T.hairline}`,
                     borderRadius: 12,
-                    background: mode === m.key ? 'rgba(79,70,229,.04)' : T.card,
+                    background: mode === m.key ? 'rgba(61,43,255,.04)' : T.card,
                     cursor: 'pointer', textAlign: 'left',
                     transition: 'all .15s', fontFamily: 'inherit',
                   }}>
@@ -1256,15 +1353,21 @@ export default function Contabilidad() {
                         ))}
                       </div>
                       <form onSubmit={submitManual}>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 90px', gap: 12 }}>
                           <Field label="Fecha">
                             <Input type="date" value={form.fecha}
                               onChange={e => setForm({ ...form, fecha: e.target.value })} required />
                           </Field>
-                          <Field label="Monto €">
+                          <Field label="Monto € (IVA incl.)">
                             <Input type="number" step="0.01" placeholder="0.00"
                               value={form.monto}
                               onChange={e => setForm({ ...form, monto: e.target.value })} required />
+                          </Field>
+                          <Field label="IVA %">
+                            <Sel value={form.iva_rate}
+                              onChange={e => setForm({ ...form, iva_rate: Number(e.target.value) })}>
+                              {[21, 10, 4, 0].map(r => <option key={r} value={r}>{r}%</option>)}
+                            </Sel>
                           </Field>
                         </div>
                         <Field label="Categoría">
@@ -1466,12 +1569,30 @@ export default function Contabilidad() {
                 display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
                 gap: 14, marginBottom: 16,
               }}>
-                <Btn onClick={loadLedger} disabled={loading}>
+                <Btn onClick={() => loadLedger()} disabled={loading}>
                   {loading ? 'Cargando…' : 'Cargar libro mayor'}
                 </Btn>
                 <Btn onClick={loadBalanza} disabled={loading} color={T.amber}>
                   {loading ? 'Cargando…' : 'Cargar balanza'}
                 </Btn>
+              </div>
+
+              {/* Rango del libro mayor (el backend ya sirve el histórico completo) */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+                <span style={{ fontSize: 12, color: T.text4 }}>Periodo del libro mayor:</span>
+                {[
+                  { key: 'month', label: 'Este mes' },
+                  { key: 'year', label: 'Este año' },
+                  { key: 'all', label: 'Todo el histórico' },
+                ].map(r => (
+                  <button key={r.key} onClick={() => loadLedger(r.key)} disabled={loading} style={{
+                    padding: '5px 12px', borderRadius: 999, cursor: 'pointer', fontFamily: 'inherit',
+                    fontSize: 12, fontWeight: ledgerRange === r.key ? 600 : 400,
+                    border: `.5px solid ${ledgerRange === r.key ? T.blue : T.hairline}`,
+                    background: ledgerRange === r.key ? 'rgba(61,43,255,.08)' : T.card,
+                    color: ledgerRange === r.key ? T.blue : T.text3,
+                  }}>{r.label}</button>
+                ))}
               </div>
 
               {ledger && (
@@ -1502,7 +1623,7 @@ export default function Contabilidad() {
                           </svg>
                           <span style={{
                             fontSize: 12, fontWeight: 600, color: T.blue,
-                            background: 'rgba(79,70,229,.08)',
+                            background: 'rgba(61,43,255,.08)',
                             padding: '2px 8px', borderRadius: 999, flexShrink: 0,
                           }}>{account.account_code}</span>
                           <span style={{ fontSize: 13, fontWeight: 500, color: T.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{account.account_name}</span>
@@ -1653,6 +1774,135 @@ export default function Contabilidad() {
                     </table>
                   </Card>
                 </div>
+              )}
+            </div>
+          )}
+
+          {/* ──── ASIENTO MANUAL ──── */}
+          {section === 'asiento' && (
+            <div>
+              <Card>
+                <div style={{ fontSize: 14, fontWeight: 600, color: T.text, letterSpacing: -0.2, marginBottom: 4 }}>Asiento contable manual</div>
+                <div style={{ fontSize: 12, color: T.text4, marginBottom: 16 }}>
+                  Apunte libre de partida doble (cualquier cuenta contra cualquier cuenta). El total del Debe debe igualar al Haber.
+                </div>
+                <form onSubmit={submitAsiento}>
+                  <div className="cont-row" style={{ display: 'grid', gridTemplateColumns: '150px 1fr 180px', gap: 12, marginBottom: 14 }}>
+                    <Field label="Fecha">
+                      <Input type="date" value={asiento.fecha} onChange={e => setAsiento(a => ({ ...a, fecha: e.target.value }))} required />
+                    </Field>
+                    <Field label="Descripción">
+                      <Input value={asiento.descripcion} onChange={e => setAsiento(a => ({ ...a, descripcion: e.target.value }))} placeholder="Concepto del asiento…" required />
+                    </Field>
+                    <Field label="Referencia (opcional)">
+                      <Input value={asiento.referencia} onChange={e => setAsiento(a => ({ ...a, referencia: e.target.value }))} placeholder="Nº documento…" />
+                    </Field>
+                  </div>
+
+                  <div style={{ border: `.5px solid ${T.hairline}`, borderRadius: 10, overflow: 'hidden' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 130px 130px 36px', gap: 10, padding: '8px 12px', background: T.sidebar, fontSize: 11, fontWeight: 600, color: T.text3, textTransform: 'uppercase', letterSpacing: 0.4 }}>
+                      <div>Cuenta</div>
+                      <div style={{ textAlign: 'right' }}>Debe</div>
+                      <div style={{ textAlign: 'right' }}>Haber</div>
+                      <div></div>
+                    </div>
+                    {asiento.lineas.map((l, idx) => (
+                      <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 130px 130px 36px', gap: 10, padding: '8px 12px', borderTop: `.5px solid ${T.soft}`, alignItems: 'center' }}>
+                        <Sel value={l.account_code} onChange={e => setLinea(idx, { account_code: e.target.value })}>
+                          <option value="">Selecciona cuenta…</option>
+                          {cuentas.map(c => <option key={c.code} value={c.code}>{c.code} — {c.name}</option>)}
+                        </Sel>
+                        <Input type="number" step="0.01" placeholder="0.00" value={l.debit} style={{ textAlign: 'right' }}
+                          onChange={e => setLinea(idx, { debit: e.target.value, credit: e.target.value ? '' : l.credit })} />
+                        <Input type="number" step="0.01" placeholder="0.00" value={l.credit} style={{ textAlign: 'right' }}
+                          onChange={e => setLinea(idx, { credit: e.target.value, debit: e.target.value ? '' : l.debit })} />
+                        <button type="button" onClick={() => removeLinea(idx)} disabled={asiento.lineas.length <= 2}
+                          aria-label="Quitar línea" style={{ border: 'none', background: 'transparent', color: T.text4, cursor: asiento.lineas.length <= 2 ? 'default' : 'pointer', fontSize: 18, lineHeight: 1 }}>×</button>
+                      </div>
+                    ))}
+                  </div>
+                  <button type="button" onClick={addLinea} style={{ marginTop: 10, border: 'none', background: 'transparent', color: T.blue, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                    + Añadir línea
+                  </button>
+
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 28, marginTop: 14, padding: '12px 16px', borderRadius: 10, background: T.sidebar }}>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: 11, color: T.text4 }}>Total Debe</div>
+                      <div style={{ fontSize: 15, fontWeight: 600, color: T.text, fontVariantNumeric: 'tabular-nums' }}>€{asientoTotals.debit.toFixed(2)}</div>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: 11, color: T.text4 }}>Total Haber</div>
+                      <div style={{ fontSize: 15, fontWeight: 600, color: T.text, fontVariantNumeric: 'tabular-nums' }}>€{asientoTotals.credit.toFixed(2)}</div>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: 11, color: T.text4 }}>Cuadre</div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: asientoBalanced ? T.green : T.amber }}>{asientoBalanced ? '✓ Cuadrado' : 'Descuadrado'}</div>
+                    </div>
+                  </div>
+
+                  <Toast msg={msg} />
+                  <Btn disabled={asientoLoading || !asientoBalanced} style={{ marginTop: 14, width: '100%', justifyContent: 'center', borderRadius: 10, padding: '11px' }}>
+                    {asientoLoading ? 'Registrando…' : 'Registrar asiento'}
+                  </Btn>
+                </form>
+              </Card>
+            </div>
+          )}
+
+          {/* ──── IVA / 303 ──── */}
+          {section === 'iva' && (
+            <div>
+              <Card style={{ marginBottom: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, flexWrap: 'wrap' }}>
+                  <Field label="Desde">
+                    <Input type="date" value={ivaRange.inicio} onChange={e => setIvaRange(r => ({ ...r, inicio: e.target.value }))} />
+                  </Field>
+                  <Field label="Hasta">
+                    <Input type="date" value={ivaRange.fin} onChange={e => setIvaRange(r => ({ ...r, fin: e.target.value }))} />
+                  </Field>
+                  <Btn onClick={loadIva} disabled={ivaLoading} style={{ borderRadius: 10, padding: '10px 18px' }}>
+                    {ivaLoading ? 'Calculando…' : 'Calcular IVA'}
+                  </Btn>
+                </div>
+                <Toast msg={msg} />
+              </Card>
+
+              {iva && (
+                <>
+                  <div className="cont-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 16 }}>
+                    {[
+                      { label: 'IVA repercutido · cta 477', value: iva.iva_repercutido, color: T.text },
+                      { label: 'IVA soportado · cta 472', value: iva.iva_soportado, color: T.text },
+                      { label: iva.resultado_tipo === 'a_compensar' ? 'Resultado · a compensar' : iva.resultado_tipo === 'cero' ? 'Resultado · sin cuota' : 'Resultado · a ingresar', value: Math.abs(iva.resultado || 0), color: (iva.resultado || 0) > 0 ? T.red : ((iva.resultado || 0) < 0 ? T.green : T.text) },
+                    ].map((k, i) => (
+                      <Card key={i}>
+                        <div style={{ fontSize: 11, color: T.text4, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.4 }}>{k.label}</div>
+                        <div style={{ fontSize: 24, fontWeight: 700, color: k.color, fontVariantNumeric: 'tabular-nums' }}>€{(k.value || 0).toFixed(2)}</div>
+                      </Card>
+                    ))}
+                  </div>
+                  <Card>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: T.text, marginBottom: 4 }}>Borrador modelo 303</div>
+                    <div style={{ fontSize: 11, color: T.text4, marginBottom: 14 }}>{iva.nota}</div>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <tbody>
+                        {[
+                          ['Casilla 27 — Cuota IVA devengada', iva.modelo_303?.casilla_27_cuota_devengada],
+                          ['Casilla 45 — Cuota IVA deducible', iva.modelo_303?.casilla_45_cuota_deducible],
+                          ['Casilla 71 — Resultado', iva.modelo_303?.casilla_71_resultado],
+                        ].map(([k, v], i) => (
+                          <tr key={i} style={{ borderBottom: `.5px solid ${T.soft}` }}>
+                            <td style={{ padding: '10px 4px', fontSize: 13, color: T.text2 }}>{k}</td>
+                            <td style={{ padding: '10px 4px', fontSize: 13, fontWeight: 600, color: T.text, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>€{(v || 0).toFixed(2)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </Card>
+                </>
+              )}
+              {!iva && !ivaLoading && (
+                <Card><div style={{ fontSize: 13, color: T.text4, textAlign: 'center', padding: 20 }}>Elige un periodo y pulsa «Calcular IVA».</div></Card>
               )}
             </div>
           )}

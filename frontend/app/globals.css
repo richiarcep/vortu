@@ -18,7 +18,8 @@ html { -webkit-text-size-adjust: 100%; }
   --app-ink: #0F172A;
   --scrollbar: rgba(15,23,42,.18);
   --scrollbar-hover: rgba(15,23,42,.30);
-  --focus-ring: #4F46E5;
+  --focus-ring: #3D2BFF;
+  --placeholder: #586474;
   color-scheme: light;
 
   /* Fuente principal Vela = Inter (cuerpo y display). Mono para cifras. */
@@ -42,7 +43,8 @@ html { -webkit-text-size-adjust: 100%; }
   --app-ink: #E6EDF3;
   --scrollbar: rgba(255,255,255,.16);
   --scrollbar-hover: rgba(255,255,255,.30);
-  --focus-ring: #6366F1;
+  --focus-ring: #6E5DFF;
+  --placeholder: #8B949E;
   --shadow-card: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.5);
   color-scheme: dark;
 }
@@ -65,10 +67,14 @@ html, body {
 /* ── Accesibilidad: foco visible solo en navegación por teclado ───────────── */
 :focus { outline: none; }
 :focus-visible {
-  outline: 2px solid var(--focus-ring);
+  outline: 2px solid var(--focus-ring) !important;
   outline-offset: 2px;
   border-radius: 4px;
 }
+
+/* Placeholder accesible (≥4.5:1) — no depender del default del navegador.
+   Gana al outline:none de las reglas input:focus de cada página vía focus-visible !important. */
+input::placeholder, textarea::placeholder { color: var(--placeholder); opacity: 1; }
 
 /* WCAG 2.2 — 2.4.11 Foco no oscurecido: al tabular, deja que el elemento
    enfocado quede por debajo de la cabecera sticky (≈64px) y no pegado al borde. */

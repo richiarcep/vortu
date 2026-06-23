@@ -4,10 +4,10 @@ import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
 import { FONT, useT, useTheme } from '@/components/ui/tokens'
 import VeraDrawer from '@/components/ui/VeraDrawer'
-import { HeaderActions } from '@/components/ui/primitives'
+import { PageHeader } from '@/components/ui/primitives'
 
 import { API_BASE as API } from '@/lib/api'
-const VERA_BLUE = '#4F46E5'
+const VERA_BLUE = '#3D2BFF'
 const ANALYSIS_CACHE_KEY = 'vela_marketing_analysis'
 
 // ─────────────────────────────────────────────────────────
@@ -21,8 +21,8 @@ const STATUS_CFG = {
 }
 
 const PLATFORM_CFG = {
-  google: { label: 'Google', color: '#4F46E5', bg: 'rgba(79,70,229,.1)' },
-  meta:   { label: 'Meta',   color: '#4F46E5', bg: 'rgba(79,70,229,.1)' },
+  google: { label: 'Google', color: '#3D2BFF', bg: 'rgba(61,43,255,.1)' },
+  meta:   { label: 'Meta',   color: '#3D2BFF', bg: 'rgba(61,43,255,.1)' },
   tiktok: { label: 'TikTok', color: '#1d1d1f', bg: 'rgba(0,0,0,.06)' },
   email:  { label: 'Email',  color: '#059669', bg: 'rgba(5,150,105,.1)' },
 }
@@ -84,7 +84,7 @@ function Tab({ active, onClick, label, badge }) {
       {badge != null && badge > 0 && (
         <span style={{
           fontSize: 10, padding: '1px 5px', borderRadius: 999,
-          background: active ? 'rgba(79,70,229,.12)' : 'rgba(0,0,0,.08)',
+          background: active ? 'rgba(61,43,255,.12)' : 'rgba(0,0,0,.08)',
           color: active ? VERA_BLUE : T.text3,
           fontVariantNumeric: 'tabular-nums', minWidth: 16, textAlign: 'center',
         }}>{badge}</span>
@@ -471,7 +471,7 @@ function EstrategiaTab({ token, onCreateCampaign }) {
                       {platform && (
                         <span style={{
                           fontSize: 10, padding: '2px 7px', borderRadius: 4,
-                          background: 'rgba(79,70,229,.08)', color: VERA_BLUE,
+                          background: 'rgba(61,43,255,.08)', color: VERA_BLUE,
                           textTransform: 'uppercase', letterSpacing: 0.4, fontWeight: 500,
                         }}>{platform}</span>
                       )}
@@ -654,7 +654,7 @@ function CampanasTab({ token }) {
                 {/* Borde gradiente superior según estado */}
                 <div style={{
                   height: 3,
-                  background: isActive ? 'linear-gradient(90deg, #00C2FF 0%, #4F46E5 50%, #4F46E5 100%)' :
+                  background: isActive ? 'linear-gradient(90deg, #00C2FF 0%, #3D2BFF 50%, #3D2BFF 100%)' :
                              isPaused ? 'linear-gradient(90deg, #F59E0B 0%, #d97706 100%)' :
                              isCompleted ? 'linear-gradient(90deg, #0EA5E9 0%, #6b7280 100%)' :
                              T.hairline,
@@ -702,10 +702,10 @@ function CampanasTab({ token }) {
 
                   {/* Presupuesto BIG + periodo */}
                   <div style={{
-                    background: isActive ? 'linear-gradient(135deg, rgba(79,70,229,.05) 0%, rgba(79,70,229,.05) 100%)' : T.sidebar,
+                    background: isActive ? 'linear-gradient(135deg, rgba(61,43,255,.05) 0%, rgba(61,43,255,.05) 100%)' : T.sidebar,
                     borderRadius: 10,
                     padding: '14px 16px', marginBottom: 12,
-                    border: isActive ? '.5px solid rgba(79,70,229,.15)' : 'none',
+                    border: isActive ? '.5px solid rgba(61,43,255,.15)' : 'none',
                   }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 12 }}>
                       <div>
@@ -735,15 +735,15 @@ function CampanasTab({ token }) {
                   <div style={{ display: 'flex', gap: 6 }}>
                     <button onClick={() => setSelected(c)} style={{
                       flex: 1, padding: '9px', borderRadius: 8,
-                      background: 'rgba(79,70,229,.08)', color: VERA_BLUE,
+                      background: 'rgba(61,43,255,.08)', color: VERA_BLUE,
                       border: 'none',
                       fontSize: 12.5, fontWeight: 600, cursor: 'pointer',
                       fontFamily: 'inherit',
                       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                       transition: 'all .12s',
                     }}
-                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(79,70,229,.15)' }}
-                      onMouseLeave={e => { e.currentTarget.style.background = 'rgba(79,70,229,.08)' }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(61,43,255,.15)' }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'rgba(61,43,255,.08)' }}
                     >
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                       Ver detalle
@@ -847,7 +847,7 @@ function CampaignDrawer({ campaign, onClose, token, onUpdate }) {
         <div style={{
           padding: '20px 24px 18px',
           borderBottom: `.5px solid ${T.hairline}`,
-          background: c.status === 'active' ? 'linear-gradient(135deg, rgba(0,194,255,.04) 0%, rgba(79,70,229,.04) 50%, rgba(79,70,229,.04) 100%)' : '#fff',
+          background: c.status === 'active' ? 'linear-gradient(135deg, rgba(0,194,255,.04) 0%, rgba(61,43,255,.04) 50%, rgba(61,43,255,.04) 100%)' : '#fff',
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 10 }}>
             <div style={{ flex: 1 }}>
@@ -901,8 +901,8 @@ function CampaignDrawer({ campaign, onClose, token, onUpdate }) {
               {/* KPIs: presupuesto + métricas */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
                 <div style={{
-                  background: 'linear-gradient(135deg, rgba(79,70,229,.05), rgba(79,70,229,.05))',
-                  border: '.5px solid rgba(79,70,229,.15)',
+                  background: 'linear-gradient(135deg, rgba(61,43,255,.05), rgba(61,43,255,.05))',
+                  border: '.5px solid rgba(61,43,255,.15)',
                   borderRadius: 10, padding: 12,
                 }}>
                   <div style={{ fontSize: 9.5, color: T.text4, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Diario</div>
@@ -1388,14 +1388,14 @@ function NewCampaignModal({ onClose, token, prefill, onCreated }) {
                   {OBJECTIVES.map(o => (
                     <button key={o.k} onClick={() => setObjective(o.k)} style={{
                       padding: '10px 12px', borderRadius: 8,
-                      background: objective === o.k ? 'rgba(79,70,229,.08)' : '#fff',
+                      background: objective === o.k ? 'rgba(61,43,255,.08)' : '#fff',
                       border: objective === o.k ? `.5px solid ${VERA_BLUE}` : `.5px solid ${T.hairline}`,
                       cursor: 'pointer', textAlign: 'left',
                       fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 10,
                     }}>
                       <div style={{
                         width: 32, height: 32, borderRadius: 8,
-                        background: objective === o.k ? 'rgba(79,70,229,.12)' : T.sidebar,
+                        background: objective === o.k ? 'rgba(61,43,255,.12)' : T.sidebar,
                         color: objective === o.k ? VERA_BLUE : T.text3,
                         display: 'grid', placeItems: 'center', flexShrink: 0,
                       }}>{OBJ_ICONS[o.k]}</div>
@@ -1437,9 +1437,9 @@ function NewCampaignModal({ onClose, token, prefill, onCreated }) {
                   Presupuesto diario
                 </label>
                 <div style={{
-                  background: 'linear-gradient(135deg, rgba(79,70,229,.05), rgba(79,70,229,.05))',
+                  background: 'linear-gradient(135deg, rgba(61,43,255,.05), rgba(61,43,255,.05))',
                   borderRadius: 10, padding: '14px 16px',
-                  border: '.5px solid rgba(79,70,229,.15)',
+                  border: '.5px solid rgba(61,43,255,.15)',
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                     <span style={{ fontSize: 13, color: T.text3 }}>€</span>
@@ -1514,7 +1514,7 @@ function NewCampaignModal({ onClose, token, prefill, onCreated }) {
                     </div>
                     <button onClick={askVeraReview} disabled={reviewing || (!manualHeadline.trim() && !manualBody.trim())} style={{
                       padding: '5px 11px', borderRadius: 6,
-                      background: reviewing ? T.hairline : 'rgba(79,70,229,.1)',
+                      background: reviewing ? T.hairline : 'rgba(61,43,255,.1)',
                       color: VERA_BLUE, border: 'none',
                       fontSize: 11, fontWeight: 600, cursor: reviewing ? 'wait' : 'pointer',
                       fontFamily: 'inherit',
@@ -1568,8 +1568,8 @@ function NewCampaignModal({ onClose, token, prefill, onCreated }) {
                   {veraReview && (
                     <div style={{
                       marginTop: 14, padding: 12, borderRadius: 8,
-                      background: 'linear-gradient(135deg, rgba(79,70,229,.05), rgba(79,70,229,.05))',
-                      border: '.5px solid rgba(79,70,229,.15)',
+                      background: 'linear-gradient(135deg, rgba(61,43,255,.05), rgba(61,43,255,.05))',
+                      border: '.5px solid rgba(61,43,255,.15)',
                     }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
                         <div style={{
@@ -1717,73 +1717,60 @@ export default function MarketingPage() {
       fontFamily: FONT, WebkitFontSmoothing: 'antialiased',
     }}>
       <style>{`*{box-sizing:border-box}::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-thumb{background:${T.hairline};border-radius:999px}input:focus{outline:none}
-        @media (max-width:768px){.mkt-row{grid-template-columns:1fr!important}}`}</style>
+        @media (max-width:768px){.mkt-row{grid-template-columns:1fr!important}}
+        @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}`}</style>
 
       <Sidebar active="/marketing" />
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', height: '100dvh' }}>
-        <header style={{
-          padding: '20px 32px 0',
-          background: theme === 'dark' ? 'rgba(11,11,12,.85)' : 'rgba(251,251,253,.85)',
-          backdropFilter: 'saturate(180%) blur(20px)',
-          WebkitBackdropFilter: 'saturate(180%) blur(20px)',
-          borderBottom: `.5px solid ${T.hairline}`,
-        }}>
-          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 14 }}>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-                <h1 style={{ fontSize: 22, fontWeight: 600, color: T.text, margin: 0, letterSpacing: -0.3 }}>Marketing</h1>
-                <span style={{ width: 6, height: 6, borderRadius: 999, background: '#059669' }} />
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: T.text4 }}>
-                <FlagES size={11} />
-                <span>España</span>
-                <span>·</span>
-                <span>{summary.total} campañas · {summary.active} activas</span>
-              </div>
-            </div>
-
-            <HeaderActions onVera={() => setVeraOpen(true)} router={router}>
-              <button onClick={() => setNotificationsOpen(o => !o)}
-                aria-label={`Notificaciones${notificationCount > 0 ? ` (${notificationCount})` : ''}`}
-                aria-expanded={notificationsOpen} style={{
-                position: 'relative',
-                padding: '7px 10px', borderRadius: 8,
-                background: T.card, color: T.text2,
-                border: `.5px solid ${T.hairline}`,
-                cursor: 'pointer', fontFamily: 'inherit',
-                display: 'grid', placeItems: 'center',
-              }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-                </svg>
-                {notificationCount > 0 && (
-                  <span style={{
-                    position: 'absolute', top: -4, right: -4,
-                    background: '#dc2626', color: '#fff',
-                    fontSize: 9, fontWeight: 600,
-                    padding: '1px 5px', borderRadius: 999,
-                    minWidth: 16, textAlign: 'center',
-                  }}>{notificationCount}</span>
-                )}
-              </button>
-              <button onClick={() => { setCampaignPrefill(null); setNewCampaignOpen(true) }} style={{
-                padding: '7px 14px', borderRadius: 8,
-                background: VERA_BLUE, color: '#fff', border: 'none',
-                fontSize: 12, fontWeight: 500, cursor: 'pointer',
-                fontFamily: 'inherit',
-              }}>+ Nueva campaña</button>
-            </HeaderActions>
-          </div>
-
-          <div style={{ display: 'flex', gap: 2, background: T.sidebar, borderRadius: 8, padding: 3, width: 'fit-content' }}>
-            <Tab label="Estrategia" active={tab === 'estrategia'} onClick={() => setTab('estrategia')} />
-            <Tab label="Campañas" active={tab === 'campanas'} onClick={() => setTab('campanas')} badge={summary.active} />
-            <Tab label="Plataformas" active={tab === 'plataformas'} onClick={() => setTab('plataformas')} />
-          </div>
-
-          <div style={{ height: 16 }} />
-        </header>
+        <PageHeader
+          title="Marketing"
+          subtitle={
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <FlagES size={11} />
+              <span>España</span>
+              <span>·</span>
+              <span style={{ fontVariantNumeric: 'tabular-nums' }}>{summary.total} campañas · {summary.active} activas</span>
+            </span>
+          }
+          tabs={[
+            { key: 'estrategia', label: 'Estrategia' },
+            { key: 'campanas', label: 'Campañas', badge: summary.active },
+            { key: 'plataformas', label: 'Plataformas' },
+          ]}
+          activeTab={tab}
+          onTab={setTab}
+          primary={tab === 'campanas'
+            ? { label: 'Nueva campaña', onClick: () => { setCampaignPrefill(null); setNewCampaignOpen(true) }, icon: <span aria-hidden="true" style={{ fontSize: 16, lineHeight: 0, marginRight: 1 }}>+</span> }
+            : undefined}
+          secondary={
+            <button onClick={() => setNotificationsOpen(o => !o)}
+              aria-label={`Notificaciones${notificationCount > 0 ? ` (${notificationCount})` : ''}`}
+              aria-expanded={notificationsOpen} style={{
+              position: 'relative', minHeight: 44,
+              padding: '0 12px', borderRadius: 8,
+              background: T.card, color: T.text2,
+              border: `.5px solid ${T.hairline}`,
+              cursor: 'pointer', fontFamily: 'inherit',
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+              </svg>
+              {notificationCount > 0 && (
+                <span style={{
+                  position: 'absolute', top: 6, right: 6,
+                  background: '#dc2626', color: '#fff',
+                  fontSize: 9, fontWeight: 600,
+                  padding: '1px 5px', borderRadius: 999,
+                  minWidth: 16, textAlign: 'center',
+                }}>{notificationCount}</span>
+              )}
+            </button>
+          }
+          onVera={() => setVeraOpen(true)}
+          router={router}
+        />
 
         <div style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
           {tab === 'estrategia' && <EstrategiaTab token={token} onCreateCampaign={opp => {

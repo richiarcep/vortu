@@ -3,7 +3,7 @@ import { useId, useState, useRef, useEffect } from 'react'
 import { useT, I } from './tokens'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-const AVATAR_COLORS = ['#4F46E5', '#4F46E5', '#059669', '#dc2626', '#d97706', '#0EA5E9', '#6366F1']
+const AVATAR_COLORS = ['#3D2BFF', '#3D2BFF', '#059669', '#dc2626', '#d97706', '#0EA5E9', '#6366F1']
 export function avatarColor(name = '') {
   let hash = 0
   for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash)
@@ -114,7 +114,7 @@ export function PillTabs({ items, active, onChange }) {
               padding: '6px 14px',
               borderRadius: 999,
               border: `.5px solid ${isActive ? T.blue : T.hairline}`,
-              background: isActive ? 'rgba(79,70,229,.08)' : T.card,
+              background: isActive ? 'rgba(61,43,255,.08)' : T.card,
               color: isActive ? T.blue : T.text2,
               fontSize: 13,
               fontWeight: isActive ? 500 : 400,
@@ -183,7 +183,7 @@ export function Tab({ active, onClick, label, badge }) {
       {badge != null && badge > 0 && (
         <span style={{
           fontSize: 10, padding: '1px 5px', borderRadius: 999,
-          background: active ? 'rgba(79,70,229,.12)' : 'rgba(0,0,0,.08)',
+          background: active ? 'rgba(61,43,255,.12)' : 'rgba(0,0,0,.08)',
           color: active ? T.blue : T.text3,
           fontVariantNumeric: 'tabular-nums', minWidth: 16, textAlign: 'center',
         }}>{badge}</span>
@@ -226,7 +226,7 @@ export function Badge({ children, variant = 'neutral' }) {
     success: { bg: T.greenSoft, color: T.green },
     warning: { bg: T.amberSoft, color: T.amber },
     danger: { bg: T.redSoft, color: T.red },
-    info: { bg: 'rgba(79,70,229,.08)', color: T.blue },
+    info: { bg: 'rgba(61,43,255,.08)', color: T.blue },
     neutral: { bg: T.sidebar, color: T.text2 },
   }
   const v = variants[variant]
@@ -411,8 +411,8 @@ export function VeraPill({ onClick, label = 'Vera' }) {
     <button onClick={onClick} aria-label="Abrir Vera" className="press" style={{
       display: 'inline-flex', alignItems: 'center', gap: 6,
       padding: '5px 12px', height: 32, borderRadius: 999,
-      background: 'rgba(79,70,229,.06)',
-      border: '.5px solid rgba(79,70,229,.18)',
+      background: 'rgba(61,43,255,.06)',
+      border: '.5px solid rgba(61,43,255,.18)',
       color: T.blue, fontSize: 12.5, fontWeight: 500,
       cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
     }}>
@@ -455,7 +455,7 @@ export function ProfileBtn({ user, router }) {
       }}>
         <div style={{
           width: 28, height: 28, borderRadius: 999,
-          background: 'linear-gradient(135deg,#4F46E5,#A5B1FF)',
+          background: 'linear-gradient(135deg,#3D2BFF,#A5B1FF)',
           color: '#fff', display: 'grid', placeItems: 'center',
           fontWeight: 600, fontSize: 11,
         }}>{ini}</div>
@@ -486,6 +486,98 @@ export function ProfileBtn({ user, router }) {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+// ── PageHeader unificado (shell estructural) ────────────────────────────────────
+// Cabecera única para TODOS los módulos, en hasta 2 filas:
+//   Fila 1: [Título + contexto] ———— [secundarias] · [1 CTA primario ≥44px] · [Vera] · [Perfil]
+//   Fila 2 (opcional): pestañas a ancho completo  +  filtros (periodo/segmented) a la derecha
+// Sin engranaje (Configuración vive en el menú de Perfil). Preserva la identidad visual.
+function PageTab({ tab, active, onClick }) {
+  const T = useT()
+  return (
+    <button type="button" onClick={onClick} aria-current={active ? 'page' : undefined} style={{
+      position: 'relative', height: 46, padding: '0 4px', marginRight: 18,
+      background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit',
+      fontSize: 13.5, fontWeight: active ? 600 : 450,
+      color: active ? T.text : T.text3, whiteSpace: 'nowrap',
+      display: 'inline-flex', alignItems: 'center', gap: 7,
+    }}>
+      {tab.label}
+      {tab.badge != null && tab.badge > 0 && (
+        <span style={{
+          fontSize: 10.5, padding: '1px 6px', borderRadius: 999,
+          background: active ? 'rgba(61,43,255,.12)' : T.sidebar,
+          color: active ? T.blue : T.text3, fontVariantNumeric: 'tabular-nums',
+        }}>{tab.badge}</span>
+      )}
+      <span aria-hidden="true" style={{
+        position: 'absolute', left: 0, right: 0, bottom: 0, height: 2, borderRadius: 2,
+        background: active ? T.blue : 'transparent',
+      }} />
+    </button>
+  )
+}
+
+export function PageHeader({ title, subtitle, primary, secondary, onVera, user, router, tabs, activeTab, onTab, filters }) {
+  const T = useT()
+  return (
+    <header style={{
+      position: 'sticky', top: 0, zIndex: 'var(--z-sticky, 30)',
+      background: T.headerBg || (T.bg + 'e6'),
+      backdropFilter: 'saturate(180%) blur(12px)', WebkitBackdropFilter: 'saturate(180%) blur(12px)',
+      borderBottom: `.5px solid ${T.hairline}`, flexShrink: 0,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '12px 28px', minHeight: 60, flexWrap: 'wrap', rowGap: 8 }}>
+        <div style={{ minWidth: 0 }}>
+          <h1 className="display" style={{ fontSize: 20, fontWeight: 600, color: T.text, letterSpacing: -0.4, lineHeight: 1.1, margin: 0, textWrap: 'balance' }}>{title}</h1>
+          {subtitle && <div style={{ fontSize: 12, color: T.text4, marginTop: 3 }}>{subtitle}</div>}
+        </div>
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+          {secondary}
+          {primary && (
+            <Btn onClick={primary.onClick} disabled={primary.disabled}
+              style={{ height: 44, padding: '0 18px', fontSize: 13.5, fontWeight: 600 }}>
+              {primary.icon}{primary.label}
+            </Btn>
+          )}
+          {onVera && <VeraPill onClick={onVera} />}
+          {router && <ProfileBtn user={user} router={router} />}
+        </div>
+      </div>
+      {(tabs?.length || filters) && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '0 28px', borderTop: `.5px solid ${T.soft}`, minHeight: 48, overflowX: 'auto' }}>
+          {tabs?.length ? (
+            <nav aria-label="Secciones" style={{ display: 'flex', alignItems: 'center' }}>
+              {tabs.map(t => <PageTab key={t.key} tab={t} active={activeTab === t.key} onClick={() => onTab?.(t.key)} />)}
+            </nav>
+          ) : null}
+          {filters && <div style={{ marginLeft: tabs?.length ? 'auto' : 0, display: 'flex', alignItems: 'center' }}>{filters}</div>}
+        </div>
+      )}
+    </header>
+  )
+}
+
+// Segmented filter (periodo/modos) — targets ≥44px (Fitts). Para FILTRAR, no navegar.
+export function SegmentedFilter({ items, active, onChange, label }) {
+  const T = useT()
+  return (
+    <div role="group" aria-label={label} style={{ display: 'inline-flex', gap: 2, background: T.sidebar, padding: 4, borderRadius: 12 }}>
+      {items.map(item => {
+        const on = active === item.key
+        return (
+          <button key={item.key} type="button" onClick={() => onChange(item.key)} aria-pressed={on} style={{
+            height: 36, padding: '0 14px', borderRadius: 9, border: 'none',
+            background: on ? T.card : 'transparent', color: on ? T.text : T.text3,
+            fontWeight: on ? 600 : 450, fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit',
+            whiteSpace: 'nowrap', transition: 'color .15s',
+            boxShadow: on ? '0 .5px 1px rgba(0,0,0,.04),0 1px 3px rgba(0,0,0,.05)' : 'none',
+          }}>{item.label}</button>
+        )
+      })}
     </div>
   )
 }

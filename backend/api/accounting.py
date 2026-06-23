@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from pydantic import BaseModel
 from typing import Optional
 from datetime import date, datetime
@@ -14,7 +15,9 @@ from models.user import User
 from modules.accounting.journal import (
     setup_chart_of_accounts,
     record_transaction,
-    get_account_balance
+    get_account_balance,
+    Account,
+    JournalEntry,
 )
 from modules.accounting.ledger import (
     get_trial_balance,
@@ -45,18 +48,20 @@ class IngresoCreate(BaseModel):
     fecha: date
     categoria: str
     descripcion: str
-    monto: float
+    monto: float                       # IVA incluido
     referencia: Optional[str] = None
     notas: Optional[str] = None
+    iva_rate: Optional[float] = 21.0   # 0 = sin desglose de IVA
 
 
 class GastoCreate(BaseModel):
     fecha: date
     categoria: str
     descripcion: str
-    monto: float
+    monto: float                       # IVA incluido
     referencia: Optional[str] = None
     notas: Optional[str] = None
+    iva_rate: Optional[float] = 21.0
 
 
 class PeriodoRequest(BaseModel):
@@ -69,6 +74,19 @@ class CompanyProfileUpdate(BaseModel):
     address: Optional[str] = None
     phone: Optional[str] = None
     website: Optional[str] = None
+
+
+class AsientoLinea(BaseModel):
+    account_code: str
+    debit: float = 0.0
+    credit: float = 0.0
+
+
+class AsientoManual(BaseModel):
+    fecha: date
+    descripcion: str
+    lineas: list[AsientoLinea]
+    referencia: Optional[str] = None
 
 
 # ── Setup ─────────────────────────────────────────────────────────────────────
@@ -117,7 +135,8 @@ def crear_ingreso(
             descripcion=data.descripcion,
             monto=data.monto,
             referencia=data.referencia,
-            notas=data.notas
+            notas=data.notas,
+            iva_rate=data.iva_rate if data.iva_rate is not None else 21.0,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -139,7 +158,8 @@ def crear_gasto(
             descripcion=data.descripcion,
             monto=data.monto,
             referencia=data.referencia,
-            notas=data.notas
+            notas=data.notas,
+            iva_rate=data.iva_rate if data.iva_rate is not None else 21.0,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -217,9 +237,11 @@ def leer_pdf_registro(
     Funciona con plantillas Vela, estados de cuenta
     bancarios y cualquier registro en PDF.
     """
-    # Save uploaded file
+    # Save uploaded file (sanitize the client-supplied name to prevent traversal)
+    from core.files import safe_filename, enforce_upload_size
+    enforce_upload_size(file)
     os.makedirs("uploads", exist_ok=True)
-    file_path = f"uploads/registro_{current_user.company_id}_{file.filename}"
+    file_path = f"uploads/registro_{current_user.company_id}_{safe_filename(file.filename)}"
 
     with open(file_path, "wb") as f:
         content = file.file.read()
@@ -234,11 +256,9 @@ def leer_pdf_registro(
             auto_register=auto_registrar
         )
         return result
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error procesando el documento: {str(e)}"
-        )
+    except Exception:
+        logging.getLogger("vela.contabilidad").exception("Error procesando el documento")
+        raise HTTPException(status_code=500, detail="Error procesando el documento")
 
 
 # ── Logo upload ───────────────────────────────────────────────────────────────
@@ -259,6 +279,8 @@ def subir_logo(
             detail="Solo se permiten imágenes PNG o JPG"
         )
 
+    from core.files import enforce_upload_size
+    enforce_upload_size(file, max_mb=5)
     os.makedirs("logos", exist_ok=True)
     logo_path = f"logos/{current_user.company_id}_logo.png"
 
@@ -294,11 +316,9 @@ def get_estados_financieros(
             end_date=fecha_fin
         )
         return report
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error generando estados financieros: {str(e)}"
-        )
+    except Exception:
+        logging.getLogger("vela.contabilidad").exception("Error generando estados financieros")
+        raise HTTPException(status_code=500, detail="Error generando estados financieros")
 
 
 # ── Ledger & trial balance ────────────────────────────────────────────────────
@@ -344,6 +364,131 @@ def get_libro_mayor(
         end_date=fecha_fin,
         max_entries_per_account=max(1, min(max_entries, 2000)),
     )
+
+
+# ── Plan de cuentas + asiento manual ───────────────────────────────────────────
+
+@router.get("/cuentas")
+def get_cuentas(
+    q: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Lista el plan de cuentas de la empresa (para selectores de asiento manual)."""
+    query = db.query(Account).filter(
+        Account.company_id == current_user.company_id,
+        Account.is_active == True,
+    )
+    if q:
+        like = f"%{q}%"
+        query = query.filter((Account.code.ilike(like)) | (Account.name.ilike(like)))
+    cuentas = query.order_by(Account.code).all()
+    return {
+        "cuentas": [
+            {"code": a.code, "name": a.name, "type": a.account_type, "normal_balance": a.normal_balance}
+            for a in cuentas
+        ]
+    }
+
+
+@router.post("/asiento", status_code=201)
+def crear_asiento_manual(
+    data: AsientoManual,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Crea un asiento contable manual libre (N líneas). Valida partida doble
+    (debe = haber) y que las cuentas existan; usa el motor record_transaction."""
+    if len(data.lineas) < 2:
+        raise HTTPException(status_code=400, detail="Un asiento necesita al menos 2 líneas (debe y haber)")
+
+    entries = []
+    for ln in data.lineas:
+        debit = round(float(ln.debit or 0), 2)
+        credit = round(float(ln.credit or 0), 2)
+        if debit < 0 or credit < 0:
+            raise HTTPException(status_code=400, detail="Importes negativos no permitidos")
+        if (debit > 0) == (credit > 0):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Cada línea debe tener importe SOLO en debe o SOLO en haber (cuenta {ln.account_code})",
+            )
+        entries.append({"account_code": ln.account_code, "debit": debit, "credit": credit})
+
+    total_debit = round(sum(e["debit"] for e in entries), 2)
+    total_credit = round(sum(e["credit"] for e in entries), 2)
+    if total_debit != total_credit:
+        raise HTTPException(
+            status_code=400,
+            detail=f"El asiento no cuadra: debe {total_debit} ≠ haber {total_credit}",
+        )
+    if total_debit == 0:
+        raise HTTPException(status_code=400, detail="El asiento no puede ser por importe cero")
+
+    try:
+        result = record_transaction(
+            db=db,
+            company_id=current_user.company_id,
+            date=data.fecha,
+            description=data.descripcion,
+            entries=entries,
+            module_source="manual",
+            reference=data.referencia,
+        )
+    except ValueError as e:
+        # p.ej. cuenta inexistente o descuadre detectado por el motor
+        raise HTTPException(status_code=400, detail=str(e))
+    return result
+
+
+# ── Libros de IVA / borrador modelo 303 ─────────────────────────────────────────
+
+@router.get("/iva")
+def get_iva(
+    fecha_inicio: date,
+    fecha_fin: date,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Resumen de IVA del periodo (libros de repercutido/soportado) y borrador del
+    resultado del modelo 303. Usa las cuentas PGC 477 (IVA repercutido) y 472 (IVA
+    soportado). Si la empresa no usa el plan español, devuelve ceros."""
+    cid = current_user.company_id
+
+    def _net(code: str, normal: str) -> float:
+        acc = db.query(Account).filter(Account.code == code, Account.company_id == cid).first()
+        if not acc:
+            return 0.0
+        row = db.query(
+            func.coalesce(func.sum(JournalEntry.debit), 0),
+            func.coalesce(func.sum(JournalEntry.credit), 0),
+        ).filter(
+            JournalEntry.account_id == acc.id,
+            JournalEntry.company_id == cid,
+            JournalEntry.date >= fecha_inicio,
+            JournalEntry.date <= fecha_fin,
+        ).one()
+        debit, credit = float(row[0]), float(row[1])
+        return round(credit - debit, 2) if normal == "credit" else round(debit - credit, 2)
+
+    repercutido = _net("477", "credit")   # IVA cobrado en ventas
+    soportado   = _net("472", "debit")    # IVA pagado en compras/gastos
+    resultado   = round(repercutido - soportado, 2)
+
+    return {
+        "periodo": {"inicio": str(fecha_inicio), "fin": str(fecha_fin)},
+        "iva_repercutido": repercutido,
+        "iva_soportado": soportado,
+        "resultado": resultado,                 # >0 a ingresar, <0 a compensar
+        "resultado_tipo": "a_ingresar" if resultado > 0 else ("a_compensar" if resultado < 0 else "cero"),
+        # Borrador modelo 303 (casillas principales de cuota).
+        "modelo_303": {
+            "casilla_27_cuota_devengada": repercutido,
+            "casilla_45_cuota_deducible": soportado,
+            "casilla_71_resultado": resultado,
+        },
+        "nota": "Borrador orientativo. Las bases imponibles y casillas detalladas requieren la configuración fiscal completa.",
+    }
 
 
 # ── Document validation ───────────────────────────────────────────────────────
@@ -518,8 +663,9 @@ def get_snapshot(
         """), {"cid": current_user.company_id, "label": label, "inicio": str(inicio), "fin": str(today), "data": data_str, "now": _dt.now().isoformat()})
         db.commit()
         return {"cached": False, "label": label, "data": report, "generated_at": _dt.now().isoformat()}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        logging.getLogger("vela.contabilidad").exception("Error generando reporte")
+        raise HTTPException(status_code=500, detail="Error generando el reporte")
 
 @router.delete("/snapshot/{period}")
 def clear_snapshot(

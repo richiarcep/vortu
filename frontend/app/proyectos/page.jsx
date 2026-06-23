@@ -2,12 +2,12 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
-import { FONT, useT, useTheme } from '@/components/ui/tokens'
+import { FONT, useT } from '@/components/ui/tokens'
 import VeraDrawer from '@/components/ui/VeraDrawer'
-import { Skeleton, EmptyState, HeaderActions } from '@/components/ui/primitives'
+import { Skeleton, EmptyState, PageHeader } from '@/components/ui/primitives'
 
 import { API_BASE as API } from '@/lib/api'
-const VERA_BLUE = '#4F46E5'
+const VERA_BLUE = '#3D2BFF'
 
 // ─────────────────────────────────────────────────────────
 // CONFIGS
@@ -21,8 +21,8 @@ const STATUS_CFG = {
 
 const TASK_STATUS = {
   todo:        { label: 'Por hacer',   color: '#6b7280', bg: '#f3f4f6' },
-  in_progress: { label: 'En progreso', color: '#4F46E5', bg: 'rgba(79,70,229,.1)' },
-  review:      { label: 'En revisión', color: '#4F46E5', bg: 'rgba(79,70,229,.1)' },
+  in_progress: { label: 'En progreso', color: '#3D2BFF', bg: 'rgba(61,43,255,.1)' },
+  review:      { label: 'En revisión', color: '#3D2BFF', bg: 'rgba(61,43,255,.1)' },
   done:        { label: 'Hecho',       color: '#059669', bg: 'rgba(5,150,105,.1)' },
 }
 
@@ -54,7 +54,7 @@ function healthColor(score) {
   return { color: '#dc2626', bg: 'rgba(220,38,38,.1)', label: 'Crítico' }
 }
 function avatarColor(name) {
-  const colors = ['#4F46E5', '#4F46E5', '#059669', '#dc2626', '#d97706', '#0EA5E9']
+  const colors = ['#3D2BFF', '#3D2BFF', '#059669', '#dc2626', '#d97706', '#0EA5E9']
   let hash = 0
   for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash)
   return colors[Math.abs(hash) % colors.length]
@@ -120,7 +120,7 @@ function Tab({ active, onClick, label, badge }) {
       {badge != null && badge > 0 && (
         <span style={{
           fontSize: 10, padding: '1px 5px', borderRadius: 999,
-          background: active ? 'rgba(79,70,229,.12)' : 'rgba(0,0,0,.08)',
+          background: active ? 'rgba(61,43,255,.12)' : 'rgba(0,0,0,.08)',
           color: active ? VERA_BLUE : T.text3,
           fontVariantNumeric: 'tabular-nums', minWidth: 16, textAlign: 'center',
         }}>{badge}</span>
@@ -724,7 +724,7 @@ function CalendarioTab({ projects }) {
                 minHeight: 88, padding: 6,
                 borderRight: `.5px solid ${T.hairline}`,
                 borderBottom: `.5px solid ${T.hairline}`,
-                background: isToday ? 'rgba(79,70,229,.04)' : 'transparent',
+                background: isToday ? 'rgba(61,43,255,.04)' : 'transparent',
               }}>
                 {d && (
                   <div style={{
@@ -861,9 +861,9 @@ function ProjectDrawer({ project, onClose, token, employees }) {
               {/* Análisis IA */}
               {(p.last_ai_analysis || analysis) && (
                 <div style={{
-                  background: 'linear-gradient(135deg, rgba(79,70,229,.04), rgba(79,70,229,.04))',
+                  background: 'linear-gradient(135deg, rgba(61,43,255,.04), rgba(61,43,255,.04))',
                   borderRadius: 12, padding: 14,
-                  border: '.5px solid rgba(79,70,229,.15)',
+                  border: '.5px solid rgba(61,43,255,.15)',
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -942,7 +942,6 @@ function ProjectDrawer({ project, onClose, token, employees }) {
 // ─────────────────────────────────────────────────────────
 export default function ProjectsPage() {
   const T = useT()
-  const { theme } = useTheme()
   const router = useRouter()
   const [tab, setTab] = useState('proyectos')
   const [projects, setProjects] = useState([])
@@ -1015,72 +1014,123 @@ export default function ProjectsPage() {
       minHeight: '100dvh', background: T.bg, display: 'flex',
       fontFamily: FONT, WebkitFontSmoothing: 'antialiased',
     }}>
-      <style>{`*{box-sizing:border-box}::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-thumb{background:rgba(0,0,0,.12);border-radius:999px}input:focus,select:focus{outline:none}`}</style>
+      <style>{`*{box-sizing:border-box}::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-thumb{background:rgba(0,0,0,.12);border-radius:999px}input:focus,select:focus{outline:none}@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}`}</style>
 
       <Sidebar active="/proyectos" />
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', height: '100dvh' }}>
-        <header style={{
-          padding: '20px 32px 0',
-          background: theme === 'dark' ? 'rgba(11,11,12,.85)' : 'rgba(251,251,253,.85)',
-          backdropFilter: 'saturate(180%) blur(20px)',
-          borderBottom: `.5px solid ${T.hairline}`,
-        }}>
-          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 14 }}>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-                <h1 style={{ fontSize: 22, fontWeight: 600, color: T.text, margin: 0, letterSpacing: -0.3 }}>Proyectos</h1>
-                <span style={{ width: 6, height: 6, borderRadius: 999, background: '#059669' }} />
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: T.text4 }}>
-                <FlagES size={11} />
-                <span>España</span>
-                <span>·</span>
-                <span>{summary.total} proyectos · {summary.active} activos · health {summary.avgHealth}/10 · {fmtEuro(summary.totalBudget)} presupuesto</span>
-              </div>
-            </div>
+        <PageHeader
+          title="Proyectos"
+          subtitle={
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <FlagES size={11} />
+              España · {summary.total} proyectos · {summary.active} activos · health {summary.avgHealth}/10 · {fmtEuro(summary.totalBudget)} presupuesto
+            </span>
+          }
+          tabs={[
+            { key: 'proyectos', label: 'Proyectos' },
+            { key: 'tareas',    label: 'Tareas' },
+            { key: 'calendario', label: 'Calendario' },
+          ]}
+          activeTab={tab}
+          onTab={setTab}
+          primary={undefined}
+          secondary={
+            <button onClick={() => setNotificationsOpen(o => !o)}
+              aria-label={`Notificaciones${notifCount > 0 ? ` (${notifCount})` : ''}`}
+              aria-expanded={notificationsOpen} style={{
+              position: 'relative',
+              padding: '7px 10px', borderRadius: 8,
+              background: T.card, color: T.text2,
+              border: `.5px solid ${T.hairline}`,
+              cursor: 'pointer', fontFamily: 'inherit',
+              display: 'grid', placeItems: 'center',
+              minHeight: 44,
+            }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+              </svg>
+              {notifCount > 0 && (
+                <span style={{
+                  position: 'absolute', top: -4, right: -4,
+                  background: '#dc2626', color: '#fff',
+                  fontSize: 9, fontWeight: 600,
+                  padding: '1px 5px', borderRadius: 999,
+                  minWidth: 16, textAlign: 'center',
+                }}>{notifCount}</span>
+              )}
+            </button>
+          }
+          onVera={() => setVeraOpen(true)}
+          user={null} router={router}
+        />
 
-            <HeaderActions onVera={() => setVeraOpen(true)} router={router}>
-              <button onClick={() => setNotificationsOpen(o => !o)}
-                aria-label={`Notificaciones${notifCount > 0 ? ` (${notifCount})` : ''}`}
-                aria-expanded={notificationsOpen} style={{
-                position: 'relative',
-                padding: '7px 10px', borderRadius: 8,
-                background: T.card, color: T.text2,
-                border: `.5px solid ${T.hairline}`,
-                cursor: 'pointer', fontFamily: 'inherit',
-                display: 'grid', placeItems: 'center',
+        {/* ── Hero persistente: Lo que Vera recomienda revisar ─────────────── */}
+        {!loading && summary.atRiskProjects.length > 0 && (
+          <div style={{
+            margin: '0 24px',
+            marginTop: 16,
+            padding: '12px 16px',
+            background: 'linear-gradient(135deg, rgba(61,43,255,.05), rgba(61,43,255,.03))',
+            border: '.5px solid rgba(61,43,255,.18)',
+            borderRadius: 12,
+            flexShrink: 0,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+              <div style={{
+                width: 22, height: 22, borderRadius: 6, background: VERA_BLUE,
+                display: 'grid', placeItems: 'center', flexShrink: 0,
               }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                <svg width="11" height="11" viewBox="0 0 16 16" fill="none">
+                  <path d="M8 1l1.5 5.5L15 8l-5.5 1.5L8 15l-1.5-5.5L1 8l5.5-1.5L8 1z" fill="#fff" />
                 </svg>
-                {notifCount > 0 && (
-                  <span style={{
-                    position: 'absolute', top: -4, right: -4,
-                    background: '#dc2626', color: '#fff',
-                    fontSize: 9, fontWeight: 600,
-                    padding: '1px 5px', borderRadius: 999,
-                    minWidth: 16, textAlign: 'center',
-                  }}>{notifCount}</span>
-                )}
-              </button>
-              <button style={{
-                padding: '7px 14px', borderRadius: 8,
-                background: VERA_BLUE, color: '#fff', border: 'none',
-                fontSize: 12, fontWeight: 500, cursor: 'pointer',
-                fontFamily: 'inherit',
-              }}>+ Nuevo proyecto</button>
-            </HeaderActions>
+              </div>
+              <span style={{ fontSize: 12, fontWeight: 600, color: VERA_BLUE }}>Lo que Vera recomienda revisar</span>
+              <span style={{ fontSize: 11, color: '#6366f1', marginLeft: 2 }}>· {summary.atRiskProjects.length} {summary.atRiskProjects.length === 1 ? 'proyecto' : 'proyectos'} en riesgo</span>
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {summary.atRiskProjects.slice(0, 4).map(p => {
+                const h = p.health?.score ?? p.health_score ?? 0
+                const hc = healthColor(h)
+                return (
+                  <button key={p.id} onClick={() => setSelected(p)} style={{
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    padding: '6px 10px', borderRadius: 8,
+                    background: T.card,
+                    border: `.5px solid ${hc.color}33`,
+                    borderLeft: `3px solid ${hc.color}`,
+                    cursor: 'pointer', fontFamily: 'inherit',
+                    minHeight: 44,
+                  }}>
+                    <div style={{ textAlign: 'left' }}>
+                      <div style={{ fontSize: 12.5, fontWeight: 600, color: T.text }}>{p.name}</div>
+                      <div style={{ fontSize: 10.5, color: T.text4, marginTop: 1, fontVariantNumeric: 'tabular-nums' }}>
+                        Health {h}/10 · {p.completion_percentage ?? 0}% completado
+                      </div>
+                    </div>
+                    <span style={{ fontSize: 11, color: VERA_BLUE, fontWeight: 600, flexShrink: 0 }}>→</span>
+                  </button>
+                )
+              })}
+            </div>
           </div>
-
-          <div style={{ display: 'flex', gap: 2, background: T.sidebar, borderRadius: 8, padding: 3, width: 'fit-content' }}>
-            <Tab label="Proyectos" active={tab === 'proyectos'} onClick={() => setTab('proyectos')} />
-            <Tab label="Tareas" active={tab === 'tareas'} onClick={() => setTab('tareas')} />
-            <Tab label="Calendario" active={tab === 'calendario'} onClick={() => setTab('calendario')} />
+        )}
+        {!loading && summary.atRiskProjects.length === 0 && !loading && (
+          <div style={{
+            margin: '0 24px', marginTop: 16,
+            padding: '9px 14px',
+            background: 'rgba(5,150,105,.05)',
+            border: '.5px solid rgba(5,150,105,.18)',
+            borderRadius: 10,
+            display: 'flex', alignItems: 'center', gap: 8,
+            flexShrink: 0,
+          }}>
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+              <path d="M8 1l1.5 5.5L15 8l-5.5 1.5L8 15l-1.5-5.5L1 8l5.5-1.5L8 1z" fill={VERA_BLUE} />
+            </svg>
+            <span style={{ fontSize: 12, color: '#059669', fontWeight: 500 }}>Vera: todos los proyectos activos están sanos</span>
           </div>
-
-          <div style={{ height: 16 }} />
-        </header>
+        )}
 
         <div className="fade-in" style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
           {loading ? (

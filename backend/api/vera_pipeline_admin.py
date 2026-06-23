@@ -18,8 +18,10 @@ router = APIRouter(prefix="/api/admin/vera-pipeline", tags=["Vera Pipeline Admin
 
 def _check_admin(user: User):
     """Solo super-admins pueden tocar pipelines."""
-    if not getattr(user, "is_super_admin", False) and not getattr(user, "is_admin", False):
-        raise HTTPException(403, "Solo admin")
+    # Real column is `is_superadmin`; the old `is_super_admin` OR-ed with `is_admin`
+    # left this open to any per-company admin (i.e. every customer).
+    if not getattr(user, "is_superadmin", False):
+        raise HTTPException(403, "Solo administradores de plataforma")
 
 
 # ─────────────────────────────────────────────────────────────

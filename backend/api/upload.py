@@ -64,11 +64,15 @@ def upload_file(
             detail="File type not supported. Upload a CSV, PDF, or Excel file."
         )
 
+    # Reject oversized uploads before reading into memory.
+    from core.files import safe_filename, enforce_upload_size
+    enforce_upload_size(file)
+
     # Create uploads directory if it doesn't exist
     os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-    # Save file to disk
-    file_path = os.path.join(UPLOAD_DIR, f"{current_user.id}_{file.filename}")
+    # Save file to disk (sanitize the client-supplied name to prevent traversal)
+    file_path = os.path.join(UPLOAD_DIR, f"{current_user.id}_{safe_filename(file.filename)}")
     with open(file_path, "wb") as f:
         content = file.file.read()
         f.write(content)
@@ -92,9 +96,9 @@ def upload_file(
         parsed_data = parse_file(file_path, file_type)
     except Exception as e:
         document.status = "failed"
-        document.error_message = f"Parse error: {str(e)}"
+        document.error_message = f"Parse error: {str(e)}"   # stored server-side only
         db.commit()
-        raise HTTPException(status_code=422, detail=f"Could not parse file: {str(e)}")
+        raise HTTPException(status_code=422, detail="No se pudo procesar el archivo. Revisa el formato.")
 
     # Send to Claude for analysis
     try:

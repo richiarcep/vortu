@@ -5,7 +5,7 @@ import Sidebar from '@/components/Sidebar'
 import { FONT, I, useT, useTheme } from '@/components/ui/tokens'
 
 import { API_BASE as API } from '@/lib/api'
-const VERA_BLUE = '#4F46E5'
+const VERA_BLUE = '#3D2BFF'
 const VERA_PLUS_BLUE = '#3730A3'
 
 // Iconos Lucide-style inline (stroke currentColor) — sustituyen a los emojis usados
@@ -55,7 +55,7 @@ function ProfileBtn({ user, router }) {
       }}>
         <div style={{
           width: 28, height: 28, borderRadius: 999,
-          background: 'linear-gradient(135deg,#4F46E5,#A5B1FF)',
+          background: 'linear-gradient(135deg,#3D2BFF,#A5B1FF)',
           color: '#fff', display: 'grid', placeItems: 'center',
           fontWeight: 600, fontSize: 11,
         }}>{initials}</div>
@@ -475,7 +475,7 @@ export default function VeraModule() {
         .chat-item .actions{opacity:0;transition:opacity .15s}
         .chat-item:hover .actions{opacity:1}
         @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
-        @keyframes veraThink{0%,100%{box-shadow:0 0 0 0 rgba(79,70,229,.4)}50%{box-shadow:0 0 0 6px rgba(79,70,229,0)}}
+        @keyframes veraThink{0%,100%{box-shadow:0 0 0 0 rgba(61,43,255,.4)}50%{box-shadow:0 0 0 6px rgba(61,43,255,0)}}
         @keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
         .msg-actions{opacity:0;transition:opacity .15s}
         .msg-wrapper:hover .msg-actions{opacity:1}
@@ -776,7 +776,7 @@ export default function VeraModule() {
                             onMouseEnter={e => {
                               e.currentTarget.style.borderColor = VERA_BLUE
                               e.currentTarget.style.transform = 'translateY(-1px)'
-                              e.currentTarget.style.boxShadow = '0 2px 8px rgba(79,70,229,.08)'
+                              e.currentTarget.style.boxShadow = '0 2px 8px rgba(61,43,255,.08)'
                             }}
                             onMouseLeave={e => {
                               e.currentTarget.style.borderColor = T.hairline
@@ -940,7 +940,7 @@ export default function VeraModule() {
                         <div style={{ fontSize: 14, lineHeight: 1.65, color: T.text }}
                           dangerouslySetInnerHTML={{
                             __html: renderMarkdown(streamingText) +
-                              '<span style="display:inline-block;width:7px;height:14px;background:#4F46E5;margin-left:2px;vertical-align:-2px;animation:blink 1s infinite;"></span>'
+                              '<span style="display:inline-block;width:7px;height:14px;background:#3D2BFF;margin-left:2px;vertical-align:-2px;animation:blink 1s infinite;"></span>'
                           }}
                         />
                       </div>

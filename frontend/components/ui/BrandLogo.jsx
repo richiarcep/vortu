@@ -1,67 +1,60 @@
 'use client'
-import { useId } from 'react'
-import { BRAND_NAME, VELA_VIOLET, VELA_PERIWINKLE } from '@/lib/brand'
+import { BRAND_NAME, VELA_VIOLET } from '@/lib/brand'
+import { useTheme } from '@/components/ui/tokens'
 
-// ── Marca Vela: velero + constelación ────────────────────────────────────────
-// Recreación en SVG a partir de la guía de marca. Es el ÚNICO lugar donde vive
-// el dibujo del logo: reemplazable por el asset final del diseñador sin tocar a
-// ningún consumidor (Sidebar, login, admin, etc.).
+// ── Marca Vela (assets oficiales del diseñador) ──────────────────────────────
+// Los SVG viven en `public/brand/` y se sirven como ficheros (no inline) para
+// evitar colisiones de los ids de gradiente que traen (`gP`, `gDark`, `gI`…).
+// Este sigue siendo el ÚNICO punto donde se decide qué logo se pinta: cambiar
+// aquí actualiza Sidebar, login, register y cualquier consumidor futuro.
 //
-// - El velero (vela + casco) usa el gradiente de marca (violeta → periwinkle),
-//   que se lee bien sobre fondo claro y oscuro.
-// - La constelación usa `constColor` (por defecto violeta). Sobre fondos oscuros
-//   conviene pasar un tono claro (periwinkle/blanco) para contraste.
+// Variantes por superficie:
+//  - claro  → `vela-logo-primary.svg`     (wordmark navy, constelación oscura)
+//  - oscuro → `vela-logo-lockup-dark.svg` (fondo transparente, constelación clara)
+//  - icono  → `vela-logo-icon.svg`        (solo el velero)
 
-// Sparkle de 4 puntas centrado en (cx,cy) con radio r.
-function sparkle(cx, cy, r) {
-  const i = r * 0.32
-  return `M${cx} ${cy - r}C${cx} ${cy - i} ${cx + i} ${cy} ${cx + r} ${cy}`
-    + `C${cx + i} ${cy} ${cx} ${cy + i} ${cx} ${cy + r}`
-    + `C${cx} ${cy + i} ${cx - i} ${cy} ${cx - r} ${cy}`
-    + `C${cx - i} ${cy} ${cx} ${cy - i} ${cx} ${cy - r}Z`
+// Aspect ratios tomados del viewBox de cada asset.
+const RATIO_ICON = 202 / 176              // ≈ 1.148
+const RATIO_LOCKUP = 502.9163636363637 / 176  // ≈ 2.857
+
+// `tone`: 'auto' sigue el tema activo; 'light'/'dark' lo fuerzan (paneles que son
+// siempre oscuros, p.ej. login/register, deben pasar tone="dark").
+function resolveTone(tone, theme) {
+  if (tone === 'light' || tone === 'dark') return tone
+  return theme === 'dark' ? 'dark' : 'light'
 }
 
-export function BrandMark({ size = 28, constColor = VELA_VIOLET, title }) {
-  const uid = useId().replace(/:/g, '')
-  const gid = `vela-grad-${uid}`
+function assetFor(tone, showName) {
+  if (!showName) return '/brand/vela-logo-icon.svg'
+  return tone === 'dark'
+    ? '/brand/vela-logo-lockup-dark.svg'
+    : '/brand/vela-logo-primary.svg'
+}
+
+// Solo el icono de marca. `size` = alto en px. Acepta `tone` para fondos oscuros.
+// (`constColor` se conserva por compatibilidad de firma; los SVG oficiales traen
+//  su propio color, así que no se usa.)
+export function BrandMark({ size = 28, tone = 'auto', constColor = VELA_VIOLET, title }) {
+  const { theme } = useTheme() || {}
+  const t = resolveTone(tone, theme)
   return (
-    <svg width={size} height={size} viewBox="0 0 64 64" fill="none"
-      role="img" aria-label={title || `Logo ${BRAND_NAME}`} style={{ flexShrink: 0 }}>
-      <defs>
-        <linearGradient id={gid} x1="20" y1="8" x2="52" y2="50" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor={VELA_VIOLET} />
-          <stop offset="100%" stopColor={VELA_PERIWINKLE} />
-        </linearGradient>
-      </defs>
-
-      {/* Constelación (triángulo de estrellas + sparkles) */}
-      <g stroke={constColor} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M11 21 L23 11 L25 25 Z" fill="none" opacity="0.9" />
-      </g>
-      <g fill={constColor}>
-        <circle cx="11" cy="21" r="1.7" />
-        <circle cx="25" cy="25" r="1.7" />
-        <path d={sparkle(23, 11, 3.2)} />
-        <path d={sparkle(7, 13, 1.6)} opacity="0.8" />
-        <path d={sparkle(18, 30, 1.5)} opacity="0.7" />
-      </g>
-
-      {/* Velero: vela + casco (gradiente de marca) */}
-      <g fill={`url(#${gid})`}>
-        <path d="M35 10 C31.5 21 29.5 32 30 43 L52 43 C47.5 30 42 19 35 10 Z" />
-        <path d="M22 46.5 Q39 54 56 45.5 Q47 53 34 53 Q27 53 22 46.5 Z" />
-      </g>
-      {/* Estela / agua */}
-      <path d="M20 57 Q34 61 50 56" stroke={VELA_PERIWINKLE} strokeWidth="1.6"
-        strokeLinecap="round" fill="none" opacity="0.7" />
-    </svg>
+    <img
+      src={assetFor(t, false)}
+      alt={title || `Logo ${BRAND_NAME}`}
+      width={Math.round(size * RATIO_ICON)}
+      height={size}
+      style={{ height: size, width: 'auto', flexShrink: 0, display: 'block' }}
+    />
   )
 }
 
-// Logo horizontal: marca + wordmark. `showName=false` → solo el icono.
+// Logo horizontal (lockup): marca + wordmark oficiales. `showName=false` → solo icono.
+// Firma idéntica a la versión anterior para no tocar consumidores; `nameColor`,
+// `nameSize`, `constColor` y `gap` quedan como no-op (el wordmark vive dentro del SVG).
 export default function BrandLogo({
   size = 28,
   showName = true,
+  tone = 'auto',
   nameColor = 'currentColor',
   nameSize = 15,
   constColor = VELA_VIOLET,
@@ -69,15 +62,17 @@ export default function BrandLogo({
   className,
   style,
 }) {
+  const { theme } = useTheme() || {}
+  const t = resolveTone(tone, theme)
+  const ratio = showName ? RATIO_LOCKUP : RATIO_ICON
   return (
-    <span className={className}
-      style={{ display: 'inline-flex', alignItems: 'center', gap, lineHeight: 1, ...style }}>
-      <BrandMark size={size} constColor={constColor} />
-      {showName && (
-        <span className="display" style={{
-          fontSize: nameSize, fontWeight: 600, color: nameColor, letterSpacing: -0.3,
-        }}>{BRAND_NAME}</span>
-      )}
-    </span>
+    <img
+      className={className}
+      src={assetFor(t, showName)}
+      alt={`Logo ${BRAND_NAME}`}
+      width={Math.round(size * ratio)}
+      height={size}
+      style={{ height: size, width: 'auto', flexShrink: 0, display: 'block', ...style }}
+    />
   )
 }

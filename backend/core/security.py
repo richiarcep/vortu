@@ -75,7 +75,16 @@ def get_admin_user(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db)
 ):
-    """Dependency — only allows admin users."""
+    """Dependency — only allows Vela PLATFORM admins (superadmins).
+
+    This gates the cross-tenant backoffice (/api/admin/*, prospector, extraction
+    review, routing/pipeline/prompt/template config). It must check
+    ``is_superadmin``, NOT ``is_admin``: every company's first user is created with
+    ``is_admin=True`` (they are the admin *of their own company*), so checking
+    ``is_admin`` here would make every customer a platform superadmin. Company-level
+    admin actions should check ``current_user.is_admin`` inline, scoped to the
+    caller's own ``company_id``.
+    """
     from models.user import User
     payload = decode_token(token)
     user_id: int = payload.get("sub")
@@ -85,6 +94,6 @@ def get_admin_user(
         user = db.query(User).filter(User.id == int(user_id)).first()
     else:
         user = db.query(User).filter(User.email == str(user_id)).first()
-    if user is None or not user.is_admin:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acceso solo para administradores de Vela")
+    if user is None or not getattr(user, "is_superadmin", False):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acceso solo para administradores de plataforma de Vela")
     return user

@@ -1,5 +1,6 @@
 from decimal import Decimal
 from datetime import date
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from modules.accounting.journal import (
     Account, JournalEntry, Transaction,
@@ -89,90 +90,96 @@ def get_general_ledger(db: Session, company_id: int,
                         end_date: date = None,
                         max_entries_per_account: int = 500) -> dict:
     """
-    Returns the general ledger — every transaction recorded,
-    organized by account with running balances.
+    Returns the general ledger — organized by account with running balances.
 
-    Para no devolver payloads enormes que congelan el navegador, cada cuenta
-    devuelve como máximo `max_entries_per_account` asientos (los más recientes
-    del rango). El saldo de cierre y el saldo acumulado se calculan SIEMPRE sobre
-    la totalidad de los asientos del rango, así que las cifras son exactas; solo
-    se recorta la lista mostrada (se indica con `entries_total` / `truncated`).
+    Escalable a todo el histórico (172k+ asientos) gracias a los índices de
+    journal_entries: por cada cuenta se calcula el saldo de cierre y el nº total de
+    asientos con un AGREGADO SQL (no se cargan todas las filas en memoria), y solo se
+    traen los ÚLTIMOS `max_entries_per_account` asientos para mostrar. El saldo
+    acumulado de cada línea mostrada se calcula hacia atrás desde el saldo de cierre,
+    así que las cifras son exactas. Si no se pasan fechas, cubre TODO el histórico.
     """
-    # Tope defensivo: sin rango de fechas el libro mayor devolvería TODO el histórico
-    # (172k+ asientos ≈ 30 MB) y congela el navegador. Acotamos a los últimos 90 días.
-    from datetime import timedelta
-    if end_date is None:
-        end_date = date.today()
-    if start_date is None:
-        start_date = end_date - timedelta(days=90)
-    # Tope duro de ventana: nunca más de ~2 años aunque pidan un rango enorme.
-    if (end_date - start_date).days > 730:
-        start_date = end_date - timedelta(days=730)
-
     query = db.query(Account).filter(
         Account.company_id == company_id,
         Account.is_active == True
     )
-
     if account_code:
         query = query.filter(Account.code == account_code)
-
     accounts = query.order_by(Account.code).all()
     ledger = []
 
-    for account in accounts:
-        entry_query = db.query(JournalEntry).filter(
-            JournalEntry.account_id == account.id,
-            JournalEntry.company_id == company_id
-        ).order_by(JournalEntry.date, JournalEntry.id)
-
+    def _date_filtered(q):
         if start_date:
-            entry_query = entry_query.filter(JournalEntry.date >= start_date)
+            q = q.filter(JournalEntry.date >= start_date)
         if end_date:
-            entry_query = entry_query.filter(JournalEntry.date <= end_date)
+            q = q.filter(JournalEntry.date <= end_date)
+        return q
 
-        entries = entry_query.all()
+    for account in accounts:
+        base = db.query(JournalEntry).filter(
+            JournalEntry.account_id == account.id,
+            JournalEntry.company_id == company_id,
+        )
+        base = _date_filtered(base)
 
-        if not entries:
+        # Agregado: totales y conteo SIN traer las filas (rápido con índice).
+        agg = _date_filtered(
+            db.query(
+                func.coalesce(func.sum(JournalEntry.debit), 0),
+                func.coalesce(func.sum(JournalEntry.credit), 0),
+                func.count(JournalEntry.id),
+            ).filter(
+                JournalEntry.account_id == account.id,
+                JournalEntry.company_id == company_id,
+            )
+        ).one()
+        sum_debit, sum_credit, entries_total = Decimal(str(agg[0])), Decimal(str(agg[1])), int(agg[2])
+
+        if entries_total == 0:
             continue
 
-        running_balance = Decimal("0")
+        if account.normal_balance == "debit":
+            closing = sum_debit - sum_credit
+        else:
+            closing = sum_credit - sum_debit
+
+        # Solo los últimos N asientos para mostrar (orden desc en SQL, luego cronológico).
+        recent = base.order_by(JournalEntry.date.desc(), JournalEntry.id.desc()).limit(
+            max_entries_per_account
+        ).all()
+        recent = list(reversed(recent))
+
+        # Saldo de apertura de la ventana mostrada = cierre − suma de deltas mostrados.
+        def _delta(e):
+            d, c = Decimal(str(e.debit)), Decimal(str(e.credit))
+            return (d - c) if account.normal_balance == "debit" else (c - d)
+
+        window_delta = sum((_delta(e) for e in recent), Decimal("0"))
+        running = closing - window_delta
+
         entry_list = []
-
-        for entry in entries:
-            debit = Decimal(str(entry.debit))
-            credit = Decimal(str(entry.credit))
-
-            if account.normal_balance == "debit":
-                running_balance += debit - credit
-            else:
-                running_balance += credit - debit
-
+        for e in recent:
+            running += _delta(e)
             entry_list.append({
-                "date": str(entry.date),
-                "transaction_id": entry.transaction_id,
-                "description": entry.description,
-                "reference": entry.reference,
-                "debit": float(debit),
-                "credit": float(credit),
-                "balance": float(running_balance),
-                "source": entry.module_source,
+                "date": str(e.date),
+                "transaction_id": e.transaction_id,
+                "description": e.description,
+                "reference": e.reference,
+                "debit": float(Decimal(str(e.debit))),
+                "credit": float(Decimal(str(e.credit))),
+                "balance": float(running),
+                "source": e.module_source,
             })
-
-        # Recorta a los más recientes para acotar el payload (saldos ya calculados arriba).
-        entries_total = len(entry_list)
-        truncated = entries_total > max_entries_per_account
-        shown = entry_list[-max_entries_per_account:] if truncated else entry_list
 
         ledger.append({
             "account_code": account.code,
             "account_name": account.name,
             "account_type": account.account_type,
             "normal_balance": account.normal_balance,
-            "closing_balance": float(running_balance),
-            "entries": shown,
+            "closing_balance": float(closing),
+            "entries": entry_list,
             "entries_total": entries_total,
-            "truncated": truncated,
+            "truncated": entries_total > len(entry_list),
         })
 
     return {
@@ -180,8 +187,8 @@ def get_general_ledger(db: Session, company_id: int,
         "total_accounts": len(ledger),
         "period": {
             "start": str(start_date) if start_date else "all time",
-            "end": str(end_date) if end_date else "present"
-        }
+            "end": str(end_date) if end_date else "present",
+        },
     }
 
 
@@ -192,7 +199,12 @@ def get_account_summary(db: Session, company_id: int,
     Returns a summary of all account balances grouped by type.
     Used internally by the statements generator.
     """
+    # Must scope to this company: every company shares the same PGC account
+    # codes, so without this filter get_account_balance() re-resolves each code
+    # back to `company_id` and the same balance is counted once per company that
+    # has that code → double/triple-counted financial statements.
     accounts = db.query(Account).filter(
+        Account.company_id == company_id,
         Account.is_active == True
     ).all()
 

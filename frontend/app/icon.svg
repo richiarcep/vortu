@@ -1,21 +1,31 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
   <defs>
-    <linearGradient id="vela-fav" x1="20" y1="8" x2="52" y2="50" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#6366F1"/>
-      <stop offset="100%" stop-color="#A5B1FF"/>
+    <linearGradient id="vela-fav" gradientUnits="userSpaceOnUse" x1="186" y1="82" x2="110" y2="200">
+      <stop offset="0" stop-color="#1A145E"/>
+      <stop offset="0.5" stop-color="#2E1CCC"/>
+      <stop offset="1" stop-color="#3D2BFF"/>
     </linearGradient>
   </defs>
   <rect width="64" height="64" rx="14" fill="#0B0D2B"/>
-  <g stroke="#A5B1FF" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="0.9">
-    <path d="M13 22 L24 13 L26 26 Z"/>
-  </g>
-  <g fill="#A5B1FF">
-    <circle cx="13" cy="22" r="1.8"/>
-    <circle cx="26" cy="26" r="1.8"/>
-    <path d="M24 9.8C24 11.976 25.024 13 27.2 13C25.024 13 24 14.024 24 16.2C24 14.024 22.976 13 20.8 13C22.976 13 24 11.976 24 9.8Z"/>
-  </g>
-  <g fill="url(#vela-fav)">
-    <path d="M35 11C31.5 22 29.5 33 30 44L52 44C47.5 31 42 20 35 11Z"/>
-    <path d="M22 47.5Q39 55 56 46.5Q47 54 34 54Q27 54 22 47.5Z"/>
-  </g>
+  <svg x="7" y="7" width="50" height="50" viewBox="-12 -12 202 176" preserveAspectRatio="xMidYMid meet">
+    <g transform="translate(-26,-58)">
+      <g stroke="#A5B1FF" stroke-width="1.6" fill="none" stroke-linecap="round">
+        <line x1="64" y1="96" x2="106" y2="134"/>
+        <line x1="106" y1="134" x2="113" y2="75"/>
+        <line x1="113" y1="75" x2="64" y2="96"/>
+      </g>
+      <g fill="#A5B1FF">
+        <circle cx="64" cy="96" r="5.2"/>
+        <circle cx="106" cy="134" r="4.4"/>
+        <circle cx="113" cy="75" r="4.2"/>
+        <path d="M 123.00 56.50 L 125.85 63.15 L 132.50 66.00 L 125.85 68.85 L 123.00 75.50 L 120.15 68.85 L 113.50 66.00 L 120.15 63.15 Z"/>
+        <path d="M 34.00 99.00 L 35.80 103.20 L 40.00 105.00 L 35.80 106.80 L 34.00 111.00 L 32.20 106.80 L 28.00 105.00 L 32.20 103.20 Z"/>
+        <path d="M 67.00 143.00 L 68.50 146.50 L 72.00 148.00 L 68.50 149.50 L 67.00 153.00 L 65.50 149.50 L 62.00 148.00 L 65.50 146.50 Z"/>
+        <path d="M 138.00 79.80 L 139.26 82.74 L 142.20 84.00 L 139.26 85.26 L 138.00 88.20 L 136.74 85.26 L 133.80 84.00 L 136.74 82.74 Z"/>
+        <path d="M 73.00 101.00 L 73.90 103.10 L 76.00 104.00 L 73.90 104.90 L 73.00 107.00 L 72.10 104.90 L 70.00 104.00 L 72.10 103.10 Z"/>
+      </g>
+      <path d="M 195,76 C 192,98 183,138 171,172 C 148,179 121,189 96,196 C 116,160 152,110 195,76 Z" fill="url(#vela-fav)"/>
+      <path d="M 98,202 C 128,190 162,184 196,186 C 184,194 165,203 146,203 C 124,203 108,202 98,202 Z" fill="url(#vela-fav)"/>
+    </g>
+  </svg>
 </svg>

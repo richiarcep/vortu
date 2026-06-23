@@ -16,8 +16,9 @@ router = APIRouter(prefix="/api/backoffice/prompts", tags=["Backoffice"])
 
 
 def require_admin(current_user: User = Depends(get_current_user)):
-    if not current_user.is_admin:
-        raise HTTPException(status_code=403, detail="Solo admins")
+    # Global Vera prompts are platform-wide: gate on superadmin, not company admin.
+    if not getattr(current_user, "is_superadmin", False):
+        raise HTTPException(status_code=403, detail="Solo administradores de plataforma")
     return current_user
 
 

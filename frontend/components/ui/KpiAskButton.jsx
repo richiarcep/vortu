@@ -73,7 +73,7 @@ export default function KpiAskButton({ kpi, modulo, suggestions, children }) {
             height: 22,
             borderRadius: 6,
             background: btnHover
-              ? 'linear-gradient(135deg, #3730A3, #4F46E5)'
+              ? 'linear-gradient(135deg, #3730A3, #3D2BFF)'
               : 'rgba(0,61,143,.08)',
             border: 'none',
             cursor: 'pointer',

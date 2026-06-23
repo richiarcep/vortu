@@ -68,7 +68,7 @@ export default function JurisdictionGuard({ children }) {
           <div style={{
             width: 32, height: 32,
             border: '2px solid rgba(0,0,0,0.08)',
-            borderTopColor: '#4F46E5',
+            borderTopColor: '#3D2BFF',
             borderRadius: '50%',
             animation: 'spin .7s linear infinite',
             margin: '0 auto 12px',

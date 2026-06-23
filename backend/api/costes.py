@@ -20,11 +20,12 @@ from datetime import datetime, timedelta, date
 from decimal import Decimal
 import re
 import json
+import unicodedata
 
 from core.database import get_db
 from core.security import get_current_user
 from models.user import User
-from models.costs import CostCategory, CostDepartment, CostEntry
+from models.costs import CostCategory, CostDepartment, CostEntry, CostProvider
 from models.document import Document
 from country.registry import get_entry_accounts
 
@@ -56,6 +57,56 @@ def _parse_notes(notes: Optional[str]) -> dict:
         try: out["doc_id"] = int(m.group(1))
         except (ValueError, TypeError): pass
     return out
+
+
+_PROVIDER_SUFFIXES = (
+    " sociedad limitada", " sociedad anonima", " s l u", " s a u", " s l", " s a",
+    " slu", " sau", " sll", " sl", " sa", " inc", " ltd", " llc", " co",
+)
+
+def _normalize_provider(name: str) -> str:
+    """Normaliza el nombre de proveedor para deduplicar: sin acentos, minúsculas,
+    sin puntuación ni formas societarias ('Repsol S.A.' == 'repsol')."""
+    if not name:
+        return ""
+    s = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode().lower()
+    s = re.sub(r"[.,;:]", " ", s)
+    s = re.sub(r"\s+", " ", s).strip()
+    changed = True
+    while changed:
+        changed = False
+        for suf in _PROVIDER_SUFFIXES:
+            if s.endswith(suf):
+                s = s[: -len(suf)].strip()
+                changed = True
+    return s
+
+
+def _get_or_create_provider(db, company_id, name, nif=None, iban=None):
+    """Devuelve el CostProvider de la empresa para `name`, creándolo si no existe
+    (dedup por nombre normalizado). Completa nif/iban si faltaban."""
+    if not name or not name.strip():
+        return None
+    norm = _normalize_provider(name)
+    if not norm:
+        return None
+    prov = db.query(CostProvider).filter(
+        CostProvider.company_id == company_id,
+        CostProvider.normalized_name == norm,
+    ).first()
+    if prov:
+        if nif and not prov.nif:
+            prov.nif = nif
+        if iban and not prov.iban:
+            prov.iban = iban
+        return prov
+    prov = CostProvider(
+        company_id=company_id, name=name.strip(), normalized_name=norm,
+        nif=nif or None, iban=iban or None,
+    )
+    db.add(prov)
+    db.flush()
+    return prov
 
 
 def _entry_to_dict(e: CostEntry, db: Session = None) -> dict:
@@ -118,6 +169,24 @@ class GastoManual(BaseModel):
 
 class GastoVeraRequest(BaseModel):
     descripcion_libre: str
+
+
+class ProveedorCreate(BaseModel):
+    name: str
+    nif: Optional[str] = None
+    iban: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    payment_terms: Optional[str] = None
+
+
+class ProveedorUpdate(BaseModel):
+    name: Optional[str] = None
+    nif: Optional[str] = None
+    iban: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    payment_terms: Optional[str] = None
 
 
 # ============================================================================
@@ -237,6 +306,85 @@ def list_gastos(
         items = [i for i in items if not i["tiene_asiento_pgc"]]
 
     return {"items": items, "total": total, "limit": limit, "offset": offset}
+
+
+# ============================================================================
+# PROVEEDORES (entidad) — definido ANTES de /{gasto_id} para que GET /proveedores
+# no quede capturado por la ruta dinámica (que espera un int → daría 422).
+# ============================================================================
+
+def _provider_to_dict(p: CostProvider, stats: dict) -> dict:
+    s = stats.get(p.id, {"count": 0, "total": 0.0, "last": None})
+    return {
+        "id": p.id, "name": p.name, "nif": p.nif, "iban": p.iban,
+        "email": p.email, "phone": p.phone, "payment_terms": p.payment_terms,
+        "inicial": (p.name[0] if p.name else "?").upper(),
+        "count": s["count"], "total": round(s["total"], 2), "last": s["last"],
+        "es_recurrente": s["count"] >= 3,
+    }
+
+
+def _provider_stats(db, company_id):
+    rows = db.query(
+        CostEntry.provider_id,
+        func.count(CostEntry.id),
+        func.coalesce(func.sum(CostEntry.amount), 0),
+        func.max(CostEntry.date),
+    ).filter(
+        CostEntry.company_id == company_id,
+        CostEntry.provider_id.isnot(None),
+    ).group_by(CostEntry.provider_id).all()
+    return {r[0]: {"count": r[1], "total": float(r[2] or 0), "last": r[3].isoformat() if r[3] else None} for r in rows}
+
+
+@router.get("/proveedores")
+def list_proveedores(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """Lista los proveedores (entidad) con sus estadísticas de gasto."""
+    cid = current_user.company_id
+    provs = db.query(CostProvider).filter(CostProvider.company_id == cid).order_by(CostProvider.name).all()
+    stats = _provider_stats(db, cid)
+    items = [_provider_to_dict(p, stats) for p in provs]
+    items.sort(key=lambda x: x["total"], reverse=True)
+    return {"proveedores": items, "total": len(items)}
+
+
+@router.post("/proveedores", status_code=201)
+def create_proveedor(payload: ProveedorCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    cid = current_user.company_id
+    if not payload.name or not payload.name.strip():
+        raise HTTPException(400, "El nombre del proveedor es obligatorio")
+    prov = _get_or_create_provider(db, cid, payload.name, payload.nif, payload.iban)
+    if payload.email:
+        prov.email = payload.email
+    if payload.phone:
+        prov.phone = payload.phone
+    if payload.payment_terms:
+        prov.payment_terms = payload.payment_terms
+    db.commit()
+    db.refresh(prov)
+    return _provider_to_dict(prov, _provider_stats(db, cid))
+
+
+@router.patch("/proveedores/{provider_id}")
+def update_proveedor(provider_id: int, payload: ProveedorUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    cid = current_user.company_id
+    prov = db.query(CostProvider).filter(CostProvider.id == provider_id, CostProvider.company_id == cid).first()
+    if not prov:
+        raise HTTPException(404, "Proveedor no encontrado")
+    if payload.name is not None and payload.name.strip():
+        prov.name = payload.name.strip()
+        prov.normalized_name = _normalize_provider(payload.name)
+    for f in ("nif", "iban", "email", "phone", "payment_terms"):
+        v = getattr(payload, f)
+        if v is not None:
+            setattr(prov, f, v or None)
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise HTTPException(409, "Ya existe un proveedor con ese nombre")
+    db.refresh(prov)
+    return _provider_to_dict(prov, _provider_stats(db, cid))
 
 
 # ============================================================================
@@ -467,11 +615,15 @@ def registrar_gasto_manual(payload: GastoManual, db: Session = Depends(get_db), 
 
     fecha_dt = datetime.fromisoformat(payload.date)
 
+    # Proveedor como entidad (get-or-create, dedup por nombre normalizado).
+    prov = _get_or_create_provider(db, company_id, payload.provider, payload.provider_nif) if payload.provider else None
+
     # Crear cost_entry
     entry = CostEntry(
         company_id=company_id,
         category_id=payload.category_id,
         department_id=payload.department_id,
+        provider_id=prov.id if prov else None,
         description=payload.description,
         amount=payload.amount,
         date=fecha_dt,

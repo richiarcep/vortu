@@ -2,6 +2,7 @@
 Endpoints HTTP de Vera.
 Reemplaza /api/agente — todo pasa por aquí ahora.
 """
+import logging
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
@@ -47,8 +48,9 @@ def chat(
             modulo=data.modulo,
             historial=data.historial or [],
         )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        logging.getLogger("vela.vera").exception("Error en Vera chat")
+        raise HTTPException(status_code=500, detail="Error procesando la consulta")
 
 
 @router.post("/analizar")
@@ -69,8 +71,9 @@ def analizar(
             modulo=data.modulo,
             plan=data.plan,
         )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        logging.getLogger("vela.vera").exception("Error en Vera analyze")
+        raise HTTPException(status_code=500, detail="Error procesando el análisis")
 
 
 @router.get("/health")

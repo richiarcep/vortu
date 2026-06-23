@@ -16,6 +16,7 @@ Routes:
   POST /api/marketing/plataformas/{p}/verificar — Test connection
 """
 import json
+import logging
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from fastapi.responses import JSONResponse
@@ -90,7 +91,7 @@ class MetaCredentials(BaseModel):
 
 # ── Internal helper: gather company data ─────────────────────────────────────
 
-def _gather_internal_data(db: Session, user_id: int) -> dict:
+def _gather_internal_data(db: Session, company_id: int) -> dict:
     """Pull summarised data from existing modules for context."""
     from models.sales import Sale, SaleItem, Product
     from models.customer import Contact, Message
@@ -102,20 +103,20 @@ def _gather_internal_data(db: Session, user_id: int) -> dict:
 
     # Ventas
     ventas_mes = db.query(func.sum(Sale.total)).filter(
-        Sale.company_id == user_id, Sale.created_at >= month_start
+        Sale.company_id == company_id, Sale.created_at >= month_start
     ).scalar() or 0
     num_ventas = db.query(func.count(Sale.id)).filter(
-        Sale.company_id == user_id, Sale.created_at >= month_start
+        Sale.company_id == company_id, Sale.created_at >= month_start
     ).scalar() or 0
 
     # Productos
     num_productos = db.query(func.count(Product.id)).filter(
-        Product.company_id == user_id
+        Product.company_id == company_id
     ).scalar() or 0
 
     # Clientes
     total_contacts = db.query(func.count(Contact.id)).filter(
-        Contact.company_id == user_id
+        Contact.company_id == company_id
     ).scalar() or 0
 
     return {
@@ -168,18 +169,18 @@ async def analizar_empresa(
 ):
     """Analyze company with AI using internal data + optional uploaded documents."""
 
-    # 1. Internal data
-    internal_data = _gather_internal_data(db, current_user.id)
+    # 1. Internal data (scoped to the caller's company)
+    internal_data = _gather_internal_data(db, current_user.company_id)
 
-    # 2. External documents text
+    # 2. External documents text (scoped to the company; ai_result holds Claude's extraction)
     document_texts = []
     if body.document_ids:
         for doc_id in body.document_ids:
             doc = db.query(Document).filter(
-                Document.id == doc_id, Document.user_id == current_user.id
+                Document.id == doc_id, Document.company_id == current_user.company_id
             ).first()
-            if doc and doc.extracted_text:
-                document_texts.append(f"[{doc.filename}]\n{doc.extracted_text}")
+            if doc and doc.ai_result:
+                document_texts.append(f"[{doc.filename}]\n{doc.ai_result}")
 
     # 3. Call AI
     try:
@@ -189,8 +190,9 @@ async def analizar_empresa(
             internal_data=internal_data,
             document_texts=document_texts or None,
         )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error en análisis IA: {str(e)}")
+    except Exception:
+        logging.getLogger("vela.marketing").exception("Error en análisis IA")
+        raise HTTPException(status_code=500, detail="Error en el análisis de IA")
 
     # 4. Persist
     analysis = CompanyAnalysis(
@@ -326,8 +328,9 @@ async def create_campaign(
             platforms=body.platforms,
             extra_context=body.extra_context or "",
         )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error generando contenido: {str(e)}")
+    except Exception:
+        logging.getLogger("vela.marketing").exception("Error generando contenido")
+        raise HTTPException(status_code=500, detail="Error generando el contenido")
 
     # Persist campaign
     campaign = MarketingCampaign(

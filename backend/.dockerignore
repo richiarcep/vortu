@@ -1,0 +1,36 @@
+# Secrets & local data — NEVER bake these into the image
+.env
+.env.*
+!.env.example
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.bak
+*.bak.*
+nexum.db*
+vela.db*
+
+# Python caches / envs
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Local uploads / generated files
+uploads/
+payslips/
+reports/
+
+# Dev-only scripts that should not ship to prod
+test_*.py
+seed_*.py
+install_*.py
+migrate_*.py
+fix_*.py
+configure_*.py
+setup_db.py
+
+# Misc
+.DS_Store
+.pytest_cache/

@@ -135,9 +135,11 @@ async def cancel(body: CancelRequest, db: Session = Depends(get_db), current_use
 
 @router.post("/admin/phase")
 async def set_phase(body: PhaseRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    """Switch de fase global — solo admins. Actualiza todos los usuarios."""
-    if not getattr(current_user, "is_admin", False):
-        raise HTTPException(status_code=403, detail="Solo admins")
+    """Switch de fase global — solo superadmins. Actualiza TODAS las suscripciones."""
+    # Platform-wide: flips every tenant's billing phase. Must be a platform
+    # superadmin, not any per-company admin.
+    if not getattr(current_user, "is_superadmin", False):
+        raise HTTPException(status_code=403, detail="Solo administradores de plataforma")
     if body.fase not in ("beta", "early_adopter", "paid"):
         raise HTTPException(status_code=400, detail="Fase no valida")
 
@@ -157,8 +159,8 @@ async def set_phase(body: PhaseRequest, db: Session = Depends(get_db), current_u
 @router.get("/admin/phase")
 async def get_phase(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Ver fase actual de la plataforma."""
-    if not getattr(current_user, "is_admin", False):
-        raise HTTPException(status_code=403, detail="Solo admins")
+    if not getattr(current_user, "is_superadmin", False):
+        raise HTTPException(status_code=403, detail="Solo administradores de plataforma")
     sub = db.query(Subscription).first()
     return {"fase": sub.fase if sub else "beta"}
 

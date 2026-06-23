@@ -41,7 +41,44 @@ TEMP_DIR.mkdir(exist_ok=True, parents=True)
 
 ALLOWED_EXTENSIONS = {".pdf", ".csv", ".xlsx", ".xls", ".docx", ".txt", ".jpg", ".jpeg", ".png"}
 
-PENDING_DOCS = {}
+
+# Pending analyze→confirm state, persisted in the DB (was a process-global dict,
+# which broke under multiple workers). Uses a short-lived engine transaction so
+# it's independent of the request session and visible to any worker.
+def _pending_put(temp_id: str, payload: dict):
+    from core.database import engine
+    from sqlalchemy import text
+    with engine.begin() as conn:
+        conn.execute(text("DELETE FROM pending_documents WHERE temp_id=:t"), {"t": temp_id})
+        conn.execute(text(
+            "INSERT INTO pending_documents (temp_id, user_id, company_id, payload, expires_at) "
+            "VALUES (:t, :u, :c, :p, :e)"
+        ), {"t": temp_id, "u": payload.get("user_id"), "c": payload.get("company_id"),
+            "p": json.dumps(payload), "e": payload.get("expires_at")})
+
+
+def _pending_get(temp_id: str):
+    from core.database import engine
+    from sqlalchemy import text
+    with engine.begin() as conn:
+        row = conn.execute(
+            text("SELECT payload, expires_at FROM pending_documents WHERE temp_id=:t"),
+            {"t": temp_id},
+        ).fetchone()
+        if not row:
+            return None
+        payload, expires_at = row[0], row[1]
+        if expires_at and expires_at < datetime.now().timestamp():
+            conn.execute(text("DELETE FROM pending_documents WHERE temp_id=:t"), {"t": temp_id})
+            return None
+        return json.loads(payload)
+
+
+def _pending_delete(temp_id: str):
+    from core.database import engine
+    from sqlalchemy import text
+    with engine.begin() as conn:
+        conn.execute(text("DELETE FROM pending_documents WHERE temp_id=:t"), {"t": temp_id})
 
 
 # ─────────────────────────────────────────────
@@ -641,7 +678,7 @@ def analyze_document(
         logger.warning("No se pudo construir el asiento propuesto: %s", e)
         analysis['journal_entry'] = {'should_create': False, 'reason': 'error construyendo asiento'}
 
-    PENDING_DOCS[temp_id] = {
+    _pending_put(temp_id, {
         'path': str(temp_path),
         'filename': file.filename,
         'file_size': file_size,
@@ -651,7 +688,7 @@ def analyze_document(
         'company_id': current_user.company_id,
         'text_content': text_content[:10000],
         'expires_at': datetime.now().timestamp() + 3600,
-    }
+    })
 
     return {
         "temp_id": temp_id,
@@ -684,7 +721,7 @@ def confirm_document(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    pending = PENDING_DOCS.get(body.temp_id)
+    pending = _pending_get(body.temp_id)
     if not pending:
         raise HTTPException(404, "Documento temporal no encontrado o caducado")
 
@@ -694,7 +731,7 @@ def confirm_document(
     if not body.approved:
         try: os.remove(pending['path'])
         except Exception: pass
-        PENDING_DOCS.pop(body.temp_id, None)
+        _pending_delete(body.temp_id)
         return {"approved": False, "message": "Documento rechazado y eliminado"}
 
     analysis = pending['analysis']
@@ -705,10 +742,11 @@ def confirm_document(
     if suggested_module not in ['finance', 'hr', 'marketing', 'legal', 'general']:
         suggested_module = 'general'
 
-    # Mover archivo
+    # Mover archivo (sanitize stored name to prevent traversal out of the company dir)
+    from core.files import safe_filename
     final_dir = UPLOAD_DIR / str(current_user.company_id)
     final_dir.mkdir(exist_ok=True, parents=True)
-    final_path = final_dir / f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{pending['filename']}"
+    final_path = final_dir / f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{safe_filename(pending['filename'])}"
     try:
         shutil.move(pending['path'], final_path)
     except Exception as e:
@@ -871,7 +909,7 @@ def confirm_document(
     except Exception as e:
         logger.info(f"[Chroma skip] {e}")
 
-    PENDING_DOCS.pop(body.temp_id, None)
+    _pending_delete(body.temp_id)
 
     return {
         "approved": True,

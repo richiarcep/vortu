@@ -38,19 +38,28 @@ def get_product_affinity(company_id: int) -> list:
 
 
 def get_business_overview_graph(company_id: int) -> dict:
+    # NOTE: revenue is summed in its own subquery, NOT in the multi-OPTIONAL-MATCH
+    # block. Chaining the OPTIONAL MATCHes builds a cartesian product, so a plain
+    # SUM(s.total) there multiplies each sale by (#products × #contacts × #projects
+    # × #employees) and inflates the total massively (the observed ~31e9). The
+    # COUNT(DISTINCT ...) counts are immune, so they stay in the main block.
     result = graph_store.run("""
         MATCH (comp:Company {pg_id: $company_id})
-        OPTIONAL MATCH (s:Sale)-[:BELONGS_TO]->(comp)
+        CALL {
+            WITH comp
+            OPTIONAL MATCH (s:Sale)-[:BELONGS_TO]->(comp)
+            RETURN COUNT(DISTINCT s) AS ventas, SUM(s.total) AS ingresos_totales
+        }
         OPTIONAL MATCH (p:Product)-[:BELONGS_TO]->(comp)
         OPTIONAL MATCH (c:Contact)-[:CLIENT_OF]->(comp)
         OPTIONAL MATCH (proj:Project)-[:BELONGS_TO]->(comp)
         OPTIONAL MATCH (e:Employee)-[:WORKS_AT]->(comp)
-        RETURN COUNT(DISTINCT s) AS ventas,
+        RETURN ventas,
                COUNT(DISTINCT p) AS productos,
                COUNT(DISTINCT c) AS contactos,
                COUNT(DISTINCT proj) AS proyectos,
                COUNT(DISTINCT e) AS empleados,
-               SUM(s.total) AS ingresos_totales,
+               ingresos_totales,
                AVG(c.sentiment_score) AS sentiment_medio
     """, company_id=company_id)
     return result[0] if result else {}

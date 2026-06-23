@@ -75,7 +75,7 @@ export default function VeraDrawer({
   const isPlus = status?.plan === 'plus'
   const isDegraded = status?.degraded
   const veraName = isPlus ? 'Vera Plus' : 'Vera'
-  const headerColor = isPlus ? '#6366F1' : '#4F46E5'
+  const headerColor = isPlus ? '#6366F1' : '#3D2BFF'
   const activeModel = status?.model_active_now?.display_name || ''
 
   // Sugerencias finales (priorizar contextuales por kpi, después módulo, después default)
@@ -190,8 +190,8 @@ export default function VeraDrawer({
             <div style={{
               width: 36, height: 36, borderRadius: 10,
               background: isPlus
-                ? 'linear-gradient(135deg,#6366F1,#4F46E5)'
-                : 'linear-gradient(135deg,#4F46E5,#A5B1FF)',
+                ? 'linear-gradient(135deg,#6366F1,#3D2BFF)'
+                : 'linear-gradient(135deg,#3D2BFF,#A5B1FF)',
               display: 'grid', placeItems: 'center', flexShrink: 0,
             }}>
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -217,7 +217,7 @@ export default function VeraDrawer({
             <span style={{
               fontSize: 10, fontWeight: 700,
               color: isPlus ? '#fff' : headerColor,
-              background: isPlus ? '#6366F1' : 'rgba(79,70,229,.1)',
+              background: isPlus ? '#6366F1' : 'rgba(61,43,255,.1)',
               padding: '3px 10px', borderRadius: 999, letterSpacing: 0.4,
             }}>
               {isPlus ? '★ PLUS' : 'BASE'}
@@ -253,8 +253,8 @@ export default function VeraDrawer({
               {kpi && (
                 <div style={{
                   padding: '12px 14px', marginBottom: 16,
-                  background: 'rgba(79,70,229,.04)',
-                  border: `.5px solid rgba(79,70,229,.18)`,
+                  background: 'rgba(61,43,255,.04)',
+                  border: `.5px solid rgba(61,43,255,.18)`,
                   borderRadius: 10,
                   fontSize: 12.5, color: T.text2, lineHeight: 1.5,
                 }}>

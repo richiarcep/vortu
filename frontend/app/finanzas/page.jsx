@@ -6,7 +6,7 @@ import VeraPanel from '@/components/ui/VeraPanel'
 import VeraDrawer from '@/components/ui/VeraDrawer'
 import VeraInsights from '@/components/ui/VeraInsights'
 import { useT, FONT } from '@/components/ui/tokens'
-import { Skeleton, EmptyState, HeaderActions } from '@/components/ui/primitives'
+import { Skeleton, EmptyState, PageHeader, SegmentedFilter } from '@/components/ui/primitives'
 
 import { API_BASE as API } from '@/lib/api'
 
@@ -434,60 +434,58 @@ export default function Finanzas() {
   // ─── Render ──────────────────────────────────────────────────────────────
   return (
     <div style={{minHeight:'100dvh',background:T.bg,display:'flex',fontFamily:FONT,WebkitFontSmoothing:'antialiased'}}>
-      <style>{`*{box-sizing:border-box}::-webkit-scrollbar{width:5px}::-webkit-scrollbar-thumb{background:${T.hairline};border-radius:999px}input:focus,select:focus{border-color:${T.blue}!important;outline:none}@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}.spin{animation:spin 1s linear infinite}@media (max-width:768px){.fin-kpis{grid-template-columns:repeat(auto-fit,minmax(180px,1fr))!important}.fin-row{grid-template-columns:1fr!important}.fin-3{grid-template-columns:repeat(auto-fit,minmax(120px,1fr))!important}.fin-4{grid-template-columns:repeat(auto-fit,minmax(160px,1fr))!important}.fin-2{grid-template-columns:1fr!important}.fin-proy{grid-template-columns:1fr!important}}`}</style>
+      <style>{`*{box-sizing:border-box}::-webkit-scrollbar{width:5px}::-webkit-scrollbar-thumb{background:${T.hairline};border-radius:999px}input:focus,select:focus{border-color:${T.blue}!important;outline:none}@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}.spin{animation:spin 1s linear infinite}@media (max-width:768px){.fin-kpis{grid-template-columns:repeat(auto-fit,minmax(180px,1fr))!important}.fin-row{grid-template-columns:1fr!important}.fin-3{grid-template-columns:repeat(auto-fit,minmax(120px,1fr))!important}.fin-4{grid-template-columns:repeat(auto-fit,minmax(160px,1fr))!important}.fin-2{grid-template-columns:1fr!important}.fin-proy{grid-template-columns:1fr!important}}@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}`}</style>
 
       <Sidebar active="/finanzas"/>
 
       <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
-        <div className="fade-in" style={{flex:1,overflowY:'auto'}}>
-          {/* HEADER MÓDULO */}
-          <div style={{padding:'24px 28px 0'}}>
-            <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',flexWrap:'wrap',gap:16,marginBottom:18}}>
-              <div>
-                <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:6}}>
-                  <h1 style={{fontSize:24,fontWeight:600,letterSpacing:-.5,margin:0}}>Finanzas</h1>
-                  {alertas.length === 0 ? <GreenDot/> : <RedDot/>}
-                </div>
-                <div style={{display:'flex',alignItems:'center',gap:8,fontSize:13,color:T.text3,flexWrap:'wrap'}}>
-                  <FlagES/> España
-                  <span style={{color:T.text4}}>·</span>
-                  <span>{vista==='mes'?'Este mes':'Este año'}: </span>
-                  <span style={{color:T.text2,fontWeight:500}}>€{(datos.ingresos||0).toLocaleString('es-ES')} ingresos</span>
-                  <span style={{color:T.text4}}>·</span>
-                  <span style={{color:margen>=0?T.green:T.red,fontWeight:500}}>margen {margen}%</span>
-                  <span style={{color:T.text4}}>·</span>
-                  <span>IVA 21%</span>
-                </div>
-              </div>
-              <HeaderActions onVera={()=>setVeraOpen(true)} user={user} router={router}>
-                <span style={{fontSize:11,color:T.text4,fontVariantNumeric:'tabular-nums',marginRight:4}}>
-                  {refreshing ? 'Actualizando…' : `Actualizado ${timeAgo(summaryT)}`}
-                </span>
-                <IconBtn onClick={()=>loadSummary(false, true)} ariaLabel="Refrescar">
-                  <span className={refreshing ? 'spin' : ''} style={{display:'flex'}}>{I.refresh}</span>
-                </IconBtn>
-                <Btn onClick={()=>setSection('analizar')}>+ Analizar documento</Btn>
-              </HeaderActions>
-            </div>
 
-            {/* TABS PILL */}
-            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap'}}>
-              <PillGroup
-                items={sections.map(s=>({key:s.key,label:s.label}))}
-                active={section}
-                onChange={(k)=>{setSection(k);setMsg(null)}}
+        <PageHeader
+          title="Finanzas"
+          subtitle={
+            <span style={{display:'inline-flex',alignItems:'center',gap:6}}>
+              <FlagES size={12}/> España
+              <span style={{color:T.text4}}>·</span>
+              <span style={{color:margen>=0?T.green:T.red,fontWeight:500}}>margen {margen}%</span>
+              <span style={{color:T.text4}}>·</span>
+              IVA 21%
+              <span style={{marginLeft:4}}>{alertas.length===0?<GreenDot/>:<RedDot/>}</span>
+            </span>
+          }
+          tabs={sections}
+          activeTab={section}
+          onTab={(k)=>{setSection(k);setMsg(null)}}
+          primary={
+            section==='resumen'
+              ? {label:'Analizar documento',onClick:()=>setSection('analizar'),icon:<span aria-hidden="true" style={{fontSize:16,lineHeight:0,marginRight:1}}>+</span>}
+              : section==='ratios'
+                ? {label:'Calcular ratios',onClick:generateRatios,disabled:ratiosLoading}
+                : undefined
+          }
+          secondary={
+            <span style={{display:'inline-flex',alignItems:'center',gap:6}}>
+              <span style={{fontSize:11,color:T.text4,fontVariantNumeric:'tabular-nums'}}>
+                {refreshing ? 'Actualizando…' : `Actualizado ${timeAgo(summaryT)}`}
+              </span>
+              <IconBtn onClick={()=>loadSummary(false, true)} ariaLabel="Refrescar">
+                <span className={refreshing ? 'spin' : ''} style={{display:'flex'}}>{I.refresh}</span>
+              </IconBtn>
+            </span>
+          }
+          filters={section==='resumen'
+            ? <SegmentedFilter
+                label="Vista"
+                items={[{key:'mes',label:'Este mes'},{key:'year',label:'Este año'}]}
+                active={vista}
+                onChange={setVista}
               />
-              {section==='resumen' && (
-                <PillGroup
-                  size="sm"
-                  items={[{key:'mes',label:'Este mes'},{key:'year',label:'Este año'}]}
-                  active={vista}
-                  onChange={setVista}
-                />
-              )}
-            </div>
-          </div>
+            : undefined
+          }
+          onVera={()=>setVeraOpen(true)}
+          user={user} router={router}
+        />
 
+        <div className="fade-in" style={{flex:1,overflowY:'auto'}}>
           {/* CONTENIDO */}
           <div style={{padding:'20px 28px 60px'}}>
 
@@ -632,7 +630,7 @@ export default function Finanzas() {
                     {key:'general',  iconName:'search',title:'Análisis libre',   desc:'Cualquier documento — factura, contrato, informe. Vera hace análisis completo.'},
                   ].map(m => (
                     <button key={m.key} onClick={()=>{setUploadMode(m.key);setUploadFile(null);setUploadResult(null)}}
-                      style={{padding:'16px',border:`.5px solid ${uploadMode===m.key?T.blue:T.hairline}`,borderRadius:12,background:uploadMode===m.key?'rgba(79,70,229,.06)':T.card,cursor:'pointer',textAlign:'left',transition:'all .15s',fontFamily:'inherit',boxShadow:uploadMode===m.key?`0 0 0 1px ${T.blue}`:'none'}}>
+                      style={{padding:'16px',border:`.5px solid ${uploadMode===m.key?T.blue:T.hairline}`,borderRadius:12,background:uploadMode===m.key?'rgba(61,43,255,.06)':T.card,cursor:'pointer',textAlign:'left',transition:'all .15s',fontFamily:'inherit',boxShadow:uploadMode===m.key?`0 0 0 1px ${T.blue}`:'none'}}>
                       <div style={{width:36,height:36,borderRadius:9,background:`${uploadMode===m.key?T.blue:T.text4}15`,color:uploadMode===m.key?T.blue:T.text3,display:'grid',placeItems:'center',marginBottom:8}}>{m.iconName==='chart' ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg> : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>}</div>
                       <div style={{fontSize:13,fontWeight:500,color:uploadMode===m.key?T.blue:T.text,marginBottom:4}}>{m.title}</div>
                       <div style={{fontSize:11,color:T.text4,lineHeight:1.5}}>{m.desc}</div>
@@ -818,12 +816,9 @@ export default function Finanzas() {
                 ══════════════════════════════════════════════════════════════ */}
             {section==='ratios' && (
               <div>
-                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
-                  <div>
-                    <div style={{fontSize:15,fontWeight:600,color:T.text,letterSpacing:-.2}}>Ratios financieros</div>
-                    <div style={{fontSize:12,color:T.text4}}>Calculados automáticamente desde tus datos contables reales.</div>
-                  </div>
-                  <Btn onClick={generateRatios} disabled={ratiosLoading}>{ratiosLoading?'Calculando...':'Calcular ratios'}</Btn>
+                <div style={{marginBottom:16}}>
+                  <div style={{fontSize:15,fontWeight:600,color:T.text,letterSpacing:-.2}}>Ratios financieros</div>
+                  <div style={{fontSize:12,color:T.text4}}>Calculados automáticamente desde tus datos contables reales.</div>
                 </div>
                 {!ratios && !ratiosLoading && (
                   <Card style={{padding:60,textAlign:'center'}}>

@@ -2,13 +2,11 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
-import VeraPanel from '@/components/ui/VeraPanel'
 import { useApi } from '@/components/ui/useApi'
 import { FONT, useT, useTheme } from '@/components/ui/tokens'
-import { Skeleton, EmptyState, Sparkline, HeaderActions } from '@/components/ui/primitives'
+import { Skeleton, EmptyState, Sparkline, PageHeader, SegmentedFilter, BtnSec } from '@/components/ui/primitives'
 import VeraDrawer from '@/components/ui/VeraDrawer'
 import { openVeraDrawer } from '@/components/ui/useVeraStore'
-import KpiAskButton from '@/components/ui/KpiAskButton'
 
 import { API_BASE as API } from '@/lib/api'
 
@@ -125,7 +123,7 @@ function VeraHybrid({ token, onOpenChat }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{
             width: 28, height: 28, borderRadius: 8,
-            background: 'linear-gradient(135deg,#4F46E5,#A5B1FF)',
+            background: 'linear-gradient(135deg,#3D2BFF,#A5B1FF)',
             display: 'grid', placeItems: 'center',
           }}>
             <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
@@ -138,7 +136,7 @@ function VeraHybrid({ token, onOpenChat }) {
           </div>
         </div>
         <span style={{
-          padding: '3px 10px', background: 'rgba(79,70,229,.06)',
+          padding: '3px 10px', background: 'rgba(61,43,255,.06)',
           color: T.blue, borderRadius: 999, fontSize: 10, fontWeight: 600,
           letterSpacing: 0.4,
         }}>BASE</span>
@@ -154,9 +152,9 @@ function VeraHybrid({ token, onOpenChat }) {
       {!insightLoading && shortInsight && (
         <div style={{
           padding: '12px 14px',
-          background: 'linear-gradient(180deg, rgba(79,70,229,.04), rgba(79,70,229,.01))',
+          background: 'linear-gradient(180deg, rgba(61,43,255,.04), rgba(61,43,255,.01))',
           borderRadius: 10,
-          border: `.5px solid rgba(79,70,229,.12)`,
+          border: `.5px solid rgba(61,43,255,.12)`,
           fontSize: 12.5, color: T.text2, lineHeight: 1.55, marginBottom: 12,
         }}>{shortInsight}</div>
       )}
@@ -271,7 +269,7 @@ function BarChart({ data = [] }) {
           const x = cx - barW / 2
           const ingH = Math.max(((d.ing || 0) / maxVal) * plotH, 2)
           const isHov = hover === i
-          const barColor = isHov ? T.blue : 'rgba(79,70,229,.45)'
+          const barColor = isHov ? T.blue : 'rgba(61,43,255,.45)'
           return (
             <g key={i} onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)} style={{ cursor: 'pointer' }}>
               <rect x={padL + slotW * i} y={padT} width={slotW} height={plotH} fill="transparent" />
@@ -295,6 +293,24 @@ function BarChart({ data = [] }) {
         })}
       </svg>
     </Card>
+  )
+}
+
+// Tinte translúcido desde cualquier hex del tema.
+function colorToRgba(hex, alpha) {
+  const h = (hex || '#000').replace('#', '')
+  const f = h.length === 3 ? h.split('').map(c => c + c).join('') : h
+  const n = parseInt(f, 16)
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${alpha})`
+}
+
+// Encabezado de zona (agrupa el contenido en 2-3 chunks — Miller).
+function SectionTitle({ children }) {
+  const T = useT()
+  return (
+    <div className="display" style={{ fontSize: 13, fontWeight: 600, color: T.text3, letterSpacing: 0.2, marginBottom: 12 }}>
+      {children}
+    </div>
   )
 }
 
@@ -344,10 +360,10 @@ export default function Dashboard() {
   const greeting = hour < 13 ? 'Buenos días' : hour < 20 ? 'Buenas tardes' : 'Buenas noches'
 
   const statusRows = [
-    { label: 'Alertas activas', value: resumen?.alertas_activas || 0, bad: (resumen?.alertas_activas || 0) > 0 },
-    { label: 'Clientes en riesgo', value: clientes?.overview?.at_risk_contacts || 0, bad: (clientes?.overview?.at_risk_contacts || 0) > 0 },
-    { label: 'Proyectos en riesgo', value: proyectos?.at_risk || 0, bad: (proyectos?.at_risk || 0) > 0 },
-    { label: 'Stock bajo', value: ventas?.low_stock_alerts?.length || 0, bad: (ventas?.low_stock_alerts?.length || 0) > 0 },
+    { label: 'Alertas activas', value: resumen?.alertas_activas || 0, bad: (resumen?.alertas_activas || 0) > 0, href: '/contabilidad' },
+    { label: 'Clientes en riesgo', value: clientes?.overview?.at_risk_contacts || 0, bad: (clientes?.overview?.at_risk_contacts || 0) > 0, href: '/clientes' },
+    { label: 'Proyectos en riesgo', value: proyectos?.at_risk || 0, bad: (proyectos?.at_risk || 0) > 0, href: '/proyectos' },
+    { label: 'Stock bajo', value: ventas?.low_stock_alerts?.length || 0, bad: (ventas?.low_stock_alerts?.length || 0) > 0, href: '/ventas' },
   ]
   const isOk = statusRows.every(r => !r.bad)
 
@@ -374,6 +390,9 @@ export default function Dashboard() {
           .dash-row-main{grid-template-columns:1fr!important}
           .dash-row-2{grid-template-columns:1fr!important}
         }
+        @media (prefers-reduced-motion: reduce){
+          *{animation:none!important;transition:none!important}
+        }
       `}</style>
 
       <Sidebar active="/dashboard" />
@@ -381,52 +400,24 @@ export default function Dashboard() {
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
-        {/* HEADER */}
-        <header style={{
-          minHeight: 64, background: theme === 'dark' ? 'rgba(11,11,12,.85)' : 'rgba(251,251,253,.85)',
-          backdropFilter: 'saturate(180%) blur(20px)',
-          WebkitBackdropFilter: 'saturate(180%) blur(20px)',
-          borderBottom: `.5px solid ${T.hairline}`,
-          display: 'flex', alignItems: 'center', padding: '8px 28px',
-          flexShrink: 0, position: 'sticky', top: 0, zIndex: 10, gap: 20,
-          flexWrap: 'wrap', rowGap: 8,
-        }}>
-          <div>
-            <div className="display" style={{
-              fontSize: 20, color: T.text,
-              letterSpacing: -0.4, lineHeight: 1.05,
-            }}>{greeting}{user?.name ? `, ${user.name.split(' ')[0]}` : ''}</div>
-            <div style={{
-              fontSize: 11, color: T.text4, marginTop: 3,
-              display: 'flex', alignItems: 'center', gap: 6,
-            }}>
-              <FlagES size={12} />
-              <span>{now.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <PillGroup items={periodos} active={periodo}
-              onChange={v => { setPeriodo(v); localStorage.setItem('vela_dashboard_periodo', v) }} />
-          </div>
-
-          <HeaderActions onVera={() => openVeraDrawer({ modulo: 'dashboard' })} user={user} router={router}>
-            <button onClick={refetchAll} style={{
-              padding: '6px 14px', borderRadius: 999,
-              border: `.5px solid ${T.hairline}`, background: T.card,
-              color: T.text2, fontSize: 12, fontWeight: 500,
-              cursor: 'pointer', fontFamily: 'inherit',
-            }}>Actualizar</button>
-          </HeaderActions>
-        </header>
+        <PageHeader
+          title={`${greeting}${user?.name ? `, ${user.name.split(' ')[0]}` : ''}`}
+          subtitle={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><FlagES size={12} />{now.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}</span>}
+          primary={{ label: 'Registrar venta', onClick: () => router.push('/ventas'), icon: <span aria-hidden="true" style={{ fontSize: 16, lineHeight: 0, marginRight: 1 }}>+</span> }}
+          secondary={<BtnSec onClick={refetchAll}>Actualizar</BtnSec>}
+          onVera={() => openVeraDrawer({ modulo: 'dashboard' })}
+          user={user} router={router}
+          filters={<SegmentedFilter label="Periodo" items={periodos} active={periodo} onChange={v => { setPeriodo(v); localStorage.setItem('vela_dashboard_periodo', v) }} />}
+        />
 
         {/* CONTENIDO */}
         <div className="fade-in" style={{ flex: 1, overflowY: 'auto', padding: '24px 28px' }}>
 
-          {/* ──── KPIs GRANDES con iconos + estado ──── */}
+          {/* ──── ZONA 1 · Salud financiera ──── */}
+          <SectionTitle>Salud financiera</SectionTitle>
           <div style={{
             display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-            gap: 12, marginBottom: 14,
+            gap: 12, marginBottom: 28,
           }}>
             {(() => {
               const margen = d.margen || 0
@@ -512,15 +503,10 @@ export default function Dashboard() {
                 && (ventas?.today?.total_sales || 0) === 0
                 && spark.reduce((a, b) => a + (b || 0), 0) === 0
               return (
-                <KpiAskButton
-                  key={i}
-                  kpi={{ label: k.label, value: k.value, hint: k.sub }}
-                  modulo="dashboard"
-                >
-                  <div className="hover-lift" style={{
+                <div key={i} className="hover-lift" style={{
                     background: T.card,
                     borderRadius: 18,
-                    border: `.5px solid ${T.hairline}`,
+                    border: k.label === 'Resultado neto' ? `1px solid ${T.blue}` : `.5px solid ${T.hairline}`,
                     boxShadow: 'var(--shadow-card)',
                     padding: 20,
                   }}>
@@ -587,7 +573,6 @@ export default function Dashboard() {
                     </>
                   )}
                 </div>
-              </KpiAskButton>
               )
             })}
           </div>
@@ -601,10 +586,11 @@ export default function Dashboard() {
             <VeraHybrid token={token} onOpenChat={() => openVeraDrawer({ modulo: 'dashboard' })} />
           </div>
 
-          {/* ──── ESTADO + MÁS VENDIDOS ──── */}
+          {/* ──── ZONA 2 · Operación y riesgo ──── */}
+          <SectionTitle>Operación y riesgo</SectionTitle>
           <div className="dash-row-2" style={{
             display: 'grid', gridTemplateColumns: '1fr 1fr',
-            gap: 14, marginBottom: 14,
+            gap: 14, marginBottom: 28,
           }}>
             <Card>
               <div style={{
@@ -668,23 +654,29 @@ export default function Dashboard() {
                   ),
                 }
                 return (
-                  <div key={r.label} style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '11px 0',
-                    borderBottom: i < statusRows.length - 1 ? `.5px solid ${T.soft}` : 'none',
-                  }}>
+                  <div key={r.label} role="link" tabIndex={0}
+                    onClick={() => r.href && router.push(r.href)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' && r.href) router.push(r.href) }}
+                    style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+                      padding: '12px 8px', margin: '0 -8px', borderRadius: 10, minHeight: 44,
+                      cursor: r.href ? 'pointer' : 'default',
+                      borderBottom: i < statusRows.length - 1 ? `.5px solid ${T.soft}` : 'none',
+                      transition: 'background .12s',
+                    }}
+                    onMouseEnter={e => { if (r.href) e.currentTarget.style.background = T.soft }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+                  >
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <span style={{
-                        color: r.bad ? T.red : T.text4,
-                        display: 'flex',
-                      }}>{icons[r.label]}</span>
+                      <span style={{ color: r.bad ? T.red : T.text4, display: 'flex' }}>{icons[r.label]}</span>
                       <span style={{ fontSize: 13, color: T.text2 }}>{r.label}</span>
                     </div>
-                    <span style={{
-                      fontSize: 14, fontWeight: 600,
-                      color: r.bad ? T.red : T.text,
-                      fontVariantNumeric: 'tabular-nums',
-                    }}>{r.value}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: 14, fontWeight: 600, color: r.bad ? T.red : T.text, fontVariantNumeric: 'tabular-nums' }}>{r.value}</span>
+                      {r.href && (
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={T.text4} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
+                      )}
+                    </div>
                   </div>
                 )
               })}
@@ -698,7 +690,7 @@ export default function Dashboard() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <div style={{
                     width: 28, height: 28, borderRadius: 8,
-                    background: 'rgba(79,70,229,.1)', color: T.cyan,
+                    background: 'rgba(61,43,255,.1)', color: T.cyan,
                     display: 'grid', placeItems: 'center',
                   }}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -790,7 +782,7 @@ export default function Dashboard() {
                   },
                   'Recursos Humanos': {
                     color: T.blue,
-                    bg: 'rgba(79,70,229,.1)',
+                    bg: 'rgba(61,43,255,.1)',
                     icon: (
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
@@ -802,7 +794,7 @@ export default function Dashboard() {
                   },
                   'Clientes': {
                     color: T.cyan,
-                    bg: 'rgba(79,70,229,.1)',
+                    bg: 'rgba(61,43,255,.1)',
                     icon: (
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />

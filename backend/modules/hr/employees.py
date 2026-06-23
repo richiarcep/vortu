@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, Date, Text, ForeignKey, Boolean
+from sqlalchemy import Column, Integer, String, Float, DateTime, Date, Text, ForeignKey, Boolean, UniqueConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from core.database import Base
@@ -7,10 +7,14 @@ from services.ai_service import analyze_document
 
 class Employee(Base):
     __tablename__ = "employees"
+    # Email is unique PER COMPANY, not globally — a global unique would leak
+    # cross-tenant existence (enumeration) and block one company from hiring a
+    # person whose email another tenant already uses.
+    __table_args__ = (UniqueConstraint("company_id", "email", name="uq_employees_company_email"),)
 
     id = Column(Integer, primary_key=True, index=True)
     full_name = Column(String, nullable=False)
-    email = Column(String, unique=True, nullable=False)
+    email = Column(String, nullable=False)
     department = Column(String, nullable=True)
     position = Column(String, nullable=True)
     gross_salary = Column(Float, nullable=False)

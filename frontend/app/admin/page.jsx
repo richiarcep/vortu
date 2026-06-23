@@ -52,9 +52,9 @@ const NAVY  = '#0B0D2B'
 const GREEN = '#059669'
 const AMBER = '#d97706'
 const RED   = '#dc2626'
-const BLUE  = '#4F46E5'
+const BLUE  = '#3D2BFF'
 const CYAN  = '#10b981'
-const PURPLE = '#4F46E5'
+const PURPLE = '#3D2BFF'
 const GOLD = '#B8860B'
 
 // ── Admin Sidebar ──────────────────────────────────────────────────────────────
@@ -71,6 +71,7 @@ function AdminSidebar({ active }) {
     { label: 'Vera Routing',  href: '/admin?tab=vera-routing', icon: '✦' },
     { label: 'Vera Network Agent',    href: '/admin?tab=vera-network',   icon: '★' },
     { label: 'Prospector',    href: '/admin?tab=prospector', icon: '◉' },
+    { label: 'Profit Optimizer', href: '/admin?tab=profit',  icon: '◐' },
     { label: 'Billing',       href: '/admin?tab=billing',    icon: '▤' },
   ]
   return (
@@ -160,7 +161,7 @@ function DataFlowchart() {
     { id: 'hr',      x: 600, y: 160, label: 'RR.HH. & Nóminas',   icon: '👥', color: PURPLE, w: 150 },
     { id: 'acc',     x: 780, y: 160, label: 'Contabilidad',        icon: '📒', color: '#dc2626', w: 150 },
     { id: 'snapshot',x: 380, y: 310, label: 'Business Snapshot',   icon: '📊', color: CYAN,   w: 160 },
-    { id: 'claude',  x: 380, y: 440, label: 'Claude AI',           icon: '🤖', color: '#4F46E5', w: 160 },
+    { id: 'claude',  x: 380, y: 440, label: 'Claude AI',           icon: '🤖', color: '#3D2BFF', w: 160 },
     { id: 'memory',  x: 650, y: 440, label: 'AI Memory',           icon: '💾', color: GREEN,  w: 140 },
     { id: 'output',  x: 100, y: 440, label: 'Outputs',             icon: '✨', color: AMBER,  w: 140 },
   ]
@@ -237,7 +238,7 @@ function MemoryTab({ companies, selectedCompany, setSelectedCompany, token, API 
   const [activeTab, setActiveTab] = useState('auto')
   const [stats, setStats] = useState({ total: 0, auto_count: 0, manual_count: 0, last_auto_update: null, context_version: 0 })
 
-  const NAVY = '#0B0D2B', GREEN = '#059669', AMBER = '#d97706', RED = '#dc2626', BLUE = '#4F46E5', PURPLE = '#4F46E5', CYAN = '#4F46E5'
+  const NAVY = '#0B0D2B', GREEN = '#059669', AMBER = '#d97706', RED = '#dc2626', BLUE = '#3D2BFF', PURPLE = '#3D2BFF', CYAN = '#3D2BFF'
   const h = () => ({ 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' })
 
   const catColor = c => ({ ventas: BLUE, clientes: GREEN, finanzas: AMBER, proyectos: PURPLE, rrhh: CYAN, general: '#6b7280' }[c] || '#6b7280')
@@ -435,7 +436,7 @@ function BillingTab({ token, API }) {
   const [updating, setUpdating] = useState(null)
   const [msg, setMsg] = useState(null)
 
-  const NAVY = '#0B0D2B', GREEN = '#059669', AMBER = '#d97706', RED = '#dc2626', BLUE = '#4F46E5', PURPLE = '#4F46E5'
+  const NAVY = '#0B0D2B', GREEN = '#059669', AMBER = '#d97706', RED = '#dc2626', BLUE = '#3D2BFF', PURPLE = '#3D2BFF'
   const h = () => ({ 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' })
 
   const faseColor = f => ({ beta: PURPLE, early_adopter: AMBER, paid: GREEN }[f] || '#6b7280')
@@ -597,7 +598,7 @@ function ProspectorTab({ token, API }) {
   const [showMap, setShowMap] = useState(false)
   const [mapLoaded, setMapLoaded] = useState(false)
 
-  const NAVY = '#0B0D2B', GREEN = '#059669', AMBER = '#d97706', RED = '#dc2626', BLUE = '#4F46E5', PURPLE = '#4F46E5', CYAN = '#4F46E5'
+  const NAVY = '#0B0D2B', GREEN = '#059669', AMBER = '#d97706', RED = '#dc2626', BLUE = '#3D2BFF', PURPLE = '#3D2BFF', CYAN = '#3D2BFF'
   const h = () => ({ 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' })
 
   useEffect(() => {
@@ -842,7 +843,7 @@ function ProspectorTab({ token, API }) {
                           })))};
                           const map = L.map('map');
                           L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap'}).addTo(map);
-                          const colors = {'pendiente':'#6b7280','aprobado':'#059669','enviado':'#4F46E5','descartado':'#dc2626'};
+                          const colors = {'pendiente':'#6b7280','aprobado':'#059669','enviado':'#3D2BFF','descartado':'#dc2626'};
                           leads.forEach(l => {
                             const color = l.score >= 8 ? '#059669' : l.score >= 6 ? '#d97706' : '#dc2626';
                             const marker = L.circleMarker([l.lat, l.lng], {radius:8, fillColor:color, color:'white', weight:2, fillOpacity:0.9}).addTo(map);
@@ -947,7 +948,7 @@ function AIInsights({ token }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const API = API_BASE
-  const NAVY = '#0B0D2B', GREEN = '#059669', AMBER = '#d97706', RED = '#dc2626', BLUE = '#4F46E5'
+  const NAVY = '#0B0D2B', GREEN = '#059669', AMBER = '#d97706', RED = '#dc2626', BLUE = '#3D2BFF'
 
   async function analyze() {
     setLoading(true)
@@ -1047,6 +1048,255 @@ function AIInsights({ token }) {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+// ── Profit Optimizer Tab ───────────────────────────────────────────────────────
+function ProfitOptimizerTab({ token, API }) {
+  const T = useT()
+  const NAVY = '#0B0D2B', GREEN = '#059669', AMBER = '#d97706', RED = '#dc2626', BLUE = '#3D2BFF'
+  const h = () => ({ 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' })
+  const euro = n => n == null ? '—' : '€' + Math.round(n).toLocaleString('es-ES')
+
+  const [period, setPeriod] = useState(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}` })
+  const [lines, setLines] = useState([])
+  const [selectedLine, setSelectedLine] = useState(null)
+  const [products, setProducts] = useState([])
+  const [inputs, setInputs] = useState({ fixed_costs: 5000, total_budget: 45000, vacation_factor: 1.0, vacation_month: false })
+  const [runs, setRuns] = useState([])
+  const [result, setResult] = useState(null)
+  const [running, setRunning] = useState(false)
+  const [msg, setMsg] = useState(null)
+  const [showLineForm, setShowLineForm] = useState(false)
+  const [showProdForm, setShowProdForm] = useState(false)
+  const [newLine, setNewLine] = useState({ name: '', description: '', seasonality: 1.0 })
+  const [newProd, setNewProd] = useState({ name: '', selling_price: '', supply_limit: 0, labour: '', material: '', logistics: '' })
+
+  useEffect(() => { loadLines(); loadInputs(); loadRuns() }, [])
+  useEffect(() => { if (selectedLine) loadProducts(selectedLine) }, [selectedLine])
+  useEffect(() => { loadInputs() }, [period])
+
+  async function loadLines() {
+    try { const r = await fetch(`${API}/profit-optimizer/lines`, { headers: h() }); if (r.ok) { const d = await r.json(); setLines(d || []); if (d?.length && !selectedLine) setSelectedLine(d[0].id) } } catch (e) {}
+  }
+  async function loadProducts(id) {
+    try { const r = await fetch(`${API}/profit-optimizer/lines/${id}/products`, { headers: h() }); if (r.ok) setProducts(await r.json() || []) } catch (e) {}
+  }
+  async function loadInputs() {
+    try { const r = await fetch(`${API}/profit-optimizer/inputs/${period}`, { headers: h() }); if (r.ok) { const d = await r.json(); setInputs({ fixed_costs: d.fixed_costs, total_budget: d.total_budget, vacation_factor: d.vacation_factor, vacation_month: d.vacation_month }) } } catch (e) {}
+  }
+  async function loadRuns() {
+    try { const r = await fetch(`${API}/profit-optimizer/runs`, { headers: h() }); if (r.ok) setRuns(await r.json() || []) } catch (e) {}
+  }
+  async function createLine() {
+    if (!newLine.name.trim()) return
+    try { const r = await fetch(`${API}/profit-optimizer/lines`, { method: 'POST', headers: h(), body: JSON.stringify(newLine) }); if (r.ok) { setNewLine({ name: '', description: '', seasonality: 1.0 }); setShowLineForm(false); loadLines() } } catch (e) {}
+  }
+  async function createProduct() {
+    if (!selectedLine || !newProd.name.trim() || !newProd.selling_price) return
+    const lab = Number(newProd.labour) || 0, mat = Number(newProd.material) || 0, log = Number(newProd.logistics) || 0
+    const body = {
+      line_id: selectedLine, name: newProd.name, selling_price: Number(newProd.selling_price), supply_limit: Number(newProd.supply_limit) || 0,
+      labour_cost_m1: lab, labour_cost_m2: lab, labour_cost_m3: lab,
+      material_cost_m1: mat, material_cost_m2: mat, material_cost_m3: mat,
+      logistics_cost_m1: log, logistics_cost_m2: log, logistics_cost_m3: log,
+    }
+    try { const r = await fetch(`${API}/profit-optimizer/lines/${selectedLine}/products`, { method: 'POST', headers: h(), body: JSON.stringify(body) }); if (r.ok) { setNewProd({ name: '', selling_price: '', supply_limit: 0, labour: '', material: '', logistics: '' }); setShowProdForm(false); loadProducts(selectedLine) } } catch (e) {}
+  }
+  async function saveInputs() {
+    try { await fetch(`${API}/profit-optimizer/inputs`, { method: 'PUT', headers: h(), body: JSON.stringify({ period_label: period, ...inputs }) }); setMsg({ type: 'ok', text: '✅ Parámetros guardados' }) } catch (e) {}
+  }
+  async function runOpt() {
+    setRunning(true); setMsg(null); setResult(null)
+    try {
+      await saveInputs()
+      const r = await fetch(`${API}/profit-optimizer/run`, { method: 'POST', headers: h(), body: JSON.stringify({ period_label: period, n_months: 8 }) })
+      const d = await r.json()
+      if (r.ok) { setResult(d); setMsg({ type: 'ok', text: '✅ Optimización completada' }); loadRuns() }
+      else { setMsg({ type: 'err', text: '❌ ' + (d.detail || 'Error en la optimización') }) }
+    } catch (e) { setMsg({ type: 'err', text: '❌ Error de conexión' }) } finally { setRunning(false) }
+  }
+
+  const lbl = { fontSize: '11px', fontWeight: '700', color: T.text2, display: 'block', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.04em' }
+  const inp = { width: '100%', padding: '9px 11px', borderRadius: '8px', border: `0.5px solid ${T.hairline}`, fontSize: '12.5px', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', background: T.card, color: T.text }
+  const card = { background: T.card, borderRadius: '16px', border: `0.5px solid ${T.hairline}`, padding: '18px' }
+  const totalProducts = lines.reduce((s, l) => s + (l.n_products || 0), 0)
+  const lastRun = runs[0]
+  // Extrae recomendaciones del result_json de forma defensiva (formato del solver no garantizado)
+  const recList = result && (Array.isArray(result.line_estimates) ? result.line_estimates : Array.isArray(result.products) ? result.products : Array.isArray(result.recommendations) ? result.recommendations : Array.isArray(result.lines) ? result.lines : null)
+
+  return (
+    <div style={{ animation: 'fadeUp 0.3s ease' }}>
+      {/* Intro */}
+      <div style={{ marginBottom: '16px' }}>
+        <div style={{ fontSize: '13px', color: T.text3, maxWidth: 720 }}>
+          Optimización de márgenes por línea comercial y producto (solver de programación lineal). Define tus líneas y productos con sus costes, ajusta los parámetros del periodo y ejecuta la optimización para obtener el mix de precio/cantidad que maximiza el beneficio.
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px,1fr))', gap: '10px', marginBottom: '20px' }}>
+        {[
+          { label: 'Líneas comerciales', value: lines.length, color: NAVY },
+          { label: 'Productos', value: totalProducts, color: BLUE },
+          { label: 'Optimizaciones', value: runs.length, color: AMBER },
+          { label: 'Último beneficio óptimo', value: lastRun ? euro(lastRun.optimised_profit) : '—', color: GREEN },
+        ].map(k => (
+          <div key={k.label} style={{ background: T.card, borderRadius: '14px', padding: '14px 16px', border: `0.5px solid ${T.hairline}` }}>
+            <div style={{ fontSize: '10px', color: T.text4, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>{k.label}</div>
+            <div style={{ fontSize: '22px', fontWeight: '800', color: k.color === NAVY ? T.text : k.color }}>{k.value}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="adm-row" style={{ display: 'grid', gridTemplateColumns: '340px 1fr', gap: '16px' }}>
+
+        {/* Left — Líneas + productos */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <div style={card}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+              <div style={{ fontSize: '13px', fontWeight: '800', color: T.text }}>Líneas comerciales</div>
+              <button onClick={() => setShowLineForm(v => !v)} style={{ border: 'none', background: T.soft, color: T.text2, borderRadius: '7px', padding: '4px 10px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit' }}>{showLineForm ? '×' : '+ Nueva'}</button>
+            </div>
+            {showLineForm && (
+              <div style={{ marginBottom: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <input value={newLine.name} onChange={e => setNewLine({ ...newLine, name: e.target.value })} placeholder="Nombre de la línea" style={inp} />
+                <input value={newLine.description} onChange={e => setNewLine({ ...newLine, description: e.target.value })} placeholder="Descripción (opcional)" style={inp} />
+                <div>
+                  <label style={lbl}>Estacionalidad ({newLine.seasonality}×)</label>
+                  <input type="range" min="0.1" max="5" step="0.1" value={newLine.seasonality} onChange={e => setNewLine({ ...newLine, seasonality: Number(e.target.value) })} style={{ width: '100%' }} />
+                </div>
+                <button onClick={createLine} style={{ border: 'none', background: NAVY, color: '#fff', borderRadius: '8px', padding: '9px', fontSize: '12.5px', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit' }}>Crear línea</button>
+              </div>
+            )}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '260px', overflowY: 'auto' }}>
+              {lines.length === 0 && <div style={{ fontSize: '12px', color: T.text4, textAlign: 'center', padding: '16px' }}>Sin líneas todavía</div>}
+              {lines.map(l => (
+                <div key={l.id} onClick={() => setSelectedLine(l.id)} style={{ padding: '10px 12px', borderRadius: '8px', border: `1.5px solid ${selectedLine === l.id ? NAVY : T.hairline}`, background: selectedLine === l.id ? T.soft : T.card, cursor: 'pointer' }}>
+                  <div style={{ fontSize: '12.5px', fontWeight: '700', color: T.text }}>{l.name}</div>
+                  <div style={{ fontSize: '11px', color: T.text3 }}>{l.n_products} productos · estacionalidad {l.seasonality}×</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Productos de la línea seleccionada */}
+          {selectedLine && (
+            <div style={card}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                <div style={{ fontSize: '13px', fontWeight: '800', color: T.text }}>Productos</div>
+                <button onClick={() => setShowProdForm(v => !v)} style={{ border: 'none', background: T.soft, color: T.text2, borderRadius: '7px', padding: '4px 10px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit' }}>{showProdForm ? '×' : '+ Nuevo'}</button>
+              </div>
+              {showProdForm && (
+                <div style={{ marginBottom: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <input value={newProd.name} onChange={e => setNewProd({ ...newProd, name: e.target.value })} placeholder="Nombre del producto" style={inp} />
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                    <div><label style={lbl}>Precio venta €</label><input type="number" value={newProd.selling_price} onChange={e => setNewProd({ ...newProd, selling_price: e.target.value })} style={inp} /></div>
+                    <div><label style={lbl}>Límite producción</label><input type="number" value={newProd.supply_limit} onChange={e => setNewProd({ ...newProd, supply_limit: e.target.value })} style={inp} /></div>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
+                    <div><label style={lbl}>Mano obra €</label><input type="number" value={newProd.labour} onChange={e => setNewProd({ ...newProd, labour: e.target.value })} style={inp} /></div>
+                    <div><label style={lbl}>Material €</label><input type="number" value={newProd.material} onChange={e => setNewProd({ ...newProd, material: e.target.value })} style={inp} /></div>
+                    <div><label style={lbl}>Logística €</label><input type="number" value={newProd.logistics} onChange={e => setNewProd({ ...newProd, logistics: e.target.value })} style={inp} /></div>
+                  </div>
+                  <button onClick={createProduct} style={{ border: 'none', background: NAVY, color: '#fff', borderRadius: '8px', padding: '9px', fontSize: '12.5px', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit' }}>Añadir producto</button>
+                </div>
+              )}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '320px', overflowY: 'auto' }}>
+                {products.length === 0 && <div style={{ fontSize: '12px', color: T.text4, textAlign: 'center', padding: '16px' }}>Sin productos en esta línea</div>}
+                {products.map(p => {
+                  const margin = (p.implied_margin || 0) * 100
+                  return (
+                    <div key={p.id} style={{ padding: '10px 12px', borderRadius: '8px', border: `0.5px solid ${T.hairline}`, background: T.card }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '12.5px', fontWeight: '700', color: T.text }}>{p.name}</span>
+                        <span style={{ fontSize: '11px', fontWeight: '700', color: margin >= 30 ? GREEN : margin >= 10 ? AMBER : RED }}>{margin.toFixed(0)}% margen</span>
+                      </div>
+                      <div style={{ fontSize: '11px', color: T.text3, marginTop: '2px' }}>PV {euro(p.selling_price)} · coste {euro(p.unit_cost)} · límite {p.supply_limit || '∞'}</div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Right — Parámetros + ejecutar + resultado */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <div style={card}>
+            <div style={{ fontSize: '13px', fontWeight: '800', color: T.text, marginBottom: '14px' }}>Parámetros del periodo</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div><label style={lbl}>Periodo</label><input value={period} onChange={e => setPeriod(e.target.value)} placeholder="2026-06" style={inp} /></div>
+              <div><label style={lbl}>Costes fijos €</label><input type="number" value={inputs.fixed_costs} onChange={e => setInputs({ ...inputs, fixed_costs: Number(e.target.value) })} style={inp} /></div>
+              <div><label style={lbl}>Presupuesto total €</label><input type="number" value={inputs.total_budget} onChange={e => setInputs({ ...inputs, total_budget: Number(e.target.value) })} style={inp} /></div>
+              <div><label style={lbl}>Factor vacaciones ({inputs.vacation_factor}×)</label><input type="range" min="0.5" max="1" step="0.05" value={inputs.vacation_factor} onChange={e => setInputs({ ...inputs, vacation_factor: Number(e.target.value) })} style={{ width: '100%', marginTop: '8px' }} /></div>
+            </div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '12px', fontSize: '12.5px', color: T.text2, cursor: 'pointer' }}>
+              <input type="checkbox" checked={inputs.vacation_month} onChange={e => setInputs({ ...inputs, vacation_month: e.target.checked })} /> Mes de vacaciones
+            </label>
+            <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
+              <button onClick={saveInputs} style={{ flex: '0 0 auto', border: `0.5px solid ${T.hairline}`, background: T.card, color: T.text2, borderRadius: '9px', padding: '11px 16px', fontSize: '13px', fontWeight: '700', cursor: 'pointer', fontFamily: 'inherit' }}>Guardar</button>
+              <button onClick={runOpt} disabled={running || totalProducts === 0} style={{ flex: 1, border: 'none', background: running || totalProducts === 0 ? T.soft : NAVY, color: running || totalProducts === 0 ? T.text4 : '#fff', borderRadius: '9px', padding: '11px', fontSize: '13px', fontWeight: '700', cursor: running || totalProducts === 0 ? 'default' : 'pointer', fontFamily: 'inherit' }}>{running ? 'Optimizando…' : '⚡ Ejecutar optimización'}</button>
+            </div>
+            {totalProducts === 0 && <div style={{ fontSize: '11.5px', color: T.text4, marginTop: '8px' }}>Añade al menos un producto para poder optimizar.</div>}
+            {msg && <div style={{ marginTop: '10px', fontSize: '12px', fontWeight: '600', color: msg.type === 'ok' ? GREEN : RED, background: msg.type === 'ok' ? T.greenSoft : T.redSoft, padding: '8px 12px', borderRadius: '8px' }}>{msg.text}</div>}
+          </div>
+
+          {/* Resultado de la optimización */}
+          {result && (
+            <div style={card}>
+              <div style={{ fontSize: '13px', fontWeight: '800', color: T.text, marginBottom: '14px' }}>Resultado</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px,1fr))', gap: '10px', marginBottom: recList ? '14px' : 0 }}>
+                {result.optimised_profit != null && <div style={{ background: T.greenSoft, borderRadius: '12px', padding: '12px 14px' }}><div style={{ fontSize: '10px', color: T.text4, textTransform: 'uppercase' }}>Beneficio óptimo</div><div style={{ fontSize: '20px', fontWeight: '800', color: GREEN }}>{euro(result.optimised_profit)}</div></div>}
+                {result.profit_gain != null && <div style={{ background: T.soft, borderRadius: '12px', padding: '12px 14px' }}><div style={{ fontSize: '10px', color: T.text4, textTransform: 'uppercase' }}>Ganancia extra</div><div style={{ fontSize: '20px', fontWeight: '800', color: T.text }}>{euro(result.profit_gain)}</div></div>}
+                {result.status && <div style={{ background: T.soft, borderRadius: '12px', padding: '12px 14px' }}><div style={{ fontSize: '10px', color: T.text4, textTransform: 'uppercase' }}>Estado</div><div style={{ fontSize: '14px', fontWeight: '700', color: T.text }}>{result.status}</div></div>}
+              </div>
+              {result.escalation_reason && <div style={{ fontSize: '12px', color: AMBER, marginBottom: '10px' }}>⚠ {result.escalation_reason}</div>}
+              {recList && (
+                <div style={{ border: `0.5px solid ${T.hairline}`, borderRadius: '10px', overflow: 'hidden' }}>
+                  {recList.slice(0, 30).map((r, i) => (
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', borderTop: i ? `0.5px solid ${T.hairline}` : 'none', fontSize: '12px' }}>
+                      <span style={{ color: T.text, fontWeight: '600' }}>{r.name || r.product || r.producto || `#${i + 1}`}</span>
+                      <span style={{ color: T.text3 }}>{[
+                        r.quantity != null ? `${Math.round(r.quantity)} uds` : null,
+                        r.price != null ? euro(r.price) : null,
+                        r.profit != null ? euro(r.profit) : null,
+                        r.baseline_B != null ? `base ${euro(r.baseline_B)}` : null,
+                        r.eta != null ? `η ${(r.eta * 100).toFixed(0)}%` : null,
+                      ].filter(Boolean).join(' · ')}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <details style={{ marginTop: '12px' }}>
+                <summary style={{ fontSize: '11.5px', color: T.text4, cursor: 'pointer' }}>Ver datos completos (JSON)</summary>
+                <pre style={{ fontSize: '11px', color: T.text3, background: T.soft, padding: '12px', borderRadius: '8px', overflowX: 'auto', marginTop: '8px' }}>{JSON.stringify(result, null, 2)}</pre>
+              </details>
+            </div>
+          )}
+
+          {/* Historial de optimizaciones */}
+          <div style={card}>
+            <div style={{ fontSize: '13px', fontWeight: '800', color: T.text, marginBottom: '12px' }}>Historial de optimizaciones</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '260px', overflowY: 'auto' }}>
+              {runs.length === 0 && <div style={{ fontSize: '12px', color: T.text4, textAlign: 'center', padding: '16px' }}>Sin optimizaciones todavía</div>}
+              {runs.map(r => (
+                <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '9px 12px', borderRadius: '8px', border: `0.5px solid ${T.hairline}` }}>
+                  <div>
+                    <div style={{ fontSize: '12.5px', fontWeight: '700', color: T.text }}>{r.period}</div>
+                    <div style={{ fontSize: '10.5px', color: T.text4 }}>{new Date(r.run_at).toLocaleString('es-ES')}</div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: '13px', fontWeight: '700', color: GREEN }}>{euro(r.optimised_profit)}</div>
+                    <div style={{ fontSize: '10.5px', color: r.status === 'optimal' || r.status === 'done' ? GREEN : AMBER }}>{r.status}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
@@ -1602,6 +1852,9 @@ export default function AdminPage() {
           )}
 
           {/* ── PROSPECTOR ── */}
+          {tab === 'profit' && (
+            <ProfitOptimizerTab token={token} API={API} />
+          )}
           {tab === 'prospector' && (
             <ProspectorTab token={token} API={API} />
           )}

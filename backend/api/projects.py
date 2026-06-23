@@ -362,12 +362,14 @@ def log_time(
     if not task:
         raise HTTPException(status_code=404, detail="Tarea no encontrada")
 
-    # Calculate cost from employee hourly rate
+    # Calculate cost from employee hourly rate (scope to the caller's company so
+    # another tenant's salary can never be read).
     cost = 0.0
     if data.employee_id:
         from modules.hr.employees import Employee
         employee = db.query(Employee).filter(
-            Employee.id == data.employee_id
+            Employee.id == data.employee_id,
+            Employee.company_id == current_user.company_id,
         ).first()
         if employee and employee.gross_salary:
             hourly_rate = employee.gross_salary / 1760

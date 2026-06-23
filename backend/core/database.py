@@ -1,11 +1,15 @@
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker, declarative_base
 from core.config import get_settings
 
 settings = get_settings()
 
-# connect_args only needed for SQLite
-connect_args = {"check_same_thread": False} if "sqlite" in settings.DATABASE_URL else {}
+_is_sqlite = "sqlite" in settings.DATABASE_URL
+
+# connect_args only needed for SQLite. `timeout` da margen para esperar a que se
+# libere el lock de escritura (SQLite serializa escrituras) en vez de fallar al
+# instante bajo concurrencia.
+connect_args = {"check_same_thread": False, "timeout": 30} if _is_sqlite else {}
 
 # pool_pre_ping validates a pooled connection before use, avoiding "stale
 # connection" errors after the DB drops idle connections.
@@ -14,6 +18,19 @@ engine = create_engine(
     connect_args=connect_args,
     pool_pre_ping=True,
 )
+
+
+if _is_sqlite:
+    @event.listens_for(engine, "connect")
+    def _sqlite_pragmas(dbapi_conn, _record):
+        """Mejora concurrencia y consistencia en SQLite: WAL permite lectores
+        concurrentes con un escritor; busy_timeout reduce los 'database is locked';
+        foreign_keys activa la integridad referencial (off por defecto en SQLite)."""
+        cur = dbapi_conn.cursor()
+        cur.execute("PRAGMA journal_mode=WAL")
+        cur.execute("PRAGMA busy_timeout=5000")
+        cur.execute("PRAGMA foreign_keys=ON")
+        cur.close()
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
@@ -43,56 +60,147 @@ def create_tables():
 # que asegurarlas explícitamente al arranque. Esquema canónico compartido por
 # todos los escritores/lectores (vera/network_engine, api/vera_network,
 # api/admin, api/vera_pipeline_admin, modules/billing/stripe_service).
-_NETWORK_TABLES = (
-    """
-    CREATE TABLE IF NOT EXISTS vera_network_conversations (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        title TEXT,
-        context_company_id INTEGER,
-        messages_json TEXT,
-        model_used TEXT,
-        total_tokens INTEGER DEFAULT 0,
-        total_cost_usd REAL DEFAULT 0,
-        created_at TIMESTAMP DEFAULT (datetime('now')),
-        updated_at TIMESTAMP DEFAULT (datetime('now'))
+def _network_tables_ddl():
+    """CREATE TABLE statements for the Vera Network tables, portable across
+    SQLite and Postgres (the only difference is the autoincrement PK and the
+    timestamp default)."""
+    if engine.dialect.name == "postgresql":
+        pk, ts = "id SERIAL PRIMARY KEY", "TIMESTAMP DEFAULT now()"
+    else:  # sqlite
+        pk, ts = "id INTEGER PRIMARY KEY AUTOINCREMENT", "TIMESTAMP DEFAULT (datetime('now'))"
+    return (
+        f"""
+        CREATE TABLE IF NOT EXISTS vera_network_conversations (
+            {pk},
+            user_id INTEGER NOT NULL,
+            title TEXT,
+            context_company_id INTEGER,
+            messages_json TEXT,
+            model_used TEXT,
+            total_tokens INTEGER DEFAULT 0,
+            total_cost_usd REAL DEFAULT 0,
+            created_at {ts},
+            updated_at {ts}
+        )
+        """,
+        f"""
+        CREATE TABLE IF NOT EXISTS vera_network_audit (
+            {pk},
+            user_id INTEGER,
+            user_email TEXT,
+            endpoint TEXT,
+            action TEXT,
+            question TEXT,
+            response_preview TEXT,
+            sql_executed TEXT,
+            model_used TEXT,
+            tokens_input INTEGER,
+            tokens_output INTEGER,
+            cost_usd REAL,
+            latency_ms INTEGER,
+            created_at {ts}
+        )
+        """,
     )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS vera_network_audit (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER,
-        user_email TEXT,
-        endpoint TEXT,
-        action TEXT,
-        question TEXT,
-        response_preview TEXT,
-        sql_executed TEXT,
-        model_used TEXT,
-        tokens_input INTEGER,
-        tokens_output INTEGER,
-        cost_usd REAL,
-        latency_ms INTEGER,
-        created_at TIMESTAMP DEFAULT (datetime('now'))
-    )
-    """,
-)
 
 
 def ensure_runtime_schema():
     """Asegura el esquema que `create_all()` (solo modelos ORM) no cubre:
     - tablas raw-SQL del Vera Network Agent,
     - columnas usadas solo en SQL crudo que nunca estuvieron en un modelo.
-    Idempotente: seguro de re-ejecutar en cada arranque."""
-    from sqlalchemy import text
+    Idempotente y portable (SQLite + Postgres). Usa el inspector de SQLAlchemy
+    en vez de `PRAGMA table_info` (que solo existe en SQLite)."""
+    from sqlalchemy import text, inspect as sa_inspect
+
+    def existing_columns(conn, table):
+        """Column names of `table`, or None if the table doesn't exist."""
+        insp = sa_inspect(conn)
+        if not insp.has_table(table):
+            return None
+        return {c["name"] for c in insp.get_columns(table)}
+
     with engine.begin() as conn:
-        for stmt in _NETWORK_TABLES:
+        for stmt in _network_tables_ddl():
             conn.execute(text(stmt))
 
+        # Estado temporal del flujo documentos analyze→confirm. Antes vivía en un
+        # dict global en memoria (se rompía con >1 worker: /confirm caía en otro
+        # proceso → "documento caducado"). Persistido aquí (portable SQLite/PG).
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS pending_documents (
+                temp_id TEXT PRIMARY KEY,
+                user_id INTEGER,
+                company_id INTEGER,
+                payload TEXT,
+                expires_at REAL
+            )
+        """))
+
         # companies.plan: leída/escrita solo por SQL crudo (api/admin, billing,
-        # stripe_service); nunca declarada en el modelo Company, así que la tabla
-        # puede no tenerla. Sin ella, /api/admin/companies y /billing/overview dan
-        # 500 "no such column: plan".
-        cols = [r[1] for r in conn.execute(text("PRAGMA table_info(companies)")).fetchall()]
-        if "plan" not in cols:
+        # stripe_service); nunca declarada en el modelo Company. Sin ella,
+        # /api/admin/companies y /billing/overview dan 500 "no such column: plan".
+        company_cols = existing_columns(conn, "companies")
+        if company_cols is not None and "plan" not in company_cols:
             conn.execute(text("ALTER TABLE companies ADD COLUMN plan TEXT DEFAULT 'base'"))
+
+        # Ventas: columnas de devoluciones e idempotencia (create_all() no altera
+        # tablas existentes; en una BD nueva ya las crea el modelo y esto es no-op).
+        sale_cols = existing_columns(conn, "sales")
+        if sale_cols is not None:
+            if "status" not in sale_cols:
+                conn.execute(text("ALTER TABLE sales ADD COLUMN status TEXT DEFAULT 'completed'"))
+            if "refunded_amount" not in sale_cols:
+                conn.execute(text("ALTER TABLE sales ADD COLUMN refunded_amount REAL DEFAULT 0"))
+            if "idempotency_key" not in sale_cols:
+                conn.execute(text("ALTER TABLE sales ADD COLUMN idempotency_key TEXT"))
+        item_cols = existing_columns(conn, "sale_items")
+        if item_cols is not None and "refunded_quantity" not in item_cols:
+            conn.execute(text("ALTER TABLE sale_items ADD COLUMN refunded_quantity INTEGER DEFAULT 0"))
+        # Unicidad real de la clave de idempotencia por empresa (índice parcial:
+        # solo aplica cuando la clave no es NULL). SQLite y Postgres soportan WHERE.
+        conn.execute(text(
+            "CREATE UNIQUE INDEX IF NOT EXISTS uq_sales_company_idem "
+            "ON sales(company_id, idempotency_key) WHERE idempotency_key IS NOT NULL"
+        ))
+        # Idempotencia de devolución acotada a la venta (company_id, sale_id, key).
+        conn.execute(text("DROP INDEX IF EXISTS uq_refunds_company_idem"))
+        conn.execute(text(
+            "CREATE UNIQUE INDEX IF NOT EXISTS uq_refunds_company_sale_idem "
+            "ON sale_refunds(company_id, sale_id, idempotency_key) WHERE idempotency_key IS NOT NULL"
+        ))
+        # Numeración de notas de crédito única por empresa.
+        conn.execute(text(
+            "CREATE UNIQUE INDEX IF NOT EXISTS uq_refunds_company_cn "
+            "ON sale_refunds(company_id, credit_note_number) WHERE credit_note_number IS NOT NULL"
+        ))
+
+        # Contabilidad: índices para libro mayor / balance / IVA.
+        conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS ix_je_company_account_date "
+            "ON journal_entries(company_id, account_id, date)"
+        ))
+        conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS ix_je_company_date "
+            "ON journal_entries(company_id, date)"
+        ))
+
+        # Costes: FK provider_id en cost_entries + unicidad por nombre normalizado.
+        cost_cols = existing_columns(conn, "cost_entries")
+        if cost_cols is not None and "provider_id" not in cost_cols:
+            conn.execute(text("ALTER TABLE cost_entries ADD COLUMN provider_id INTEGER REFERENCES cost_providers(id)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_cost_entries_provider ON cost_entries(company_id, provider_id)"))
+        conn.execute(text(
+            "CREATE UNIQUE INDEX IF NOT EXISTS uq_cost_providers_company_norm "
+            "ON cost_providers(company_id, normalized_name)"
+        ))
+
+        # RR.HH.: email único POR EMPRESA (no global). En una BD nueva ya lo crea
+        # el modelo (UniqueConstraint en __table_args__); aquí se asegura en BDs
+        # existentes. El antiguo unique global sobre employees.email (si existe)
+        # no se elimina aquí (requeriría rebuild en SQLite); en Postgres nuevo no existe.
+        emp_cols = existing_columns(conn, "employees")
+        if emp_cols is not None:
+            conn.execute(text(
+                "CREATE UNIQUE INDEX IF NOT EXISTS uq_employees_company_email "
+                "ON employees(company_id, email)"
+            ))

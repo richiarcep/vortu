@@ -18,10 +18,10 @@ router = APIRouter(prefix="/api/admin/doc-templates", tags=["Doc Templates Admin
 
 
 def _check_admin(user: User):
-    is_super = getattr(user, "is_super_admin", False)
-    is_admin = getattr(user, "is_admin", False)
-    if not (is_super or is_admin):
-        raise HTTPException(403, "Solo admin")
+    # Platform-wide extraction templates: gate on superadmin only.
+    # (The old `is_super_admin` check was a dead branch — real column is `is_superadmin`.)
+    if not getattr(user, "is_superadmin", False):
+        raise HTTPException(403, "Solo administradores de plataforma")
 
 
 # ──────────────────────────────────────────────────────────────

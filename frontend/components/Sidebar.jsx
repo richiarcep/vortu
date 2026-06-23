@@ -74,16 +74,25 @@ export default function Sidebar({ active }) {
     const t = localStorage.getItem('vela_token')
     if (!t) return
     try {
+      // Fast first paint from the token (only carries is_admin reliably; `sub` is
+      // the numeric user id, so don't show it as a name).
       const p = JSON.parse(atob(t.split('.')[1]))
-      const name = p.name || p.sub || 'Usuario'
-      const initials = name.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase()
-      setUser({ name, initials, email: p.sub || '' })
       setIsAdmin(p.is_admin === true || p.is_admin === 'true')
     } catch {
       localStorage.removeItem('vela_token')
       router.push('/login')
       return
     }
+    // Real identity (name + email) comes from /api/auth/me, not the JWT claims.
+    fetch(`${API}/api/auth/me`, { headers: { Authorization: `Bearer ${t}` } })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (!d) return
+        const name = d.full_name || d.email || 'Usuario'
+        const initials = name.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase()
+        setUser({ name, initials, email: d.email || '' })
+      })
+      .catch(() => {})
     fetch(`${API}/api/vera/v2/status`, { headers: { Authorization: `Bearer ${t}` } })
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (d?.empresa) setCompany(d.empresa) })
@@ -104,7 +113,7 @@ export default function Sidebar({ active }) {
   function navItemStyle(isActive) {
     return {
       display:'flex',alignItems:'center',gap:10,
-      padding:'7px 10px',borderRadius:8,
+      minHeight:44, padding:'0 10px',borderRadius:8,
       color: isActive ? T.text : T.text2,
       background: isActive ? T.card : 'transparent',
       fontSize:13.5,fontWeight:isActive?500:400,
@@ -200,7 +209,7 @@ export default function Sidebar({ active }) {
                     <span style={{color: isActive ? T.blue : T.text3, display:'flex',flexShrink:0}}>{n.icon}</span>
                     <span style={{flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{n.label}</span>
                     {n.tag && (
-                      <span style={{fontSize:10,fontWeight:600,padding:'1.5px 6px',borderRadius:4,color:T.blue,background:'rgba(79,70,229,.1)',letterSpacing:0.2,textTransform:'uppercase',flexShrink:0}}>{n.tag}</span>
+                      <span style={{fontSize:10,fontWeight:600,padding:'1.5px 6px',borderRadius:4,color:T.blue,background:'rgba(61,43,255,.1)',letterSpacing:0.2,textTransform:'uppercase',flexShrink:0}}>{n.tag}</span>
                     )}
                   </Link>
                 )

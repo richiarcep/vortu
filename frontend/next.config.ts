@@ -1,8 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Self-contained server bundle (.next/standalone/server.js) for a slim Docker
+  // image — copies only the files needed to run, not the whole node_modules.
+  output: "standalone",
   // Allow dev requests from these origins (LAN IP + alternate hosts) so the
-  // Next dev server doesn't block cross-origin asset/HMR requests.
+  // Next dev server doesn't block cross-origin asset/HMR requests. Ignored in
+  // production builds.
   allowedDevOrigins: ["127.0.0.1", "localhost", "192.168.1.196"],
   // Redirect the index route at the routing layer (not via a Server Component).
   // The old app/page.tsx `Home` did redirect('/login') during render, which trips a

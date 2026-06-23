@@ -1,3 +1,4 @@
+import logging
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
@@ -209,8 +210,9 @@ def get_ratios_financieros(
         pl = generate_pl_statement(db, company_id, year_start, today)
         balance = generate_balance_sheet(db, company_id, today)
         cf = generate_cash_flow_statement(db, company_id, year_start, today)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error obteniendo datos: {str(e)}")
+    except Exception:
+        logging.getLogger("vela.finance").exception("Error obteniendo datos financieros")
+        raise HTTPException(status_code=500, detail="Error obteniendo datos financieros")
 
     # ── Calculate ratios mathematically ───────────────────────────────────────
     total_ingresos = pl.get("ingresos", {}).get("total_ingresos", 0) or 0

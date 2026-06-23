@@ -16,7 +16,11 @@ class Settings(BaseSettings):
     # ── Required secrets (no defaults — app fails to start if unset) ─────────
     DATABASE_URL: str
     SECRET_KEY: str
-    NEO4J_PASSWORD: str
+
+    # Neo4j is OPTIONAL: empty password disables the Vera graph features but lets
+    # the app start. The driver connects lazily, so graph endpoints simply return
+    # empty/unavailable until a credential is provided.
+    NEO4J_PASSWORD: str = ""
 
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
@@ -54,10 +58,12 @@ class Settings(BaseSettings):
     @field_validator("NEO4J_PASSWORD")
     @classmethod
     def _neo4j_password_not_placeholder(cls, v: str) -> str:
-        if v in _INSECURE_SECRETS:
+        # Optional credential: empty is allowed (graph disabled). Only reject the
+        # literal known placeholder so a half-configured env can't silently "work".
+        if v == "change-this-in-production":
             raise ValueError(
-                "NEO4J_PASSWORD is unset or uses a known placeholder. Set the real "
-                "credential in the environment."
+                "NEO4J_PASSWORD uses a known placeholder. Set the real credential "
+                "or leave it empty to disable graph features."
             )
         return v
 

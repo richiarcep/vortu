@@ -40,14 +40,22 @@ def get_product_stats(db: Session, product_id: int, company_id: int) -> dict:
         SaleItem.company_id == company_id,
     ).order_by(Sale.sale_date.desc(), Sale.created_at.desc()).first()
 
-    total_units       = sum(i.quantity for i in all_items)
-    total_revenue     = sum(i.line_total for i in all_items)
+    # Unidades e ingresos NETOS de devoluciones: se descuenta refunded_quantity y el
+    # importe se prorratea a las unidades realmente vendidas (no devueltas).
+    def _net_units(i):
+        return i.quantity - (getattr(i, "refunded_quantity", 0) or 0)
+    def _net_rev(i):
+        net = _net_units(i)
+        return (i.line_total * net / i.quantity) if i.quantity else 0.0
+
+    total_units       = sum(_net_units(i) for i in all_items)
+    total_revenue     = sum(_net_rev(i) for i in all_items)
     total_cost        = (product.cost_price or 0) * total_units
     total_profit      = total_revenue - total_cost
     margin_pct        = round((total_profit / total_revenue * 100), 1) if total_revenue > 0 else 0
 
-    month_units       = sum(i.quantity for i in month_items)
-    month_revenue     = sum(i.line_total for i in month_items)
+    month_units       = sum(_net_units(i) for i in month_items)
+    month_revenue     = sum(_net_rev(i) for i in month_items)
 
     last_sale_date    = None
     if last_sale_item and last_sale_item.sale:
@@ -102,10 +110,17 @@ def get_sales_dashboard(db: Session, company_id: int) -> dict:
         if end_date:
             query = query.filter(Sale.sale_date <= end_date)
         sales = query.all()
+        # Ingresos NETOS de devoluciones: total - refunded_amount. El IVA se prorratea
+        # a la parte no devuelta de cada venta.
+        net_total = sum(s.total - (s.refunded_amount or 0) for s in sales)
+        net_iva = sum(
+            (s.iva_amount * ((s.total - (s.refunded_amount or 0)) / s.total)) if s.total else 0.0
+            for s in sales
+        )
         return {
             "total_sales":   len(sales),
-            "total_revenue": round(sum(s.total for s in sales), 2),
-            "total_iva":     round(sum(s.iva_amount for s in sales), 2),
+            "total_revenue": round(net_total, 2),
+            "total_iva":     round(net_iva, 2),
         }
 
     today_stats = get_period_stats(today, today)
@@ -123,8 +138,9 @@ def get_sales_dashboard(db: Session, company_id: int) -> dict:
         pid = item.product_id
         if pid not in product_sales:
             product_sales[pid] = {"units": 0, "revenue": 0.0}
-        product_sales[pid]["units"]   += item.quantity
-        product_sales[pid]["revenue"] += item.line_total
+        net = item.quantity - (getattr(item, "refunded_quantity", 0) or 0)
+        product_sales[pid]["units"]   += net
+        product_sales[pid]["revenue"] += (item.line_total * net / item.quantity) if item.quantity else 0.0
 
     best_sellers = []
     for pid, stats in sorted(product_sales.items(), key=lambda x: x[1]["units"], reverse=True)[:5]:
@@ -166,7 +182,7 @@ def get_sales_dashboard(db: Session, company_id: int) -> dict:
         daily_revenue.append({
             "date":    str(day),
             "label":  day.strftime("%d %b"),
-            "revenue": round(sum(s.total for s in day_sales), 2),
+            "revenue": round(sum(s.total - (s.refunded_amount or 0) for s in day_sales), 2),
             "sales":   len(day_sales),
         })
 

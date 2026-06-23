@@ -17,6 +17,7 @@ if os.path.exists('/tmp/cacert.pem'):
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from apscheduler.schedulers.background import BackgroundScheduler
 from core.config import get_settings
 from core.database import create_tables, ensure_runtime_schema
@@ -36,7 +37,7 @@ from models.workgroup import WorkGroup, WorkGroupMember, GroupTask, GroupTaskTim
 from modules.projects.scheduler import setup_project_scheduler
 from models.customer import Contact, Message, KnowledgeBase, AutoResponse, EmailConfig, SentimentReport
 from api.customers import router as customers_router
-from models.sales import Product, Sale, SaleItem
+from models.sales import Product, Sale, SaleItem, SaleRefund, SaleRefundItem
 from api.sales import router as sales_router
 from api.marketing import router as marketing_router
 from api.billing import router as billing_router
@@ -69,21 +70,30 @@ settings = get_settings()
 scheduler = BackgroundScheduler()
 
 
+# The background scheduler must run in exactly ONE process. With multiple
+# gunicorn/uvicorn workers, starting it in every worker would duplicate every
+# scheduled job. Gate it on an env var: enable it in a single process (default
+# true for local/dev single-process; set ENABLE_SCHEDULER=false on multi-worker
+# web instances and run one dedicated scheduler process instead).
+_ENABLE_SCHEDULER = os.getenv("ENABLE_SCHEDULER", "true").lower() in ("1", "true", "yes")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
     create_tables()
     ensure_runtime_schema()
-    setup_project_scheduler(scheduler)
-    scheduler.start()
-    print(f"✓ {settings.APP_NAME} v{settings.APP_VERSION} started")
-    print(f"✓ Database ready")
-    print(f"✓ Scheduler running")
-    print(f"✓ Docs at http://127.0.0.1:8000/docs")
+    if _ENABLE_SCHEDULER:
+        setup_project_scheduler(scheduler)
+        scheduler.start()
+    logging.getLogger("vela").info(
+        "%s v%s started · scheduler=%s", settings.APP_NAME, settings.APP_VERSION,
+        "on" if _ENABLE_SCHEDULER else "off",
+    )
     yield
     # Shutdown
-    scheduler.shutdown()
-    print("✓ Server stopped cleanly")
+    if _ENABLE_SCHEDULER and scheduler.running:
+        scheduler.shutdown()
 
 
 app = FastAPI(
@@ -93,6 +103,20 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# ── Global exception handler ───────────────────────────────────────────────────
+# Catches any UNHANDLED exception (HTTPException is handled by FastAPI normally),
+# logs it with a full traceback server-side, and returns a generic message so we
+# never leak internals/stack traces to clients (unless DEBUG is on for local dev).
+_error_log = logging.getLogger("vela.error")
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request, exc):
+    _error_log.exception("Unhandled error on %s %s", request.method, request.url.path)
+    detail = str(exc) if settings.DEBUG else "Internal server error"
+    return JSONResponse(status_code=500, content={"detail": detail})
+
+
 # ── CORS ──────────────────────────────────────────────────────────────────────
 # A wildcard origin combined with allow_credentials is invalid and unsafe — it
 # lets any site make authenticated requests. Whitelist the configured frontend
@@ -101,6 +125,8 @@ _allowed_origins = sorted({
     settings.FRONTEND_URL,
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3001",
     "http://localhost:3010",
     "http://127.0.0.1:3010",
 })
@@ -155,4 +181,23 @@ def root():
         "version": settings.APP_VERSION,
         "status":  "running"
     }
+
+
+@app.get("/health")
+def health():
+    """Liveness + readiness probe for load balancers / orchestrators.
+    Pings the database so the instance is only reported healthy if it can
+    actually serve requests."""
+    from sqlalchemy import text
+    from core.database import engine
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        db_ok = True
+    except Exception:
+        db_ok = False
+    return JSONResponse(
+        status_code=200 if db_ok else 503,
+        content={"status": "ok" if db_ok else "degraded", "database": db_ok},
+    )
 

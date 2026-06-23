@@ -5,7 +5,7 @@ import Sidebar from '@/components/Sidebar'
 import VeraPanel from '@/components/ui/VeraPanel'
 import { useT, useTheme, FONT, I } from '@/components/ui/tokens'
 import VeraDrawer from '@/components/ui/VeraDrawer'
-import { HeaderActions } from '@/components/ui/primitives'
+import { PageHeader } from '@/components/ui/primitives'
 
 import { API_BASE as API } from '@/lib/api'
 
@@ -135,10 +135,10 @@ function PulseCard({ kpis, variacion }) {
     </div>
     {kpis.top_proveedor && <div style={{
       padding: '11px 24px', borderTop: `.5px solid ${T.hairline}`,
-      background: 'linear-gradient(180deg, rgba(79,70,229,.025), rgba(79,70,229,.01))',
+      background: 'linear-gradient(180deg, rgba(61,43,255,.025), rgba(61,43,255,.01))',
       fontSize: 12.5, color: T.text2, display: 'flex', alignItems: 'center', gap: 8,
     }}>
-      <span style={{ width: 16, height: 16, borderRadius: 4, background: 'linear-gradient(135deg,#4F46E5,#A5B1FF)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+      <span style={{ width: 16, height: 16, borderRadius: 4, background: 'linear-gradient(135deg,#3D2BFF,#A5B1FF)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
         <svg width="9" height="9" viewBox="0 0 16 16" fill="none"><path d="M8 1l1.5 5.5L15 8l-5.5 1.5L8 15l-1.5-5.5L1 8l5.5-1.5L8 1z" fill="#fff"/></svg>
       </span>
       <span><strong style={{ color: T.blue, fontWeight: 600 }}>Vera:</strong> {kpis.top_proveedor.name} concentra el {pctTop}% del gasto del mes. {variacion > 20 ? 'El gasto ha subido bastante respecto al mes pasado.' : kpis.count_mes === 1 ? 'Aún hay poca actividad para identificar patrones.' : 'El reparto parece estable.'}</span>
@@ -149,9 +149,9 @@ function PulseCard({ kpis, variacion }) {
 // ─────────── BANNER INICIALIZACIÓN ───────────
 function InicializarBanner({ onInit, loading }) {
   const T = useT()
-  return <Card padding={18} style={{ background: 'linear-gradient(135deg, rgba(79,70,229,.05) 0%, rgba(165,177,255,.04) 100%)', border: `.5px solid rgba(79,70,229,.18)` }}>
+  return <Card padding={18} style={{ background: 'linear-gradient(135deg, rgba(61,43,255,.05) 0%, rgba(165,177,255,.04) 100%)', border: `.5px solid rgba(61,43,255,.18)` }}>
     <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-      <div style={{ width: 40, height: 40, borderRadius: 10, background: 'linear-gradient(135deg,#4F46E5,#A5B1FF)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+      <div style={{ width: 40, height: 40, borderRadius: 10, background: 'linear-gradient(135deg,#3D2BFF,#A5B1FF)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
         <svg width="20" height="20" viewBox="0 0 16 16" fill="none"><path d="M8 1l1.5 5.5L15 8l-5.5 1.5L8 15l-1.5-5.5L1 8l5.5-1.5L8 1z" fill="#fff"/></svg>
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -238,7 +238,7 @@ function PreviewDrawer({ detail, onClose }) {
         {g.factura_ref && <div style={{ fontSize: 11, color: T.text4, marginTop: 8 }}>Factura: <span style={{ color: T.text2, fontWeight: 500 }}>{g.factura_ref}</span></div>}
       </div>
       {g.proveedor_total_ytd > 0 && <div style={{ padding: '16px 16px 0' }}>
-        <div style={{ background: 'linear-gradient(180deg, rgba(79,70,229,.04), rgba(79,70,229,.01))', border: `.5px solid rgba(79,70,229,.15)`, borderRadius: 10, padding: 12, fontSize: 12.5, color: T.text2, lineHeight: 1.5 }}>
+        <div style={{ background: 'linear-gradient(180deg, rgba(61,43,255,.04), rgba(61,43,255,.01))', border: `.5px solid rgba(61,43,255,.15)`, borderRadius: 10, padding: 12, fontSize: 12.5, color: T.text2, lineHeight: 1.5 }}>
           <strong style={{ color: T.blue }}>Vera observa:</strong> Llevas <strong>{eur(g.proveedor_total_ytd)}</strong> pagados a {g.provider} este año ({g.proveedor_count_ytd} {g.proveedor_count_ytd === 1 ? 'factura' : 'facturas'}).
         </div>
       </div>}
@@ -439,7 +439,7 @@ export default function CentroCostes() {
     setExpandedProv(nombre)
     if (!provDetail[nombre]) {
       try {
-        const d = await call(`/api/costes/proveedor-detail?nombre=${encodeURIComponent(nombre)}`, token)
+        const d = await call(`/api/costes/p/detail?nombre=${encodeURIComponent(nombre)}`, token)
         setProvDetail(prev => ({ ...prev, [nombre]: d }))
       } catch (err) { console.error(err) }
     }
@@ -458,37 +458,35 @@ export default function CentroCostes() {
           .cos-row-2{grid-template-columns:1fr!important}
           .cos-row{grid-template-columns:1fr!important}
         }
+        @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
       `}</style>
       <Sidebar />
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ padding: '24px 32px 0' }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-                <h1 style={{ fontSize: 24, fontWeight: 600, letterSpacing: -.5, margin: 0 }}>Centro de Costes</h1>
-                <GreenDot />
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: T.text3 }}>
-                <FlagES /> España
-                <span style={{ color: T.text4 }}>·</span>
-                <span>{kpis?.count_mes || 0} {kpis?.count_mes === 1 ? 'gasto' : 'gastos'}</span>
-                <span style={{ color: T.text4 }}>·</span>
-                <span style={{ color: T.text2, fontWeight: 500 }}>{eur(kpis?.total_mes)} este mes</span>
-                <span style={{ color: T.text4 }}>·</span>
-                <span>IVA 21%</span>
-              </div>
-            </div>
-            <HeaderActions onVera={() => setVeraOpen(true)} router={router}>
-              <Btn onClick={() => setRegistrarOpen(true)}>+ Registrar gasto</Btn>
-            </HeaderActions>
-          </div>
-          <TabsPegados items={[
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+        <PageHeader
+          title="Centro de Costes"
+          subtitle={
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <FlagES size={12} /> España
+              <span style={{ color: 'inherit', opacity: .4 }}>·</span>
+              {kpis?.count_mes || 0} {kpis?.count_mes === 1 ? 'gasto' : 'gastos'}
+              <span style={{ color: 'inherit', opacity: .4 }}>·</span>
+              <span style={{ fontWeight: 500 }}>{eur(kpis?.total_mes)} este mes</span>
+              <span style={{ color: 'inherit', opacity: .4 }}>·</span>
+              IVA 21%
+            </span>
+          }
+          tabs={[
             { key: 'dashboard', label: 'Dashboard' },
             { key: 'gastos', label: 'Gastos', badge: gastos.total },
             { key: 'categorias', label: 'Categorías', badge: aggCats?.items?.length },
             { key: 'proveedores', label: 'Proveedores', badge: aggProvs?.items?.length },
-          ]} active={section} onChange={setSection} />
-        </div>
+          ]}
+          activeTab={section}
+          onTab={setSection}
+          primary={{ label: '+ Registrar gasto', onClick: () => setRegistrarOpen(true) }}
+          onVera={() => setVeraOpen(true)}
+          router={router}
+        />
 
         <div style={{ padding: '22px 32px 60px' }}>
           {sinCategorias && <div style={{ marginBottom: 16 }}><InicializarBanner onInit={handleInicializar} loading={initLoading} /></div>}
@@ -560,7 +558,7 @@ function ProveedorMiniRow({ p }) {
     <div style={{ flex: 1, minWidth: 0 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         <span style={{ fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</span>
-        {p.es_recurrente && <span style={{ fontSize: 9, fontWeight: 700, color: T.blue, background: 'rgba(79,70,229,.08)', padding: '1px 5px', borderRadius: 3 }}>REC</span>}
+        {p.es_recurrente && <span style={{ fontSize: 9, fontWeight: 700, color: T.blue, background: 'rgba(61,43,255,.08)', padding: '1px 5px', borderRadius: 3 }}>REC</span>}
       </div>
       <span style={{ fontSize: 10.5, color: T.text4 }}>{p.count} fac. · {fmtDateShort(p.ultimo_gasto)}</span>
     </div>
@@ -608,7 +606,7 @@ function GastoRow({ g, selected, onSelect }) {
   return <div onClick={onSelect} style={{
     display: 'grid', gridTemplateColumns: '2fr 1.3fr 1fr 110px 80px',
     padding: '11px 18px', borderBottom: `.5px solid ${T.hairline}`,
-    fontSize: 13, cursor: 'pointer', background: selected ? 'rgba(79,70,229,.05)' : 'transparent',
+    fontSize: 13, cursor: 'pointer', background: selected ? 'rgba(61,43,255,.05)' : 'transparent',
     alignItems: 'center', transition: 'background .12s',
   }}
     onMouseEnter={e => { if (!selected) e.currentTarget.style.background = T.sidebar }}
@@ -655,7 +653,7 @@ function ProveedoresSection({ data, expanded, onExpand, detail, onSelectGasto })
           <div style={{ width: 30, height: 30, borderRadius: 7, background: T.card, fontSize: 13, fontWeight: 600, display: 'grid', placeItems: 'center', border: `.5px solid ${T.hairline}` }}>{p.inicial}</div>
           <div>
             <div style={{ fontWeight: 500 }}>{p.name}</div>
-            {p.es_recurrente && <div style={{ marginTop: 3 }}><span style={{ fontSize: 9, fontWeight: 700, color: T.blue, background: 'rgba(79,70,229,.08)', padding: '1px 5px', borderRadius: 3 }}>RECURRENTE</span></div>}
+            {p.es_recurrente && <div style={{ marginTop: 3 }}><span style={{ fontSize: 9, fontWeight: 700, color: T.blue, background: 'rgba(61,43,255,.08)', padding: '1px 5px', borderRadius: 3 }}>RECURRENTE</span></div>}
           </div>
           <span style={{ color: T.text3 }}>{p.count} fac.</span>
           <span style={{ color: T.text4, fontSize: 12 }}>{fmtDate(p.ultimo_gasto)}</span>

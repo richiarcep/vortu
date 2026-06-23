@@ -2,13 +2,13 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
-import { FONT, useT, useTheme } from '@/components/ui/tokens'
+import { FONT, useT } from '@/components/ui/tokens'
 import VeraDrawer from '@/components/ui/VeraDrawer'
 import { openVeraDrawer } from '@/components/ui/useVeraStore'
-import { Skeleton, EmptyState, HeaderActions } from '@/components/ui/primitives'
+import { Skeleton, EmptyState, PageHeader } from '@/components/ui/primitives'
 
 import { API_BASE as API } from '@/lib/api'
-const VERA_BLUE = '#4F46E5'
+const VERA_BLUE = '#3D2BFF'
 
 // ─────────────────────────────────────────────────────────
 // CONFIGS
@@ -20,10 +20,10 @@ const SENTIMENT_CFG = {
   urgent:   { label: 'Urgente',  color: '#9a3412', bg: 'rgba(154,52,18,.12)', dot: '#dc2626' },
 }
 const INTENT_CFG = {
-  question:   { label: 'Pregunta',  color: '#4F46E5', bg: 'rgba(79,70,229,.1)' },
+  question:   { label: 'Pregunta',  color: '#3D2BFF', bg: 'rgba(61,43,255,.1)' },
   complaint:  { label: 'Queja',     color: '#dc2626', bg: 'rgba(220,38,38,.1)' },
   purchase:   { label: 'Compra',    color: '#059669', bg: 'rgba(5,150,105,.1)' },
-  compliment: { label: 'Elogio',    color: '#4F46E5', bg: 'rgba(79,70,229,.1)' },
+  compliment: { label: 'Elogio',    color: '#3D2BFF', bg: 'rgba(61,43,255,.1)' },
   other:      { label: 'Otro',      color: '#6b7280', bg: 'rgba(107,114,128,.1)' },
 }
 const RISK_CFG = {
@@ -37,8 +37,8 @@ const PLATFORM_LABEL = {
   facebook: 'Facebook', manual: 'Manual',
 }
 const KB_TYPE_CFG = {
-  faq:             { label: 'FAQ',       color: '#4F46E5' },
-  policy:          { label: 'Política',  color: '#4F46E5' },
+  faq:             { label: 'FAQ',       color: '#3D2BFF' },
+  policy:          { label: 'Política',  color: '#3D2BFF' },
   product_catalog: { label: 'Catálogo',  color: '#059669' },
   pricing:         { label: 'Precios',   color: '#d97706' },
   general:         { label: 'General',   color: '#6b7280' },
@@ -48,7 +48,7 @@ const KB_TYPE_CFG = {
 // HELPERS
 // ─────────────────────────────────────────────────────────
 function avatarColor(name) {
-  const colors = ['#4F46E5', '#4F46E5', '#059669', '#dc2626', '#d97706', '#0EA5E9', '#6366F1']
+  const colors = ['#3D2BFF', '#3D2BFF', '#059669', '#dc2626', '#d97706', '#0EA5E9', '#6366F1']
   let hash = 0
   for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash)
   return colors[Math.abs(hash) % colors.length]
@@ -143,7 +143,7 @@ function Tab({ active, onClick, label, badge }) {
       {badge != null && badge > 0 && (
         <span style={{
           fontSize: 10, padding: '1px 5px', borderRadius: 999,
-          background: active ? 'rgba(79,70,229,.12)' : 'rgba(0,0,0,.08)',
+          background: active ? 'rgba(61,43,255,.12)' : 'rgba(0,0,0,.08)',
           color: active ? VERA_BLUE : T.text3,
           fontVariantNumeric: 'tabular-nums', minWidth: 16, textAlign: 'center',
         }}>{badge}</span>
@@ -246,12 +246,12 @@ function ListView({ contacts, onSelect, selectedId }) {
         return (
           <div key={c.id} onClick={() => onSelect(c)}
             onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,.02)'}
-            onMouseLeave={e => e.currentTarget.style.background = selectedId === c.id ? 'rgba(79,70,229,.04)' : 'transparent'}
+            onMouseLeave={e => e.currentTarget.style.background = selectedId === c.id ? 'rgba(61,43,255,.04)' : 'transparent'}
             style={{
               display: 'grid', gridTemplateColumns: '40px 1fr 220px 100px 100px 100px 70px',
               gap: 12, padding: '12px 16px',
               borderBottom: `.5px solid ${T.hairline}`, cursor: 'pointer',
-              background: selectedId === c.id ? 'rgba(79,70,229,.04)' : 'transparent',
+              background: selectedId === c.id ? 'rgba(61,43,255,.04)' : 'transparent',
               alignItems: 'center', transition: 'background .12s',
             }}>
             <Avatar name={c.name} size={28} isVip={c.is_vip} />
@@ -473,7 +473,7 @@ function InboxTab({ token, onSelectContact }) {
                     {m.ai_draft && (
                       <div style={{
                         marginTop: 8, padding: 10, borderRadius: 8,
-                        background: 'rgba(79,70,229,.04)', border: '.5px solid rgba(79,70,229,.15)',
+                        background: 'rgba(61,43,255,.04)', border: '.5px solid rgba(61,43,255,.15)',
                       }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                           <div style={{ width: 14, height: 14, borderRadius: 4, background: VERA_BLUE, display: 'grid', placeItems: 'center' }}>
@@ -572,7 +572,7 @@ function ConocimientoTab({ token }) {
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
                 <span style={{ fontSize: 11, color: T.text4, fontWeight: 500, textTransform: 'uppercase', letterSpacing: 0.5 }}>Si contiene</span>
                 {(a.trigger_keywords || []).map(k => (
-                  <Pill key={k} label={k} color={VERA_BLUE} bg="rgba(79,70,229,.08)" />
+                  <Pill key={k} label={k} color={VERA_BLUE} bg="rgba(61,43,255,.08)" />
                 ))}
                 <span style={{ marginLeft: 'auto' }}>
                   <Pill label={a.is_active ? 'Activo' : 'Inactivo'} color={a.is_active ? '#059669' : '#9CA3AF'} bg={a.is_active ? 'rgba(5,150,105,.08)' : 'rgba(107,114,128,.08)'} dot={a.is_active ? '#059669' : '#9CA3AF'} />
@@ -717,16 +717,18 @@ function ClientDrawer({ contact, onClose, token, onUpdate }) {
   async function veraAnalyze(msg) {
     setAnalyzing(true)
     try {
-      const r = await fetch(`${API}/api/vera/v2/chat`, {
+      // Stateless Vera chat (the v2 endpoint requires a conversation_id and 422s without it).
+      const r = await fetch(`${API}/api/vera/chat`, {
         method: 'POST', headers: h(),
         body: JSON.stringify({
-          message: `Genera respuesta breve y profesional para este mensaje del cliente ${contact.name} (sentiment ${contact.sentiment_score}/10, riesgo ${contact.risk_level}${contact.is_vip ? ', VIP' : ''}):\n\n"${msg.content}"\n\nDevuelve solo la respuesta a enviar.`,
+          mensaje: `Genera respuesta breve y profesional para este mensaje del cliente ${contact.name} (sentiment ${contact.sentiment_score}/10, riesgo ${contact.risk_level}${contact.is_vip ? ', VIP' : ''}):\n\n"${msg.content}"\n\nDevuelve solo la respuesta a enviar.`,
+          modulo: 'clientes',
         }),
       })
       if (r.ok) {
         const d = await r.json()
-        setEditedDraft(d.response || d.content || '')
-      }
+        setEditedDraft(d.respuesta || d.response || d.content || '')
+      } else { alert('No se pudo generar la respuesta') }
     } catch (e) { alert('Error: ' + e.message) }
     finally { setAnalyzing(false) }
   }
@@ -734,10 +736,13 @@ function ClientDrawer({ contact, onClose, token, onUpdate }) {
   async function approveDraft() {
     if (!selectedMsg || !editedDraft.trim()) return
     try {
-      await fetch(`${API}/api/clientes/mensaje/${selectedMsg.id}/aprobar`, {
+      // Use /editar so the user's EDITED text is what gets saved + recorded as sent
+      // (/aprobar ignores the edit and resends the original AI draft).
+      const r = await fetch(`${API}/api/clientes/mensaje/${selectedMsg.id}/editar`, {
         method: 'POST', headers: h(),
         body: JSON.stringify({ draft: editedDraft }),
       })
+      if (!r.ok) { alert('No se pudo enviar la respuesta'); return }
       loadMessages()
       onUpdate?.()
     } catch {}
@@ -856,7 +861,7 @@ function ClientDrawer({ contact, onClose, token, onUpdate }) {
                   <span style={{ fontSize: 12, fontWeight: 600, color: VERA_BLUE }}>Borrador de Vera</span>
                   <button onClick={() => veraAnalyze(selectedMsg)} disabled={analyzing} style={{
                     marginLeft: 'auto', padding: '5px 12px', borderRadius: 6,
-                    background: 'rgba(79,70,229,.08)', color: VERA_BLUE,
+                    background: 'rgba(61,43,255,.08)', color: VERA_BLUE,
                     border: 'none', cursor: analyzing ? 'wait' : 'pointer',
                     fontSize: 11.5, fontFamily: 'inherit', fontWeight: 500,
                   }}>{analyzing ? 'Pensando…' : 'Generar con Vera'}</button>
@@ -1014,7 +1019,7 @@ function HistorialTab({ token, onSelectContact }) {
 
   const STATUS_LABEL = {
     sent: { label: 'Enviado manualmente', color: '#059669', bg: 'rgba(5,150,105,.1)', dot: '#059669' },
-    auto_sent: { label: 'Auto-enviado por Vera', color: '#4F46E5', bg: 'rgba(79,70,229,.1)', dot: '#4F46E5' },
+    auto_sent: { label: 'Auto-enviado por Vera', color: '#3D2BFF', bg: 'rgba(61,43,255,.1)', dot: '#3D2BFF' },
     approved: { label: 'Aprobado', color: '#059669', bg: 'rgba(5,150,105,.1)', dot: '#059669' },
     rejected: { label: 'Rechazado', color: '#dc2626', bg: 'rgba(220,38,38,.1)', dot: '#dc2626' },
   }
@@ -1101,12 +1106,12 @@ function HistorialTab({ token, onSelectContact }) {
                             <div style={{
                               fontSize: 12.5, color: T.text2, lineHeight: 1.55,
                               padding: 10, borderRadius: 8,
-                              background: m.status === 'auto_sent' ? 'rgba(79,70,229,.04)' : 'rgba(5,150,105,.04)',
-                              borderLeft: `2px solid ${m.status === 'auto_sent' ? '#4F46E5' : '#059669'}`,
+                              background: m.status === 'auto_sent' ? 'rgba(61,43,255,.04)' : 'rgba(5,150,105,.04)',
+                              borderLeft: `2px solid ${m.status === 'auto_sent' ? '#3D2BFF' : '#059669'}`,
                             }}>
                               <div style={{
                                 fontSize: 10, fontWeight: 600,
-                                color: m.status === 'auto_sent' ? '#4F46E5' : '#059669',
+                                color: m.status === 'auto_sent' ? '#3D2BFF' : '#059669',
                                 textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4,
                               }}>
                                 {m.status === 'auto_sent' ? '✦ Respuesta de Vera' : '↑ Respuesta enviada'}
@@ -1133,7 +1138,7 @@ function HistorialTab({ token, onSelectContact }) {
 // ─────────────────────────────────────────────────────────
 export default function ClientesPage() {
   const T = useT()
-  const { theme } = useTheme()
+
   const router = useRouter()
   const [tab, setTab] = useState('clientes')
   const [contacts, setContacts] = useState([])
@@ -1185,56 +1190,36 @@ export default function ClientesPage() {
       minHeight: '100dvh', background: T.bg, display: 'flex',
       fontFamily: FONT, WebkitFontSmoothing: 'antialiased',
     }}>
-      <style>{`*{box-sizing:border-box}::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-thumb{background:rgba(0,0,0,.12);border-radius:999px}input:focus{outline:none}`}</style>
+      <style>{`*{box-sizing:border-box}::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-thumb{background:rgba(0,0,0,.12);border-radius:999px}input:focus{outline:none}@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}`}</style>
 
       <Sidebar active="/clientes" />
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', height: '100dvh' }}>
-        {/* HEADER */}
-        <header style={{
-          padding: '20px 32px 0',
-          background: theme === 'dark' ? 'rgba(11,11,12,.85)' : 'rgba(251,251,253,.85)',
-          backdropFilter: 'saturate(180%) blur(20px)',
-          borderBottom: `.5px solid ${T.hairline}`,
-        }}>
-          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 14 }}>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-                <h1 style={{ fontSize: 22, fontWeight: 600, color: T.text, margin: 0, letterSpacing: -0.3 }}>Clientes</h1>
-                <span style={{ width: 6, height: 6, borderRadius: 999, background: '#059669' }} />
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: T.text4 }}>
-                <svg width="16" height="11" viewBox="0 0 21 14" style={{ borderRadius: 2, display: 'block', flexShrink: 0 }} aria-label="España">
-                  <rect width="21" height="14" fill="#AA151B" />
-                  <rect y="3.5" width="21" height="7" fill="#F1BF00" />
-                </svg>
-                <span>España</span>
-                <span>·</span>
-                <span>{stats.total} contactos · {stats.vips} VIPs · {stats.risk} en riesgo</span>
-              </div>
-            </div>
-
-            <HeaderActions onVera={() => openVeraDrawer({ modulo: 'clientes' })} router={router}>
-              <button style={{
-                padding: '7px 14px', borderRadius: 8,
-                background: VERA_BLUE, color: '#fff',
-                border: 'none', fontSize: 12, fontWeight: 500, cursor: 'pointer',
-                fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 5,
-              }}>+ Nuevo cliente</button>
-            </HeaderActions>
-          </div>
-
-          {/* TABS */}
-          <div style={{ display: 'flex', gap: 2, background: T.sidebar, borderRadius: 8, padding: 3, width: 'fit-content' }}>
-            <Tab label="Clientes" active={tab === 'clientes'} onClick={() => setTab('clientes')} />
-            <Tab label="Inbox" active={tab === 'inbox'} onClick={() => setTab('inbox')} badge={pendingCount} />
-            <Tab label="Conocimiento" active={tab === 'conocimiento'} onClick={() => setTab('conocimiento')} />
-            <Tab label="Informes" active={tab === 'informes'} onClick={() => setTab('informes')} />
-            <Tab label="Historial" active={tab === 'historial'} onClick={() => setTab('historial')} />
-          </div>
-
-          <div style={{ height: 16 }} />
-        </header>
+        <PageHeader
+          title="Clientes"
+          subtitle={
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <svg width="16" height="11" viewBox="0 0 21 14" style={{ borderRadius: 2, display: 'block', flexShrink: 0 }} aria-label="España">
+                <rect width="21" height="14" fill="#AA151B" />
+                <rect y="3.5" width="21" height="7" fill="#F1BF00" />
+              </svg>
+              España · {stats.total} contactos · {stats.vips} VIPs · {stats.risk} en riesgo
+            </span>
+          }
+          tabs={[
+            { key: 'inbox', label: 'Inbox', badge: pendingCount },
+            { key: 'clientes', label: 'Clientes' },
+            { key: 'conocimiento', label: 'Conocimiento' },
+            { key: 'historial', label: 'Historial' },
+            { key: 'informes', label: 'Informes' },
+          ]}
+          activeTab={tab}
+          onTab={setTab}
+          primary={undefined}
+          onVera={() => openVeraDrawer({ modulo: 'clientes' })}
+          user={null}
+          router={router}
+        />
 
         {/* CONTENIDO */}
         <div className="fade-in" style={{ flex: 1, overflowY: 'auto', padding: 24 }}>

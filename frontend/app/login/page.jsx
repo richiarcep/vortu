@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useT, useTheme } from '@/components/ui/tokens'
 import { API_BASE } from '@/lib/api'
+import BrandLogo from '@/components/ui/BrandLogo'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -104,8 +105,8 @@ export default function LoginPage() {
           position: absolute;
           inset: 0;
           background:
-            radial-gradient(ellipse 60% 50% at 10% 20%, rgba(79,70,229,0.12) 0%, transparent 60%),
-            radial-gradient(ellipse 50% 60% at 90% 80%, rgba(79,70,229,0.15) 0%, transparent 60%);
+            radial-gradient(ellipse 60% 50% at 10% 20%, rgba(61,43,255,0.12) 0%, transparent 60%),
+            radial-gradient(ellipse 50% 60% at 90% 80%, rgba(61,43,255,0.15) 0%, transparent 60%);
           pointer-events: none;
         }
 
@@ -135,12 +136,12 @@ export default function LoginPage() {
           width: 48px;
           height: 48px;
           border-radius: 12px;
-          background: linear-gradient(135deg, #6366F1, #4F46E5);
+          background: linear-gradient(135deg, #6366F1, #3D2BFF);
           display: flex;
           align-items: center;
           justify-content: center;
           flex-shrink: 0;
-          box-shadow: 0 8px 24px rgba(79,70,229,0.3);
+          box-shadow: 0 8px 24px rgba(61,43,255,0.3);
         }
 
         .vela-name {
@@ -183,7 +184,7 @@ export default function LoginPage() {
         }
         .hero-headline em {
           font-style: italic;
-          background: linear-gradient(90deg, #4F46E5, #A5B1FF);
+          background: linear-gradient(90deg, #3D2BFF, #A5B1FF);
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           background-clip: text;
@@ -472,18 +473,9 @@ export default function LoginPage() {
         <div className="left-panel">
           <div className="left-content">
 
-            {/* Vela logo */}
+            {/* Vela logo (asset oficial) */}
             <div className="vela-logo">
-              <div className="vela-icon">
-                {/* Velero Vela */}
-                <svg width="30" height="28" viewBox="0 0 32 30" fill="none">
-                  <path d="M18 3C15 9.5 13.3 16 14 21L27 21C23.5 13.5 21 7 18 3Z" fill="#fff"/>
-                  <path d="M5.5 24Q16 29.5 27.5 23Q22 27 15.5 27Q9 27 5.5 24Z" fill="rgba(255,255,255,0.82)"/>
-                </svg>
-              </div>
-              <div>
-                <div className="vela-name">Vela</div>
-              </div>
+              <BrandLogo size={40} tone="dark" />
             </div>
 
             {/* Velero Vela navegando (animado) */}
