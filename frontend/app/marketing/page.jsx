@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
 import { FONT, useT, useTheme } from '@/components/ui/tokens'
 import VeraDrawer from '@/components/ui/VeraDrawer'
-import { PageHeader } from '@/components/ui/primitives'
+import { PageHeader, Btn, BtnSec, Input, Field } from '@/components/ui/primitives'
 
 import { API_BASE as API } from '@/lib/api'
 const VERA_BLUE = '#3D2BFF'
@@ -576,6 +576,22 @@ function CampanasTab({ token }) {
     setLoading(false)
   }
 
+  async function launchCampaign(c) {
+    try {
+      const r = await fetch(`${API}/api/marketing/campanas/${c.id}/publicar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          platforms: Array.isArray(c.platforms) ? c.platforms : (safeParse(c.platforms) || []),
+          final_url: c.final_url || '',
+        }),
+      })
+      const d = await r.json().catch(() => ({}))
+      if (r.ok) load()
+      else alert(d.detail || 'No se pudo lanzar. Conecta una plataforma de anuncios primero.')
+    } catch { alert('Error de conexión') }
+  }
+
   async function toggleStatus(c) {
     const newStatus = c.status === 'active' ? 'paused' : 'active'
     try {
@@ -778,7 +794,7 @@ function CampanasTab({ token }) {
                     }}>Campaña finalizada</div>
                   )}
                   {c.status === 'draft' && (
-                    <button style={{
+                    <button onClick={() => launchCampaign(c)} style={{
                       width: '100%', padding: '9px', borderRadius: 8,
                       background: VERA_BLUE, color: '#fff',
                       border: 'none',
@@ -1075,10 +1091,81 @@ function CampaignDrawer({ campaign, onClose, token, onUpdate }) {
 // ─────────────────────────────────────────────────────────
 // TAB 3: PLATAFORMAS
 // ─────────────────────────────────────────────────────────
+const PLATFORM_FIELDS = {
+  google: [
+    { k: 'customer_id', label: 'Customer ID' },
+    { k: 'developer_token', label: 'Developer token' },
+    { k: 'refresh_token', label: 'Refresh token' },
+    { k: 'client_id', label: 'Client ID' },
+    { k: 'client_secret', label: 'Client secret' },
+  ],
+  meta: [
+    { k: 'account_id', label: 'Account ID' },
+    { k: 'access_token', label: 'Access token' },
+    { k: 'app_id', label: 'App ID' },
+    { k: 'app_secret', label: 'App secret' },
+    { k: 'pixel_id', label: 'Pixel ID' },
+  ],
+}
+
+function ConnectPlatformModal({ platform, platformName, token, onClose, onConnected }) {
+  const T = useT()
+  const fields = PLATFORM_FIELDS[platform] || []
+  const [form, setForm] = useState({})
+  const [saving, setSaving] = useState(false)
+  const [err, setErr] = useState('')
+
+  async function submit(e) {
+    e.preventDefault()
+    setSaving(true); setErr('')
+    try {
+      const r = await fetch(`${API}/api/marketing/plataformas/${platform}/conectar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(form),
+      })
+      if (!r.ok) { const d = await r.json().catch(() => ({})); setErr(d.detail || 'No se pudo conectar'); setSaving(false); return }
+      onConnected()
+    } catch { setErr('Error de conexión'); setSaving(false) }
+  }
+
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.35)', zIndex: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <form onClick={e => e.stopPropagation()} onSubmit={submit} style={{ background: T.card, borderRadius: 16, padding: 24, width: 'min(440px, 100%)', maxHeight: '85vh', overflowY: 'auto', border: `.5px solid ${T.hairline}` }}>
+        <div style={{ fontSize: 17, fontWeight: 700, color: T.text, marginBottom: 6 }}>Conectar {platformName}</div>
+        <div style={{ fontSize: 12, color: T.text4, marginBottom: 16, lineHeight: 1.5 }}>
+          Introduce las credenciales de desarrollador de tu cuenta de {platformName}.
+        </div>
+        {err && <div role="alert" style={{ color: T.red, fontSize: 13, marginBottom: 12 }}>{err}</div>}
+        {fields.map(f => (
+          <Field key={f.k} label={f.label}>
+            <Input value={form[f.k] || ''} onChange={e => setForm(s => ({ ...s, [f.k]: e.target.value }))} />
+          </Field>
+        ))}
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 16 }}>
+          <BtnSec onClick={onClose}>Cancelar</BtnSec>
+          <Btn type="submit" disabled={saving}>{saving ? 'Conectando…' : 'Conectar'}</Btn>
+        </div>
+      </form>
+    </div>
+  )
+}
+
 function PlataformasTab({ token }) {
   const T = useT()
   const [platforms, setPlatforms] = useState([])
   const [loading, setLoading] = useState(true)
+  const [connectFor, setConnectFor] = useState(null)   // {id, name}
+  const [verifyMsg, setVerifyMsg] = useState({})        // {platformId: text}
+
+  async function verifyPlatform(pid) {
+    setVerifyMsg(m => ({ ...m, [pid]: 'Verificando…' }))
+    try {
+      const r = await fetch(`${API}/api/marketing/plataformas/${pid}/verificar`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
+      const d = await r.json().catch(() => ({}))
+      setVerifyMsg(m => ({ ...m, [pid]: r.ok ? (d.message || (d.valid ? 'Conexión correcta' : 'Conexión fallida')) : (d.detail || 'Error') }))
+    } catch { setVerifyMsg(m => ({ ...m, [pid]: 'Error de conexión' })) }
+  }
 
   async function load() {
     setLoading(true)
@@ -1153,7 +1240,7 @@ function PlataformasTab({ token }) {
                   <div style={{ fontSize: 12, color: T.text2 }}>{connected.account_name || connected.account_id || '—'}</div>
                 </div>
                 <div style={{ display: 'flex', gap: 6 }}>
-                  <button style={{
+                  <button onClick={() => verifyPlatform(p.id)} style={{
                     flex: 1, padding: '7px', borderRadius: 8,
                     background: T.card, color: T.text2,
                     border: `.5px solid ${T.hairline}`,
@@ -1168,16 +1255,24 @@ function PlataformasTab({ token }) {
                 </div>
               </>
             ) : (
-              <button style={{
+              <button onClick={() => setConnectFor({ id: p.id, name: p.name })} style={{
                 width: '100%', padding: '9px', borderRadius: 8,
                 background: VERA_BLUE, color: '#fff', border: 'none',
                 fontSize: 12.5, fontWeight: 500, cursor: 'pointer',
                 fontFamily: 'inherit',
               }}>Conectar {p.name}</button>
             )}
+            {verifyMsg[p.id] && (
+              <div style={{ marginTop: 8, fontSize: 11.5, color: T.text3 }}>{verifyMsg[p.id]}</div>
+            )}
           </div>
         )
       })}
+      {connectFor && (
+        <ConnectPlatformModal platform={connectFor.id} platformName={connectFor.name} token={token}
+          onClose={() => setConnectFor(null)}
+          onConnected={() => { setConnectFor(null); load() }} />
+      )}
     </div>
   )
 }
