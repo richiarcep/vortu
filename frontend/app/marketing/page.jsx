@@ -1094,16 +1094,16 @@ function CampaignDrawer({ campaign, onClose, token, onUpdate }) {
 const PLATFORM_FIELDS = {
   google: [
     { k: 'customer_id', label: 'Customer ID' },
-    { k: 'developer_token', label: 'Developer token' },
-    { k: 'refresh_token', label: 'Refresh token' },
+    { k: 'developer_token', label: 'Developer token', secret: true },
+    { k: 'refresh_token', label: 'Refresh token', secret: true },
     { k: 'client_id', label: 'Client ID' },
-    { k: 'client_secret', label: 'Client secret' },
+    { k: 'client_secret', label: 'Client secret', secret: true },
   ],
   meta: [
     { k: 'account_id', label: 'Account ID' },
-    { k: 'access_token', label: 'Access token' },
+    { k: 'access_token', label: 'Access token', secret: true },
     { k: 'app_id', label: 'App ID' },
-    { k: 'app_secret', label: 'App secret' },
+    { k: 'app_secret', label: 'App secret', secret: true },
     { k: 'pixel_id', label: 'Pixel ID' },
   ],
 }
@@ -1139,7 +1139,8 @@ function ConnectPlatformModal({ platform, platformName, token, onClose, onConnec
         {err && <div role="alert" style={{ color: T.red, fontSize: 13, marginBottom: 12 }}>{err}</div>}
         {fields.map(f => (
           <Field key={f.k} label={f.label}>
-            <Input value={form[f.k] || ''} onChange={e => setForm(s => ({ ...s, [f.k]: e.target.value }))} />
+            <Input type={f.secret ? 'password' : 'text'} autoComplete="off"
+              value={form[f.k] || ''} onChange={e => setForm(s => ({ ...s, [f.k]: e.target.value }))} />
           </Field>
         ))}
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 16 }}>

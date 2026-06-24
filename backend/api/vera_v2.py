@@ -2,6 +2,7 @@
 Vera v2 — versión con streaming SSE + acceso a datos reales del negocio.
 """
 from fastapi import APIRouter, Depends, HTTPException
+from core.rate_limit import rate_limit
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import text
@@ -416,7 +417,7 @@ def get_messages(conv_id: int,
     }
 
 
-@router.post("/chat")
+@router.post("/chat", dependencies=[Depends(rate_limit(20, 60, "vera_v2_chat"))])
 def chat(payload: MessageCreate,
          user: User = Depends(get_current_user),
          db: Session = Depends(get_db)):
@@ -511,7 +512,7 @@ def chat(payload: MessageCreate,
     return {"response": text_response, "plan": plan, "is_verified": False, "latency_ms": latency}
 
 
-@router.post("/chat/stream")
+@router.post("/chat/stream", dependencies=[Depends(rate_limit(20, 60, "vera_v2_stream"))])
 def chat_stream(payload: MessageCreate,
                 user: User = Depends(get_current_user),
                 db: Session = Depends(get_db)):

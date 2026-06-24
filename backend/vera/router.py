@@ -9,6 +9,7 @@ from pydantic import BaseModel
 from typing import Optional, Literal
 from core.database import get_db
 from core.security import get_current_user
+from core.rate_limit import rate_limit
 from models.user import User
 from vera.engine import vera_chat, vera_analyze
 
@@ -29,7 +30,7 @@ class AnalyzeRequest(BaseModel):
     plan: Literal["base", "plus"] = "base"
 
 
-@router.post("/chat")
+@router.post("/chat", dependencies=[Depends(rate_limit(20, 60, "vera_chat"))])
 def chat(
     data: ChatRequest,
     db: Session = Depends(get_db),
@@ -53,7 +54,7 @@ def chat(
         raise HTTPException(status_code=500, detail="Error procesando la consulta")
 
 
-@router.post("/analizar")
+@router.post("/analizar", dependencies=[Depends(rate_limit(20, 60, "vera_analizar"))])
 def analizar(
     data: AnalyzeRequest,
     db: Session = Depends(get_db),

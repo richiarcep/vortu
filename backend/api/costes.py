@@ -14,7 +14,7 @@ Y journal_entries con module_source='documentos' y reference=número de factura.
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func, extract, and_, or_, desc, asc, text
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional, List
 from datetime import datetime, timedelta, date
 from decimal import Decimal
@@ -152,10 +152,10 @@ def _month_range(year: int, month: int):
 
 class GastoManual(BaseModel):
     description: str
-    amount: float
-    base_imponible: Optional[float] = None
-    iva_amount: Optional[float] = None
-    iva_rate: Optional[float] = 21.0
+    amount: float = Field(gt=0)
+    base_imponible: Optional[float] = Field(default=None, ge=0)
+    iva_amount: Optional[float] = Field(default=None, ge=0)
+    iva_rate: Optional[float] = Field(default=21.0, ge=0, le=100)
     date: str  # YYYY-MM-DD
     category_id: Optional[int] = None
     department_id: Optional[int] = None

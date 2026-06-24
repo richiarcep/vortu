@@ -97,3 +97,36 @@ def get_admin_user(
     if user is None or not getattr(user, "is_superadmin", False):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acceso solo para administradores de plataforma de Vela")
     return user
+
+
+def require_module(module_key: str):
+    """Dependency factory — gates a router/endpoint by the caller's PLAN modules.
+
+    Server-side enforcement of plan entitlement (the frontend sidebar/guard is
+    UX-only). During the beta phase (and for superadmins) get_subscription_status
+    returns the full module set, so nothing is blocked until the phase flips to
+    paid. Attach to module-specific routers via include_router(dependencies=[...]).
+    Do NOT attach to dashboard-aggregation endpoints (e.g. /agente/resumen).
+    """
+    def _dep(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+        from models.user import User
+        from modules.billing.stripe_service import get_subscription_status
+        payload = decode_token(token)
+        user_id = payload.get("sub")
+        if user_id is None:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate credentials")
+        uid = int(user_id) if str(user_id).isdigit() else None
+        user = (db.query(User).filter(User.id == uid).first() if uid is not None
+                else db.query(User).filter(User.email == str(user_id)).first())
+        if user is None:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+        try:
+            status_info = get_subscription_status(db, user.id)
+            allowed = status_info.get("modules") or []
+        except Exception:
+            allowed = []  # fail-closed on the gate, but only for gated routers
+        if module_key not in allowed:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                                detail="Tu plan no incluye este módulo. Mejora tu plan para acceder.")
+        return user
+    return _dep

@@ -237,14 +237,20 @@ def leer_pdf_registro(
     Funciona con plantillas Vela, estados de cuenta
     bancarios y cualquier registro en PDF.
     """
-    # Save uploaded file (sanitize the client-supplied name to prevent traversal)
-    from core.files import safe_filename, enforce_upload_size
+    # Validate type + size before reading the body into memory.
+    from core.files import safe_filename, enforce_upload_size, MAX_UPLOAD_MB
+    _ALLOWED = {"application/pdf", "image/png", "image/jpeg", "image/jpg"}
+    if file.content_type not in _ALLOWED:
+        raise HTTPException(status_code=415, detail="Formato no soportado. Sube un PDF o una imagen (PNG/JPG).")
     enforce_upload_size(file)
     os.makedirs("uploads", exist_ok=True)
     file_path = f"uploads/registro_{current_user.company_id}_{safe_filename(file.filename)}"
 
+    content = file.file.read()
+    # Enforce the cap on the ACTUAL bytes too (file.size can be absent/spoofed).
+    if len(content) > MAX_UPLOAD_MB * 1024 * 1024:
+        raise HTTPException(status_code=413, detail=f"Archivo demasiado grande (máx {MAX_UPLOAD_MB} MB)")
     with open(file_path, "wb") as f:
-        content = file.file.read()
         f.write(content)
 
     # Send to Claude for reading

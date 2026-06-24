@@ -15,9 +15,10 @@ if os.path.exists('/tmp/cacert.pem'):
     os.environ['SSL_CERT_FILE'] = '/tmp/cacert.pem'
     os.environ['REQUESTS_CA_BUNDLE'] = '/tmp/cacert.pem'
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from core.security import require_module
 from apscheduler.schedulers.background import BackgroundScheduler
 from core.config import get_settings
 from core.database import create_tables, ensure_runtime_schema
@@ -141,23 +142,27 @@ app.add_middleware(
 # ── Routers ───────────────────────────────────────────────────────────────────
 app.include_router(auth_router)
 app.include_router(upload_router)
-app.include_router(documentos_router)
-app.include_router(finance_router)
-app.include_router(hr_router)
-app.include_router(accounting_router)
+# ── Per-plan module gating (server-side entitlement; UX-only in the frontend) ──
+# Beta/superadmin get the full module set, so nothing is blocked until the billing
+# phase flips to paid. Dashboard-aggregation routers (agent /resumen, analytics,
+# vera-insights) are intentionally NOT gated so the dashboard works on every plan.
+app.include_router(documentos_router, dependencies=[Depends(require_module("documentos"))])
+app.include_router(finance_router, dependencies=[Depends(require_module("finanzas"))])
+app.include_router(hr_router, dependencies=[Depends(require_module("hr"))])
+app.include_router(accounting_router, dependencies=[Depends(require_module("contabilidad"))])
 app.include_router(fiscal_router)
 app.include_router(agent_router)
 app.include_router(prompts_router)
-app.include_router(projects_router)
-app.include_router(customers_router)
-app.include_router(sales_router)
-app.include_router(marketing_router)
+app.include_router(projects_router, dependencies=[Depends(require_module("proyectos"))])
+app.include_router(customers_router, dependencies=[Depends(require_module("clientes"))])
+app.include_router(sales_router, dependencies=[Depends(require_module("ventas"))])
+app.include_router(marketing_router, dependencies=[Depends(require_module("marketing"))])
 app.include_router(billing_router)
 app.include_router(analytics_router)
 app.include_router(admin_router)
 app.include_router(prospector_router)
-app.include_router(costs_router)
-app.include_router(costes_router)
+app.include_router(costs_router, dependencies=[Depends(require_module("finanzas"))])
+app.include_router(costes_router, dependencies=[Depends(require_module("finanzas"))])
 app.include_router(two_factor_router)
 app.include_router(profit_optimizer_router)
 app.include_router(vera_router)

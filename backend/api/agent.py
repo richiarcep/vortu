@@ -1,5 +1,6 @@
 import logging
 from fastapi import APIRouter, Depends, HTTPException
+from core.rate_limit import rate_limit
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Optional
@@ -47,7 +48,7 @@ def get_digest(
         raise HTTPException(status_code=500, detail="Error generando el resumen")
 
 
-@router.post("/chat")
+@router.post("/chat", dependencies=[Depends(rate_limit(20, 60, "agent_chat"))])
 def chat(
     data: ChatMessage,
     db: Session = Depends(get_db),

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import date, datetime
 from core.database import get_db
@@ -62,7 +62,7 @@ class TimeEntryCreate(BaseModel):
 
 class ExpenseCreate(BaseModel):
     description: str
-    amount:      float
+    amount:      float = Field(gt=0)
     date:        date
     category:    Optional[str] = None
 

@@ -106,7 +106,16 @@ def execute_tool(db: Session, tool_name: str, tool_input: dict) -> dict:
             sql = tool_input.get("sql", "").strip()
             if not is_safe_select(sql):
                 return {"error": "Solo se permiten consultas SELECT. Detectada operación no permitida."}
-            rows = db.execute(text(sql)).fetchall()
+            # Defense-in-depth: run the LLM-generated SQL on a read-only connection so
+            # a regex bypass still cannot write. (SQLite PRAGMA; restore after.)
+            _dialect = db.bind.dialect.name if db.bind is not None else "sqlite"
+            if _dialect == "sqlite":
+                db.execute(text("PRAGMA query_only=ON"))
+            try:
+                rows = db.execute(text(sql)).fetchall()
+            finally:
+                if _dialect == "sqlite":
+                    db.execute(text("PRAGMA query_only=OFF"))
             columns = list(rows[0]._mapping.keys()) if rows else []
             data = [dict(r._mapping) for r in rows[:200]]
             # Serializar tipos no-JSON
