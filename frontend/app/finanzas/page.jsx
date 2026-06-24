@@ -6,7 +6,7 @@ import VeraPanel from '@/components/ui/VeraPanel'
 import VeraDrawer from '@/components/ui/VeraDrawer'
 import VeraInsights from '@/components/ui/VeraInsights'
 import { useT, FONT } from '@/components/ui/tokens'
-import { Skeleton, EmptyState, PageHeader, SegmentedFilter } from '@/components/ui/primitives'
+import { Skeleton, EmptyState, PageHeader, SegmentedFilter, ErrorBanner } from '@/components/ui/primitives'
 
 import { API_BASE as API } from '@/lib/api'
 
@@ -246,6 +246,7 @@ export default function Finanzas() {
   const [summary, setSummary] = useState(null)
   const [summaryT, setSummaryT] = useState(0)
   const [loading, setLoading] = useState(false)
+  const [loadErr, setLoadErr] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [msg, setMsg] = useState(null)
   const [token, setToken] = useState(null)
@@ -314,12 +315,14 @@ export default function Finanzas() {
     if (isBackground) setRefreshing(true)
     try {
       const r = await fetch(`${API}/api/finance/summary`, { headers:{ Authorization:`Bearer ${getToken()}` } })
+      if (!r.ok) throw new Error()
       const data = await r.json()
       setSummary(data)
       const t = Date.now()
       setSummaryT(t)
       cacheSet(CACHE_KEY_SUMMARY, data)
-    } catch {}
+      setLoadErr(false)
+    } catch { setLoadErr(true) }
     finally { setLoading(false); setRefreshing(false) }
   }
 
@@ -486,6 +489,7 @@ export default function Finanzas() {
         />
 
         <div className="fade-in" style={{flex:1,overflowY:'auto'}}>
+          <div style={{ padding: '16px 24px 0' }}><ErrorBanner show={loadErr && !summary} onRetry={() => loadSummary()} /></div>
           {/* CONTENIDO */}
           <div style={{padding:'20px 28px 60px'}}>
 

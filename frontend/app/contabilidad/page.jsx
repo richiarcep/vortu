@@ -5,7 +5,7 @@ import Sidebar from '@/components/Sidebar'
 import VeraPanel from '@/components/ui/VeraPanel'
 import { FONT, useT, useTheme } from '@/components/ui/tokens'
 import VeraDrawer from '@/components/ui/VeraDrawer'
-import { PageHeader } from '@/components/ui/primitives'
+import { PageHeader, ErrorBanner } from '@/components/ui/primitives'
 
 import { API_BASE as API } from '@/lib/api'
 
@@ -331,6 +331,7 @@ export default function Contabilidad() {
     categoria: '', descripcion: '', monto: '', referencia: '', iva_rate: 21,
   })
   const [loading, setLoading] = useState(false)
+  const [loadErr, setLoadErr] = useState(false)
   const [msg, setMsg] = useState(null)
   const [registro, setRegistro] = useState(null)
   const [pdfFile, setPdfFile] = useState(null)
@@ -478,12 +479,12 @@ export default function Contabilidad() {
       const res = await fetch(`${API}/api/contabilidad/snapshot?period=${period}`, {
         headers: { Authorization: `Bearer ${getToken()}` },
       })
-      if (res.ok) {
-        const d = await res.json()
-        setEstados(d.data)
-        setSnapshotInfo({ cached: d.cached, label: d.label, generated_at: d.generated_at })
-      }
-    } catch { }
+      if (!res.ok) throw new Error()
+      const d = await res.json()
+      setEstados(d.data)
+      setSnapshotInfo({ cached: d.cached, label: d.label, generated_at: d.generated_at })
+      setLoadErr(false)
+    } catch { setLoadErr(true) }
   }
 
   async function refreshSnapshot() {
@@ -783,6 +784,8 @@ export default function Contabilidad() {
 
         {/* ═══════════════ CONTENIDO ═══════════════ */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '24px 28px' }}>
+
+          <ErrorBanner show={loadErr && !estados} onRetry={() => loadEstadosAuto()} />
 
           {/* ──── RESUMEN ──── */}
           {section === 'resumen' && (

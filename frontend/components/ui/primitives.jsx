@@ -290,6 +290,18 @@ export function Field({ label, children, htmlFor }) {
   )
 }
 
+// Shared "data failed to load" banner with optional retry. Render at the top of a
+// page's content when a main fetch fails, instead of leaving a silent blank.
+export function ErrorBanner({ show, message = 'No se pudieron cargar los datos.', onRetry }) {
+  if (!show) return null
+  return (
+    <div role="alert" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '12px 16px', marginBottom: 16, borderRadius: 10, background: 'rgba(220,38,38,.06)', border: '.5px solid rgba(220,38,38,.25)' }}>
+      <span style={{ fontSize: 13, color: '#dc2626' }}>{message}</span>
+      {onRetry && <button onClick={onRetry} style={{ padding: '6px 14px', borderRadius: 8, border: '.5px solid rgba(220,38,38,.3)', background: 'transparent', color: '#dc2626', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Reintentar</button>}
+    </div>
+  )
+}
+
 export function Toast({ msg }) {
   const T = useT()
   if (!msg) return null

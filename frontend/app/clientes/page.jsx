@@ -5,7 +5,7 @@ import Sidebar from '@/components/Sidebar'
 import { FONT, useT } from '@/components/ui/tokens'
 import VeraDrawer from '@/components/ui/VeraDrawer'
 import { openVeraDrawer } from '@/components/ui/useVeraStore'
-import { Skeleton, EmptyState, PageHeader, Btn, BtnSec, Input, Field } from '@/components/ui/primitives'
+import { Skeleton, EmptyState, PageHeader, Btn, BtnSec, Input, Field, ErrorBanner } from '@/components/ui/primitives'
 
 import { API_BASE as API } from '@/lib/api'
 const VERA_BLUE = '#3D2BFF'
@@ -1198,16 +1198,17 @@ export default function ClientesPage() {
   const [token, setToken] = useState(null)
   const [pendingCount, setPendingCount] = useState(0)
   const [showCreate, setShowCreate] = useState(false)
+  const [loadErr, setLoadErr] = useState(false)
 
   async function loadContacts(t) {
     setLoading(true)
     try {
       const r = await fetch(`${API}/api/clientes/contactos`, { headers: { Authorization: `Bearer ${t}` } })
-      if (r.ok) {
-        const d = await r.json()
-        setContacts(d.contacts || d || [])
-      }
-    } catch {}
+      if (!r.ok) throw new Error()
+      const d = await r.json()
+      setContacts(d.contacts || d || [])
+      setLoadErr(false)
+    } catch { setLoadErr(true) }
     setLoading(false)
   }
 
@@ -1275,6 +1276,7 @@ export default function ClientesPage() {
 
         {/* CONTENIDO */}
         <div className="fade-in" style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
+          <ErrorBanner show={loadErr && contacts.length === 0} onRetry={() => loadContacts(token)} />
           {loading ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <Skeleton w="100%" h={44} />

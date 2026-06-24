@@ -5,7 +5,7 @@ import Sidebar from '@/components/Sidebar'
 import VeraPanel from '@/components/ui/VeraPanel'
 import { useT, useTheme, FONT, I } from '@/components/ui/tokens'
 import VeraDrawer from '@/components/ui/VeraDrawer'
-import { PageHeader } from '@/components/ui/primitives'
+import { PageHeader, ErrorBanner } from '@/components/ui/primitives'
 
 import { API_BASE as API } from '@/lib/api'
 
@@ -389,6 +389,7 @@ export default function CentroCostes() {
   const [initLoading, setInitLoading] = useState(false)
 
   const [kpis, setKpis] = useState(null)
+  const [loadErr, setLoadErr] = useState(false)
   const [aggCats, setAggCats] = useState(null)
   const [aggProvs, setAggProvs] = useState(null)
   const [gastos, setGastos] = useState({ items: [], total: 0 })
@@ -408,8 +409,8 @@ export default function CentroCostes() {
         call('/api/costes/kpis', tk), call('/api/costes/agg/categorias', tk),
         call('/api/costes/agg/proveedores?limit=20', tk), call('/api/costes/list?limit=200', tk),
       ])
-      setKpis(k); setAggCats(ac); setAggProvs(ap); setGastos(gs)
-    } catch (err) { console.error(err) }
+      setKpis(k); setAggCats(ac); setAggProvs(ap); setGastos(gs); setLoadErr(false)
+    } catch (err) { console.error(err); setLoadErr(true) }
   }
   useEffect(() => { if (token) reload(token) }, [token])
 
@@ -489,6 +490,7 @@ export default function CentroCostes() {
         />
 
         <div style={{ padding: '22px 32px 60px' }}>
+          <ErrorBanner show={loadErr && !kpis} onRetry={() => reload()} />
           {sinCategorias && <div style={{ marginBottom: 16 }}><InicializarBanner onInit={handleInicializar} loading={initLoading} /></div>}
 
           {section === 'dashboard' && <DashboardSection kpis={kpis} variacion={variacion} aggCats={aggCats} aggProvs={aggProvs} recientes={gastos.items} onSelect={setSelectedId} onVerTodos={() => setSection('gastos')} onVerCategorias={() => setSection('categorias')} />}
