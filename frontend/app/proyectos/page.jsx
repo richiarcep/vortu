@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
 import { FONT, useT } from '@/components/ui/tokens'
 import VeraDrawer from '@/components/ui/VeraDrawer'
-import { Skeleton, EmptyState, PageHeader } from '@/components/ui/primitives'
+import { Skeleton, EmptyState, PageHeader, Btn, BtnSec, Input, Field } from '@/components/ui/primitives'
 
 import { API_BASE as API } from '@/lib/api'
 const VERA_BLUE = '#3D2BFF'
@@ -764,13 +764,32 @@ function ProjectDrawer({ project, onClose, token, employees }) {
   const [analysis, setAnalysis] = useState(null)
   const [analyzing, setAnalyzing] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [newTask, setNewTask] = useState('')
+  const [addingTask, setAddingTask] = useState(false)
 
-  useEffect(() => {
-    fetch(`${API}/api/proyectos/${project.id}`, { headers: { Authorization: `Bearer ${token}` } })
+  function loadDetail() {
+    return fetch(`${API}/api/proyectos/${project.id}`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.ok ? r.json() : null)
       .then(d => { setDetail(d); setLoading(false) })
       .catch(() => setLoading(false))
-  }, [project.id])
+  }
+
+  useEffect(() => { loadDetail() }, [project.id])
+
+  async function createTask() {
+    const title = newTask.trim()
+    if (!title) return
+    setAddingTask(true)
+    try {
+      const r = await fetch(`${API}/api/proyectos/${project.id}/tareas`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ title }),
+      })
+      if (r.ok) { setNewTask(''); await loadDetail() }
+    } catch {}
+    setAddingTask(false)
+  }
 
   async function runAnalysis() {
     setAnalyzing(true)
@@ -902,8 +921,15 @@ function ProjectDrawer({ project, onClose, token, employees }) {
 
               {/* Tareas */}
               <div>
-                <div style={{ fontSize: 11, color: T.text4, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
-                  Tareas · {tasks.length}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                  <div style={{ flex: 1, fontSize: 11, color: T.text4, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                    Tareas · {tasks.length}
+                  </div>
+                  <input value={newTask} onChange={e => setNewTask(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') createTask() }}
+                    placeholder="Nueva tarea…" aria-label="Nueva tarea"
+                    style={{ fontSize: 12, padding: '5px 8px', borderRadius: 7, border: `.5px solid ${T.hairline}`, background: T.card, color: T.text, fontFamily: 'inherit', width: 150 }} />
+                  <BtnSec onClick={createTask} style={{ padding: '5px 10px', fontSize: 12 }}>{addingTask ? '…' : '+ Añadir'}</BtnSec>
                 </div>
                 <div style={{ background: T.card, border: `.5px solid ${T.hairline}`, borderRadius: 10, overflow: 'hidden' }}>
                   {tasks.length === 0 ? (
@@ -955,6 +981,55 @@ function ProjectDrawer({ project, onClose, token, employees }) {
 // ─────────────────────────────────────────────────────────
 // PÁGINA PRINCIPAL
 // ─────────────────────────────────────────────────────────
+function CreateProjectModal({ token, onClose, onCreated }) {
+  const T = useT()
+  const [form, setForm] = useState({ name: '', client_name: '', deadline: '', budget: '', description: '' })
+  const [saving, setSaving] = useState(false)
+  const [err, setErr] = useState('')
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+
+  async function submit(e) {
+    e.preventDefault()
+    if (!form.name.trim()) { setErr('El nombre es obligatorio'); return }
+    setSaving(true); setErr('')
+    try {
+      const r = await fetch(`${API}/api/proyectos/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          name: form.name.trim(),
+          client_name: form.client_name.trim() || null,
+          deadline: form.deadline || null,
+          budget: form.budget ? parseFloat(form.budget) : 0,
+          description: form.description.trim() || null,
+        }),
+      })
+      if (!r.ok) { const d = await r.json().catch(() => ({})); setErr(d.detail || 'No se pudo crear el proyecto'); setSaving(false); return }
+      onCreated()
+    } catch { setErr('Error de conexión'); setSaving(false) }
+  }
+
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.35)', zIndex: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <form onClick={e => e.stopPropagation()} onSubmit={submit} style={{ background: T.card, borderRadius: 16, padding: 24, width: 'min(460px, 100%)', border: `.5px solid ${T.hairline}` }}>
+        <div style={{ fontSize: 17, fontWeight: 700, color: T.text, marginBottom: 16 }}>Nuevo proyecto</div>
+        {err && <div role="alert" style={{ color: T.red, fontSize: 13, marginBottom: 12 }}>{err}</div>}
+        <Field label="Nombre *"><Input value={form.name} onChange={e => set('name', e.target.value)} autoFocus placeholder="Web corporativa…" /></Field>
+        <Field label="Cliente"><Input value={form.client_name} onChange={e => set('client_name', e.target.value)} placeholder="Acme S.L." /></Field>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <Field label="Fecha límite"><Input type="date" value={form.deadline} onChange={e => set('deadline', e.target.value)} /></Field>
+          <Field label="Presupuesto (€)"><Input type="number" value={form.budget} onChange={e => set('budget', e.target.value)} placeholder="0" /></Field>
+        </div>
+        <Field label="Descripción"><Input value={form.description} onChange={e => set('description', e.target.value)} placeholder="Opcional" /></Field>
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 16 }}>
+          <BtnSec onClick={onClose}>Cancelar</BtnSec>
+          <Btn type="submit" disabled={saving}>{saving ? 'Creando…' : 'Crear proyecto'}</Btn>
+        </div>
+      </form>
+    </div>
+  )
+}
+
 export default function ProjectsPage() {
   const T = useT()
   const router = useRouter()
@@ -966,6 +1041,7 @@ export default function ProjectsPage() {
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [token, setToken] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [showCreate, setShowCreate] = useState(false)
 
   async function loadAll(t) {
     setLoading(true)
@@ -1049,7 +1125,7 @@ export default function ProjectsPage() {
           ]}
           activeTab={tab}
           onTab={setTab}
-          primary={undefined}
+          primary={{ label: 'Nuevo proyecto', onClick: () => setShowCreate(true) }}
           secondary={
             <button onClick={() => setNotificationsOpen(o => !o)}
               aria-label={`Notificaciones${notifCount > 0 ? ` (${notifCount})` : ''}`}
@@ -1185,6 +1261,14 @@ export default function ProjectsPage() {
 
       {selected && <ProjectDrawer project={selected} onClose={() => setSelected(null)} token={token} employees={employees} />}
       {veraOpen && <VeraDrawer onClose={() => setVeraOpen(false)} token={token} summary={summary} />}
+
+      {showCreate && (
+        <CreateProjectModal
+          token={token}
+          onClose={() => setShowCreate(false)}
+          onCreated={() => { setShowCreate(false); loadAll(token) }}
+        />
+      )}
 
       {notificationsOpen && (
         <div onClick={() => setNotificationsOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 90 }}>
