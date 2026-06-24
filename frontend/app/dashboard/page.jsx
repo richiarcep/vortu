@@ -340,12 +340,15 @@ export default function Dashboard() {
     } catch { setUser({ email: '', name: 'Usuario' }) }
   }, [])
 
-  const { data: resumen, mutate: mResumen } = useApi(token ? `/api/agente/resumen?period=${periodo}` : null)
-  const { data: ventas, mutate: mVentas } = useApi(token ? '/api/ventas/resumen' : null)
-  const { data: clientes, mutate: mClientes } = useApi(token ? '/api/clientes/analytics' : null)
-  const { data: proyectos, mutate: mProyectos } = useApi(token ? '/api/proyectos/resumen' : null)
+  const { data: resumen, error: eResumen, mutate: mResumen } = useApi(token ? `/api/agente/resumen?period=${periodo}` : null)
+  const { data: ventas, error: eVentas, mutate: mVentas } = useApi(token ? '/api/ventas/resumen' : null)
+  const { data: clientes, error: eClientes, mutate: mClientes } = useApi(token ? '/api/clientes/analytics' : null)
+  const { data: proyectos, error: eProyectos, mutate: mProyectos } = useApi(token ? '/api/proyectos/resumen' : null)
 
   const loading = !resumen && !ventas && !clientes && !proyectos
+  // Nothing loaded AND at least one request failed → show a retry banner instead
+  // of a perpetual skeleton (401s are already handled by useApi → redirect).
+  const loadError = loading && (eResumen || eVentas || eClientes || eProyectos)
 
   function refetchAll() {
     mResumen(); mVentas(); mClientes(); mProyectos()
@@ -412,6 +415,13 @@ export default function Dashboard() {
 
         {/* CONTENIDO */}
         <div className="fade-in" style={{ flex: 1, overflowY: 'auto', padding: '24px 28px' }}>
+
+          {loadError && (
+            <div role="alert" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '12px 16px', marginBottom: 16, borderRadius: 10, background: 'rgba(220,38,38,.06)', border: '.5px solid rgba(220,38,38,.25)' }}>
+              <span style={{ fontSize: 13, color: '#dc2626' }}>No se pudieron cargar los datos del panel.</span>
+              <button onClick={refetchAll} style={{ padding: '6px 14px', borderRadius: 8, border: '.5px solid rgba(220,38,38,.3)', background: 'transparent', color: '#dc2626', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Reintentar</button>
+            </div>
+          )}
 
           {/* ──── ZONA 1 · Salud financiera ──── */}
           <SectionTitle>Salud financiera</SectionTitle>
