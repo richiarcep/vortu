@@ -768,6 +768,8 @@ function ProjectDrawer({ project, onClose, token, employees }) {
   const [addingTask, setAddingTask] = useState(false)
   const [exp, setExp] = useState({ description: '', amount: '' })
   const [addingExp, setAddingExp] = useState(false)
+  const [timeLog, setTimeLog] = useState({ taskId: '', hours: '' })
+  const [loggingTime, setLoggingTime] = useState(false)
 
   function loadDetail() {
     return fetch(`${API}/api/proyectos/${project.id}`, { headers: { Authorization: `Bearer ${token}` } })
@@ -806,6 +808,21 @@ function ProjectDrawer({ project, onClose, token, employees }) {
       if (r.ok) { setExp({ description: '', amount: '' }); await loadDetail() }
     } catch {}
     setAddingExp(false)
+  }
+
+  async function logTime() {
+    const hours = parseFloat(timeLog.hours)
+    if (!timeLog.taskId || !(hours > 0)) return
+    setLoggingTime(true)
+    try {
+      const r = await fetch(`${API}/api/proyectos/tareas/${timeLog.taskId}/tiempo`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ hours, date: new Date().toISOString().slice(0, 10), description: '' }),
+      })
+      if (r.ok) { setTimeLog({ taskId: '', hours: '' }); await loadDetail() }
+    } catch {}
+    setLoggingTime(false)
   }
 
   async function runAnalysis() {
@@ -960,6 +977,21 @@ function ProjectDrawer({ project, onClose, token, employees }) {
                     style={{ fontSize: 12, padding: '5px 8px', borderRadius: 7, border: `.5px solid ${T.hairline}`, background: T.card, color: T.text, fontFamily: 'inherit', width: 150 }} />
                   <BtnSec onClick={createTask} style={{ padding: '5px 10px', fontSize: 12 }}>{addingTask ? '…' : '+ Añadir'}</BtnSec>
                 </div>
+                {tasks.length > 0 && (
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
+                    <select value={timeLog.taskId} onChange={e => setTimeLog(s => ({ ...s, taskId: e.target.value }))}
+                      aria-label="Tarea para registrar horas"
+                      style={{ flex: 1, fontSize: 12, padding: '6px 8px', borderRadius: 7, border: `.5px solid ${T.hairline}`, background: T.card, color: T.text, fontFamily: 'inherit' }}>
+                      <option value="">Registrar horas en…</option>
+                      {tasks.map(t => <option key={t.id} value={t.id}>{t.title}</option>)}
+                    </select>
+                    <input type="number" value={timeLog.hours} onChange={e => setTimeLog(s => ({ ...s, hours: e.target.value }))}
+                      onKeyDown={e => { if (e.key === 'Enter') logTime() }}
+                      placeholder="hrs" aria-label="Horas"
+                      style={{ width: 56, fontSize: 12, padding: '6px 8px', borderRadius: 7, border: `.5px solid ${T.hairline}`, background: T.card, color: T.text, fontFamily: 'inherit' }} />
+                    <BtnSec onClick={logTime} style={{ padding: '6px 11px', fontSize: 12 }}>{loggingTime ? '…' : '⏱'}</BtnSec>
+                  </div>
+                )}
                 <div style={{ background: T.card, border: `.5px solid ${T.hairline}`, borderRadius: 10, overflow: 'hidden' }}>
                   {tasks.length === 0 ? (
                     <EmptyState
