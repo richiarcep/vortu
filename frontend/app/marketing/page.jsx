@@ -818,7 +818,14 @@ function CampaignDrawer({ campaign, onClose, token, onUpdate }) {
       fetch(`${API}/api/marketing/campanas/${campaign.id}/metricas`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.ok ? r.json() : null).catch(() => null),
     ]).then(([d, m]) => {
       setDetail(d?.campaign || d)
-      setMetrics(m?.metrics || m)
+      // Backend returns {metrics:[daily], summary:{total_*,avg_*}}; the cards read
+      // aggregate fields, so normalize the summary to the keys the UI expects.
+      const s = m?.summary
+      setMetrics(s ? {
+        impressions: s.total_impressions, clicks: s.total_clicks,
+        ctr: s.avg_ctr, cost: s.total_spend,
+        conversions: s.total_conversions, cpc: s.avg_cpc, cpa: s.avg_cpa,
+      } : null)
       setLoading(false)
     })
   }, [campaign.id])

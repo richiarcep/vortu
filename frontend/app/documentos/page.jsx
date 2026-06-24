@@ -1081,7 +1081,7 @@ export default function DocumentosPage() {
                     const typeColor = TYPE_COLORS[d.document_type] || '#6b7280'
                     const importe = d.extracted_data?.importe_total || d.extracted_data?.importe || d.extracted_data?.amount
                     const emisor = d.extracted_data?.emisor || d.extracted_data?.supplier
-                    const hasJournal = d.sql_action_result?.journal_created || d.sql_action_result?.transaction_id
+                    const hasJournal = d.journal_result?.journal_created || d.journal_result?.transaction_id
                     const isInvoice = d.document_type === 'factura'
 
                     return (

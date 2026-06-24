@@ -978,6 +978,7 @@ def list_documents(
             "extracted_data": parsed.get('extracted_data', {}),
             "semantic_tags": parsed.get('semantic_tags', []),
             "sql_action_result": parsed.get('sql_action_result'),
+            "journal_result": parsed.get('journal_result'),
             "created_at": d.created_at.isoformat() if d.created_at else None,
         })
     return {"total": len(result), "documents": result}
