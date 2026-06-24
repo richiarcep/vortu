@@ -766,6 +766,8 @@ function ProjectDrawer({ project, onClose, token, employees }) {
   const [loading, setLoading] = useState(true)
   const [newTask, setNewTask] = useState('')
   const [addingTask, setAddingTask] = useState(false)
+  const [exp, setExp] = useState({ description: '', amount: '' })
+  const [addingExp, setAddingExp] = useState(false)
 
   function loadDetail() {
     return fetch(`${API}/api/proyectos/${project.id}`, { headers: { Authorization: `Bearer ${token}` } })
@@ -789,6 +791,21 @@ function ProjectDrawer({ project, onClose, token, employees }) {
       if (r.ok) { setNewTask(''); await loadDetail() }
     } catch {}
     setAddingTask(false)
+  }
+
+  async function createExpense() {
+    const description = exp.description.trim(); const amount = parseFloat(exp.amount)
+    if (!description || !(amount > 0)) return
+    setAddingExp(true)
+    try {
+      const r = await fetch(`${API}/api/proyectos/${project.id}/gastos`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ description, amount, date: new Date().toISOString().slice(0, 10) }),
+      })
+      if (r.ok) { setExp({ description: '', amount: '' }); await loadDetail() }
+    } catch {}
+    setAddingExp(false)
   }
 
   async function runAnalysis() {
@@ -875,6 +892,18 @@ function ProjectDrawer({ project, onClose, token, employees }) {
                   <div style={{ fontSize: 10, color: T.text4, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.4 }}>Deadline</div>
                   <div style={{ fontSize: 13, fontWeight: 500, color: T.text2, marginTop: 3 }}>{fmtDate(p.deadline)}</div>
                 </div>
+              </div>
+
+              {/* Añadir gasto */}
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <input value={exp.description} onChange={e => setExp(s => ({ ...s, description: e.target.value }))}
+                  placeholder="Concepto del gasto…" aria-label="Concepto del gasto"
+                  style={{ flex: 1, fontSize: 12, padding: '7px 10px', borderRadius: 8, border: `.5px solid ${T.hairline}`, background: T.card, color: T.text, fontFamily: 'inherit' }} />
+                <input type="number" value={exp.amount} onChange={e => setExp(s => ({ ...s, amount: e.target.value }))}
+                  onKeyDown={e => { if (e.key === 'Enter') createExpense() }}
+                  placeholder="€" aria-label="Importe"
+                  style={{ width: 80, fontSize: 12, padding: '7px 10px', borderRadius: 8, border: `.5px solid ${T.hairline}`, background: T.card, color: T.text, fontFamily: 'inherit' }} />
+                <BtnSec onClick={createExpense} style={{ padding: '7px 12px', fontSize: 12 }}>{addingExp ? '…' : '+ Gasto'}</BtnSec>
               </div>
 
               {/* Análisis IA */}
