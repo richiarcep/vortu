@@ -540,6 +540,51 @@ def list_contracts(
     }
 
 
+class ContractCreate(BaseModel):
+    employee_id:   int
+    contract_type: str = "indefinido"   # indefinido | temporal | practicas
+    start_date:    str                  # YYYY-MM-DD
+    end_date:      Optional[str] = None
+    working_hours: Optional[int] = 40
+    salary_gross:  Optional[float] = None
+
+
+@router.post("/contracts", status_code=201)
+def create_contract(
+    data: ContractCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Crea un contrato para un empleado de la empresa del usuario."""
+    emp = db.query(Employee).filter(
+        Employee.id == data.employee_id,
+        Employee.company_id == current_user.company_id,
+    ).first()
+    if not emp:
+        raise HTTPException(status_code=404, detail="Empleado no encontrado")
+
+    try:
+        start = date.fromisoformat(data.start_date)
+        end = date.fromisoformat(data.end_date) if data.end_date else None
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=400, detail="Fecha inválida (usa YYYY-MM-DD)")
+
+    contract = Contract(
+        employee_id=data.employee_id,
+        company_id=current_user.company_id,
+        contract_type=data.contract_type,
+        start_date=start,
+        end_date=end,
+        working_hours=data.working_hours or 40,
+        salary_gross=data.salary_gross if data.salary_gross is not None else (emp.gross_salary or 0),
+        is_active=True,
+    )
+    db.add(contract)
+    db.commit()
+    db.refresh(contract)
+    return {"id": contract.id, "employee_name": emp.full_name, "contract_type": contract.contract_type}
+
+
 # ─── NÓMINAS ──────────────────────────────────────────────────────────────
 @router.get("/payslips")
 def list_payslips(

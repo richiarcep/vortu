@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
 import { T, FONT, useT } from '@/components/ui/tokens'
 import VeraDrawer from '@/components/ui/VeraDrawer'
-import { PageHeader } from '@/components/ui/primitives'
+import { PageHeader, Btn, BtnSec, Input, Field } from '@/components/ui/primitives'
 
 import { API_BASE as API } from '@/lib/api'
 const VERA_BLUE = '#3D2BFF'
@@ -592,18 +592,101 @@ function VacacionesTab({ token }) {
 // ─────────────────────────────────────────────────────────
 // TAB 3: CONTRATOS
 // ─────────────────────────────────────────────────────────
+function CreateContractModal({ token, employees, onClose, onCreated }) {
+  const T = useT()
+  const [form, setForm] = useState({ employee_id: '', contract_type: 'indefinido', start_date: '', end_date: '', working_hours: '40', salary_gross: '' })
+  const [saving, setSaving] = useState(false)
+  const [err, setErr] = useState('')
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+
+  async function submit(e) {
+    e.preventDefault()
+    if (!form.employee_id) { setErr('Selecciona un empleado'); return }
+    if (!form.start_date) { setErr('La fecha de inicio es obligatoria'); return }
+    setSaving(true); setErr('')
+    try {
+      const r = await fetch(`${API}/api/hr/contracts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          employee_id: parseInt(form.employee_id, 10),
+          contract_type: form.contract_type,
+          start_date: form.start_date,
+          end_date: form.end_date || null,
+          working_hours: form.working_hours ? parseInt(form.working_hours, 10) : 40,
+          salary_gross: form.salary_gross ? parseFloat(form.salary_gross) : null,
+        }),
+      })
+      if (!r.ok) { const d = await r.json().catch(() => ({})); setErr(d.detail || 'No se pudo crear el contrato'); setSaving(false); return }
+      onCreated()
+    } catch { setErr('Error de conexión'); setSaving(false) }
+  }
+
+  const selStyle = { width: '100%', padding: '8px 10px', borderRadius: 8, border: `.5px solid ${T.hairline}`, background: T.card, color: T.text, fontFamily: 'inherit', fontSize: 13 }
+
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.35)', zIndex: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <form onClick={e => e.stopPropagation()} onSubmit={submit} style={{ background: T.card, borderRadius: 16, padding: 24, width: 'min(460px, 100%)', border: `.5px solid ${T.hairline}` }}>
+        <div style={{ fontSize: 17, fontWeight: 700, color: T.text, marginBottom: 16 }}>Nuevo contrato</div>
+        {err && <div role="alert" style={{ color: T.red, fontSize: 13, marginBottom: 12 }}>{err}</div>}
+        <Field label="Empleado *">
+          <select value={form.employee_id} onChange={e => set('employee_id', e.target.value)} style={selStyle}>
+            <option value="">Selecciona…</option>
+            {employees.map(em => <option key={em.id} value={em.id}>{em.full_name}</option>)}
+          </select>
+        </Field>
+        <Field label="Tipo">
+          <select value={form.contract_type} onChange={e => set('contract_type', e.target.value)} style={selStyle}>
+            <option value="indefinido">Indefinido</option>
+            <option value="temporal">Temporal</option>
+            <option value="practicas">Prácticas</option>
+          </select>
+        </Field>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <Field label="Inicio *"><Input type="date" value={form.start_date} onChange={e => set('start_date', e.target.value)} /></Field>
+          <Field label="Fin"><Input type="date" value={form.end_date} onChange={e => set('end_date', e.target.value)} /></Field>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <Field label="Horas/sem"><Input type="number" value={form.working_hours} onChange={e => set('working_hours', e.target.value)} /></Field>
+          <Field label="Salario bruto (€)"><Input type="number" value={form.salary_gross} onChange={e => set('salary_gross', e.target.value)} placeholder="(del empleado)" /></Field>
+        </div>
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 16 }}>
+          <BtnSec onClick={onClose}>Cancelar</BtnSec>
+          <Btn type="submit" disabled={saving}>{saving ? 'Creando…' : 'Crear contrato'}</Btn>
+        </div>
+      </form>
+    </div>
+  )
+}
+
 function ContratosTab({ token }) {
   const T = useT()
   const [contracts, setContracts] = useState([])
   const [summary, setSummary] = useState({})
+  const [employees, setEmployees] = useState([])
+  const [showCreate, setShowCreate] = useState(false)
+
+  function loadContracts() {
+    return fetch(`${API}/api/hr/contracts`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json()).then(d => { setContracts(d.contracts || []); setSummary(d.summary || {}) }).catch(e => console.error('Error de red:', e))
+  }
 
   useEffect(() => {
-    fetch(`${API}/api/hr/contracts`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.json()).then(d => { setContracts(d.contracts || []); setSummary(d.summary || {}) }).catch(e => console.error('Error de red:', e))
+    loadContracts()
+    fetch(`${API}/api/hr/employees`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : null).then(d => setEmployees(d?.employees || d || [])).catch(() => {})
   }, [])
 
   return (
     <>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+        <Btn onClick={() => setShowCreate(true)}>Nuevo contrato</Btn>
+      </div>
+      {showCreate && (
+        <CreateContractModal token={token} employees={employees}
+          onClose={() => setShowCreate(false)}
+          onCreated={() => { setShowCreate(false); loadContracts() }} />
+      )}
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
         <div style={{ padding: '8px 14px', borderRadius: 10, background: T.card, border: `.5px solid ${T.hairline}` }}>
           <div style={{ fontSize: 10, color: T.text4, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>Indefinidos</div>
