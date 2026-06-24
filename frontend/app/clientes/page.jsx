@@ -5,7 +5,7 @@ import Sidebar from '@/components/Sidebar'
 import { FONT, useT } from '@/components/ui/tokens'
 import VeraDrawer from '@/components/ui/VeraDrawer'
 import { openVeraDrawer } from '@/components/ui/useVeraStore'
-import { Skeleton, EmptyState, PageHeader } from '@/components/ui/primitives'
+import { Skeleton, EmptyState, PageHeader, Btn, BtnSec, Input, Field } from '@/components/ui/primitives'
 
 import { API_BASE as API } from '@/lib/api'
 const VERA_BLUE = '#3D2BFF'
@@ -1136,6 +1136,57 @@ function HistorialTab({ token, onSelectContact }) {
 // ─────────────────────────────────────────────────────────
 // PÁGINA PRINCIPAL
 // ─────────────────────────────────────────────────────────
+function CreateContactModal({ token, onClose, onCreated }) {
+  const T = useT()
+  const [form, setForm] = useState({ name: '', email: '', phone: '', is_vip: false, notes: '' })
+  const [saving, setSaving] = useState(false)
+  const [err, setErr] = useState('')
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+
+  async function submit(e) {
+    e.preventDefault()
+    if (!form.name.trim()) { setErr('El nombre es obligatorio'); return }
+    setSaving(true); setErr('')
+    try {
+      const r = await fetch(`${API}/api/clientes/contactos`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          name: form.name.trim(),
+          email: form.email.trim() || null,
+          phone: form.phone.trim() || null,
+          is_vip: form.is_vip,
+          notes: form.notes.trim() || null,
+        }),
+      })
+      if (!r.ok) { const d = await r.json().catch(() => ({})); setErr(d.detail || 'No se pudo crear el contacto'); setSaving(false); return }
+      onCreated()
+    } catch { setErr('Error de conexión'); setSaving(false) }
+  }
+
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.35)', zIndex: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <form onClick={e => e.stopPropagation()} onSubmit={submit} style={{ background: T.card, borderRadius: 16, padding: 24, width: 'min(440px, 100%)', border: `.5px solid ${T.hairline}` }}>
+        <div style={{ fontSize: 17, fontWeight: 700, color: T.text, marginBottom: 16 }}>Nuevo contacto</div>
+        {err && <div role="alert" style={{ color: T.red, fontSize: 13, marginBottom: 12 }}>{err}</div>}
+        <Field label="Nombre *"><Input value={form.name} onChange={e => set('name', e.target.value)} autoFocus placeholder="Acme S.L. / Juan Pérez" /></Field>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <Field label="Email"><Input type="email" value={form.email} onChange={e => set('email', e.target.value)} placeholder="correo@…" /></Field>
+          <Field label="Teléfono"><Input value={form.phone} onChange={e => set('phone', e.target.value)} placeholder="+34…" /></Field>
+        </div>
+        <Field label="Notas"><Input value={form.notes} onChange={e => set('notes', e.target.value)} placeholder="Opcional" /></Field>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: T.text2, cursor: 'pointer', marginTop: 4 }}>
+          <input type="checkbox" checked={form.is_vip} onChange={e => set('is_vip', e.target.checked)} /> Marcar como VIP
+        </label>
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 16 }}>
+          <BtnSec onClick={onClose}>Cancelar</BtnSec>
+          <Btn type="submit" disabled={saving}>{saving ? 'Creando…' : 'Crear contacto'}</Btn>
+        </div>
+      </form>
+    </div>
+  )
+}
+
 export default function ClientesPage() {
   const T = useT()
 
@@ -1146,6 +1197,7 @@ export default function ClientesPage() {
   const [loading, setLoading] = useState(true)
   const [token, setToken] = useState(null)
   const [pendingCount, setPendingCount] = useState(0)
+  const [showCreate, setShowCreate] = useState(false)
 
   async function loadContacts(t) {
     setLoading(true)
@@ -1215,7 +1267,7 @@ export default function ClientesPage() {
           ]}
           activeTab={tab}
           onTab={setTab}
-          primary={undefined}
+          primary={{ label: 'Nuevo contacto', onClick: () => setShowCreate(true) }}
           onVera={() => openVeraDrawer({ modulo: 'clientes' })}
           user={null}
           router={router}
@@ -1261,6 +1313,14 @@ export default function ClientesPage() {
       )}
 
         <VeraDrawer />
+
+      {showCreate && (
+        <CreateContactModal
+          token={token}
+          onClose={() => setShowCreate(false)}
+          onCreated={() => { setShowCreate(false); loadContacts(token) }}
+        />
+      )}
     </div>
   )
 }
