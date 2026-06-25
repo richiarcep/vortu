@@ -1,7 +1,7 @@
 """
 Vera Network Agent API — endpoints solo para superadmins de Vela.
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from pydantic import BaseModel
@@ -11,8 +11,11 @@ import json
 from core.database import get_db
 from core.security import get_current_user
 from core.pagination import LimitQuery
+from core.rate_limit import rate_limit
 from models.user import User
-from vera.network_engine import network_chat, get_pulso, get_company_drilldown, lab_compare
+from vera.network_engine import (
+    network_chat, get_pulso, get_company_drilldown, lab_compare, NetworkBudgetExceeded,
+)
 
 router = APIRouter(prefix="/api/admin/vera-network", tags=["Vera Network Agent"])
 
@@ -60,21 +63,24 @@ def pulso(
 # ──────────────────────────────────────────────────────────────────
 # CHAT
 # ──────────────────────────────────────────────────────────────────
-@router.post("/chat")
+@router.post("/chat", dependencies=[Depends(rate_limit(20, 60, "vera-network-chat"))])
 def chat(
     payload: ChatRequest,
     db: Session = Depends(get_db),
     admin: User = Depends(require_superadmin),
 ):
     """Conversación con Vera Network Agent (Opus + tool use)."""
-    result = network_chat(
-        db=db,
-        user_id=admin.id,
-        user_email=admin.email,
-        mensaje=payload.mensaje,
-        historial=payload.historial or [],
-        context_company_id=payload.context_company_id,
-    )
+    try:
+        result = network_chat(
+            db=db,
+            user_id=admin.id,
+            user_email=admin.email,
+            mensaje=payload.mensaje,
+            historial=payload.historial or [],
+            context_company_id=payload.context_company_id,
+        )
+    except NetworkBudgetExceeded as e:
+        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=str(e))
 
     # Guardar conversación
     if payload.conversation_id:
@@ -216,7 +222,7 @@ def empresa_drilldown(
 # ──────────────────────────────────────────────────────────────────
 # LAB — comparativa modelos
 # ──────────────────────────────────────────────────────────────────
-@router.post("/lab")
+@router.post("/lab", dependencies=[Depends(rate_limit(10, 60, "vera-network-lab"))])
 def lab(
     payload: LabRequest,
     db: Session = Depends(get_db),

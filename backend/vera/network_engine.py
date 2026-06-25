@@ -24,6 +24,34 @@ MODEL_PRIMARY = OPUS_NETWORK
 MODEL_FALLBACK = SONNET
 
 # ──────────────────────────────────────────────────────────────────────
+# COST GUARDRAILS — the network agent runs Opus in a multi-iteration tool
+# loop across ALL tenants, so an unbounded (or stolen) super-admin session
+# could rack up large spend. cost_usd is already computed per call; these
+# caps actually ENFORCE it. Tunable via env (DEBUG-safe defaults).
+# ──────────────────────────────────────────────────────────────────────
+NETWORK_DAILY_USD_CAP = float(getattr(settings, "NETWORK_DAILY_USD_CAP", 25.0) or 25.0)
+NETWORK_PER_SESSION_USD_CAP = float(getattr(settings, "NETWORK_PER_SESSION_USD_CAP", 5.0) or 5.0)
+
+
+class NetworkBudgetExceeded(Exception):
+    """Raised when a super-admin's network-agent spend hits the daily ceiling.
+    The API layer translates this to HTTP 429."""
+
+
+def today_network_spend_usd(db: Session, user_id: int) -> float:
+    """Sum of this super-admin's network-agent cost_usd since UTC midnight."""
+    try:
+        row = db.execute(text("""
+            SELECT COALESCE(SUM(cost_usd), 0) FROM vera_network_audit
+            WHERE user_id = :uid AND created_at >= :since
+        """), {"uid": user_id, "since": datetime.utcnow().strftime("%Y-%m-%d 00:00:00")}).fetchone()
+        return float(row[0] or 0) if row else 0.0
+    except Exception:
+        # Fail-open on the *read* (never lock a super-admin out over a query
+        # error); the per-session cap below still bounds a single request.
+        return 0.0
+
+# ──────────────────────────────────────────────────────────────────────
 # SQL SAFETY — solo SELECT permitido
 # ──────────────────────────────────────────────────────────────────────
 FORBIDDEN_SQL = re.compile(
@@ -231,6 +259,15 @@ def network_chat(
     if historial is None:
         historial = []
 
+    # Daily cost ceiling: refuse before spending another cent if this super-admin
+    # has already burned through the day's budget.
+    spent_today = today_network_spend_usd(db, user_id)
+    if spent_today >= NETWORK_DAILY_USD_CAP:
+        raise NetworkBudgetExceeded(
+            f"Límite de coste diario alcanzado (${spent_today:.2f} / ${NETWORK_DAILY_USD_CAP:.2f}). "
+            "Inténtalo de nuevo mañana."
+        )
+
     # Contexto adicional si se especifica una empresa
     extra_context = ""
     if context_company_id:
@@ -284,6 +321,16 @@ def network_chat(
 
         tokens_in += response.usage.input_tokens
         tokens_out += response.usage.output_tokens
+
+        # Per-session cost cap: stop the tool loop once THIS request's running
+        # cost crosses the ceiling, even if the model wants more iterations.
+        if cost_usd(model_used, tokens_in, tokens_out) >= NETWORK_PER_SESSION_USD_CAP:
+            respuesta_text = (
+                "(Se alcanzó el límite de coste de esta consulta. Reformula la "
+                "pregunta de forma más acotada para continuar.)"
+            )
+            messages.append({"role": "assistant", "content": respuesta_text})
+            break
 
         if response.stop_reason == "tool_use":
             # Vera quiere usar herramientas
