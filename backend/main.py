@@ -102,20 +102,26 @@ app = FastAPI(
     version=settings.APP_VERSION,
     debug=settings.DEBUG,
     lifespan=lifespan,
+    # Don't expose the interactive API explorer / schema in production (sec spec §9).
+    docs_url="/docs" if settings.DEBUG else None,
+    redoc_url="/redoc" if settings.DEBUG else None,
+    openapi_url="/openapi.json" if settings.DEBUG else None,
 )
 
 # ── Global exception handler ───────────────────────────────────────────────────
 # Catches any UNHANDLED exception (HTTPException is handled by FastAPI normally),
-# logs it with a full traceback server-side, and returns a generic message so we
-# never leak internals/stack traces to clients (unless DEBUG is on for local dev).
+# logs it with a full traceback + a correlation id server-side, and returns a
+# generic message + that id to the client — never a stack trace (unless DEBUG).
 _error_log = logging.getLogger("vela.error")
 
 
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request, exc):
-    _error_log.exception("Unhandled error on %s %s", request.method, request.url.path)
+    import uuid
+    error_id = uuid.uuid4().hex[:12]
+    _error_log.exception("Unhandled error [%s] on %s %s", error_id, request.method, request.url.path)
     detail = str(exc) if settings.DEBUG else "Internal server error"
-    return JSONResponse(status_code=500, content={"detail": detail})
+    return JSONResponse(status_code=500, content={"detail": detail, "error_id": error_id})
 
 
 # ── CORS ──────────────────────────────────────────────────────────────────────
