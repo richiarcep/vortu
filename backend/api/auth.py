@@ -121,6 +121,12 @@ def login(
             detail="Account is disabled"
         )
 
+    # Transparently upgrade legacy bcrypt hashes to argon2 on successful login.
+    from core.security import needs_rehash, hash_password
+    if needs_rehash(user.hashed_password):
+        user.hashed_password = hash_password(form_data.password)
+        db.commit()
+
     # Update last login
     from datetime import datetime, timedelta
     user.last_login = datetime.utcnow().isoformat()
@@ -147,8 +153,19 @@ def login(
     from models.billing import Subscription
     sub = db.query(Subscription).filter(Subscription.user_id == user.id).first()
     plan_id = sub.plan_id if sub else "starter"
-    token = create_access_token(data={"sub": str(user.id), "is_admin": user.is_admin, "plan_id": plan_id})
+    token = create_access_token(data={"sub": str(user.id), "is_admin": user.is_admin, "plan_id": plan_id,
+                                       "tv": getattr(user, "token_version", 0) or 0})
     return {"access_token": token, "token_type": "bearer", "requires_2fa": False}
+
+
+@router.post("/logout")
+def logout(db: Session = Depends(get_db),
+           current_user: User = Depends(__import__('core.security', fromlist=['get_current_user']).get_current_user)):
+    """Server-side logout: bump token_version so EVERY outstanding token for this
+    user stops validating (real revocation, not just clearing client storage)."""
+    current_user.token_version = (getattr(current_user, "token_version", 0) or 0) + 1
+    db.commit()
+    return {"ok": True}
 
 
 @router.get("/me", response_model=UserResponse)

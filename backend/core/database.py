@@ -166,6 +166,11 @@ def ensure_runtime_schema():
         # companies.plan: leída/escrita solo por SQL crudo (api/admin, billing,
         # stripe_service); nunca declarada en el modelo Company. Sin ella,
         # /api/admin/companies y /billing/overview dan 500 "no such column: plan".
+        # users.token_version — server-side JWT revocation (bumped on logout/pwd-change).
+        user_cols = existing_columns(conn, "users")
+        if user_cols is not None and "token_version" not in user_cols:
+            conn.execute(text("ALTER TABLE users ADD COLUMN token_version INTEGER NOT NULL DEFAULT 0"))
+
         company_cols = existing_columns(conn, "companies")
         if company_cols is not None and "plan" not in company_cols:
             conn.execute(text("ALTER TABLE companies ADD COLUMN plan TEXT DEFAULT 'base'"))

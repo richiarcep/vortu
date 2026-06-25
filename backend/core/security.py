@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from typing import Optional
-import bcrypt
+import argon2
+import bcrypt as _bcrypt
 from jose import JWTError, jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -12,26 +13,62 @@ settings = get_settings()
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
+# Argon2id is the primary password-hashing scheme (OWASP-recommended). Legacy
+# bcrypt hashes ($2a/$2b/$2y) still verify and are transparently upgraded to
+# argon2 on the user's next successful login (see needs_rehash + api/auth.py).
+#
+# We deliberately call argon2-cffi and the bcrypt library DIRECTLY rather than
+# routing through passlib: passlib 1.7.4 is unmaintained and its bcrypt backend
+# raises against bcrypt >= 5.0 ("module 'bcrypt' has no attribute '__about__'"
+# → ValueError on the 72-byte check), which would lock out every existing
+# bcrypt-hashed user. Talking to the libraries directly is both correct and one
+# fewer fragile dependency.
+_argon2_hasher = argon2.PasswordHasher()  # sensible OWASP-aligned defaults
+
 
 def hash_password(plain: str) -> str:
-    """Turns a plain password into a secure hash."""
-    pwd_bytes = plain.encode("utf-8")
-    salt = bcrypt.gensalt()
-    return bcrypt.hashpw(pwd_bytes, salt).decode("utf-8")
+    """Turns a plain password into a secure Argon2id hash."""
+    return _argon2_hasher.hash(plain)
+
+
+def _is_bcrypt_hash(hashed: str) -> bool:
+    return hashed.startswith(("$2a$", "$2b$", "$2y$"))
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    """Checks if a plain password matches its hash."""
-    return bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("utf-8"))
+    """Checks if a plain password matches its hash (argon2id or legacy bcrypt)."""
+    if not hashed:
+        return False
+    try:
+        if _is_bcrypt_hash(hashed):
+            # bcrypt only considers the first 72 bytes; bcrypt >= 5 raises on
+            # longer input instead of silently truncating, so truncate here to
+            # match how the hash was originally produced.
+            return _bcrypt.checkpw(plain.encode("utf-8")[:72], hashed.encode("utf-8"))
+        return _argon2_hasher.verify(hashed, plain)
+    except Exception:
+        return False
+
+
+def needs_rehash(hashed: str) -> bool:
+    """True if the stored hash should be re-hashed to current argon2id params
+    (legacy bcrypt → argon2, or outdated argon2 cost parameters)."""
+    if not hashed:
+        return False
+    try:
+        if _is_bcrypt_hash(hashed):
+            return True
+        return _argon2_hasher.check_needs_rehash(hashed)
+    except Exception:
+        return False
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
-    """Creates a signed JWT token with an expiry time."""
+    """Creates a signed JWT token with an expiry + issued-at time."""
     payload = data.copy()
-    expire = datetime.now(timezone.utc) + (
-        expires_delta or timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    )
-    payload.update({"exp": expire})
+    now = datetime.now(timezone.utc)
+    expire = now + (expires_delta or timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES))
+    payload.update({"exp": expire, "iat": now})
     return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 
@@ -69,6 +106,14 @@ def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found"
         )
+    # Reject disabled accounts — a deactivated user's outstanding token must stop working.
+    if not getattr(user, "is_active", True):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Account is disabled")
+    # Server-side revocation: the token carries the user's token_version at mint time;
+    # bumping User.token_version (logout / password change / forced sign-out) invalidates
+    # every previously-issued token. Tokens minted before this feature have no "tv" → 0.
+    if payload.get("tv", 0) != (getattr(user, "token_version", 0) or 0):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has been revoked")
     return user
 
 def get_admin_user(

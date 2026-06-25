@@ -19,6 +19,8 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
     full_name = Column(String, nullable=False)
     is_active = Column(Boolean, default=True)
+    # Bumped to revoke all outstanding JWTs for this user (logout / password change / force sign-out).
+    token_version = Column(Integer, default=0, nullable=False)
     has_vera_plus = Column(Boolean, default=False)
     is_admin = Column(Boolean, default=False)
     is_superadmin = Column(Boolean, default=False)
