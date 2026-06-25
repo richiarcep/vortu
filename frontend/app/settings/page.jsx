@@ -1264,6 +1264,31 @@ function SecurityTab({token,T,showSaved}){
     }catch{setTfa(p=>({...p,error:'Error de conexion',verifying:false}))}
   }
 
+  // GDPR Art.15/20 — descarga de datos personales en JSON.
+  async function exportMyData(){
+    try{
+      const r=await fetch(`${API}/api/me/export`,{headers:h()})
+      if(!r.ok)throw new Error('export')
+      const data=await r.json()
+      const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'})
+      const url=URL.createObjectURL(blob)
+      const a=document.createElement('a')
+      a.href=url; a.download='mis-datos-vela.json'; a.click()
+      URL.revokeObjectURL(url)
+    }catch{alert('No se pudo exportar tus datos. Inténtalo de nuevo.')}
+  }
+
+  // GDPR Art.17 — derecho al olvido. Anonimiza la cuenta y cierra sesión.
+  async function deleteMyAccount(){
+    if(!confirm('¿Seguro que quieres eliminar tu cuenta? Tus datos personales se anonimizarán de forma irreversible. Los registros con obligación fiscal se conservan anonimizados.'))return
+    try{
+      const r=await fetch(`${API}/api/me/erase`,{method:'DELETE',headers:h()})
+      if(!r.ok)throw new Error('erase')
+      try{localStorage.removeItem('vela_token')}catch{}
+      window.location.href='/login'
+    }catch{alert('No se pudo eliminar la cuenta. Inténtalo de nuevo.')}
+  }
+
   const Card=({children,style:s})=><div style={{background:T.card,borderRadius:16,border:`.5px solid ${T.hairline}`,padding:20,...s}}>{children}</div>
   const Btn=({children,onClick,disabled,style:s})=><button onClick={onClick} disabled={disabled} style={{padding:'9px 18px',borderRadius:10,border:'none',background:T.blue,color:'#fff',fontSize:13,fontWeight:600,cursor:disabled?'default':'pointer',fontFamily:'inherit',opacity:disabled?.6:1,...s}}>{children}</button>
 
@@ -1340,10 +1365,16 @@ function SecurityTab({token,T,showSaved}){
           )}
         </Card>
 
+        <Card>
+          <div style={{fontSize:15,fontWeight:600,color:T.text,letterSpacing:-0.2,marginBottom:4}}>Tus datos (RGPD)</div>
+          <div style={{fontSize:13,color:T.text3,marginBottom:14}}>Descarga una copia de tus datos personales en formato JSON.</div>
+          <Btn onClick={exportMyData}>Descargar mis datos</Btn>
+        </Card>
+
         <Card style={{borderColor:T.redSoft}}>
           <div style={{fontSize:14,fontWeight:500,color:T.red,marginBottom:4}}>Zona de peligro</div>
           <div style={{fontSize:12,color:T.text3,marginBottom:14}}>Estas acciones son irreversibles</div>
-          <button style={{padding:'8px 18px',borderRadius:999,border:`.5px solid ${T.red}`,background:T.redSoft,color:T.red,fontSize:13,fontWeight:500,cursor:'pointer',fontFamily:'inherit'}}>Eliminar mi cuenta</button>
+          <button onClick={deleteMyAccount} style={{padding:'8px 18px',borderRadius:999,border:`.5px solid ${T.red}`,background:T.redSoft,color:T.red,fontSize:13,fontWeight:500,cursor:'pointer',fontFamily:'inherit'}}>Eliminar mi cuenta</button>
         </Card>
       </div>
     </div>
