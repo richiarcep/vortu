@@ -5,7 +5,7 @@ import pyotp
 import qrcode
 import io
 import base64
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from datetime import datetime
@@ -15,6 +15,7 @@ from fastapi.security import OAuth2PasswordBearer
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 from core.security import get_current_user
 from core.rate_limit import rate_limit
+from core.audit import audit_event
 from models.user import User
 
 router = APIRouter(prefix="/api/auth/2fa", tags=["2FA"])
@@ -108,39 +109,43 @@ def disable_2fa(
 @router.post("/verify-login", dependencies=[Depends(rate_limit(6, 60, "2fa-verify-login"))])
 def verify_login_2fa(
     body: VerifyRequest,
+    request: Request,
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db),
 ):
     """Verify 2FA during login. Exchanges temp token for full token."""
     from core.security import decode_token, create_access_token
     from fastapi.security import OAuth2PasswordBearer
-    
+
     payload = decode_token(token)
     user_id = payload.get("sub")
-    
+
     if str(user_id).isdigit():
         user = db.query(User).filter(User.id == int(user_id)).first()
     else:
         user = db.query(User).filter(User.email == str(user_id)).first()
-    
+
     if not user or not user.totp_secret:
         raise HTTPException(status_code=400, detail="Usuario no encontrado")
-    
+
     import pyotp
     totp = pyotp.TOTP(user.totp_secret)
-    
+
     if totp.verify(body.code, valid_window=1):
         user.last_2fa_verified = datetime.utcnow().isoformat()
         db.commit()
-        
+
         from models.billing import Subscription
         sub = db.query(Subscription).filter(Subscription.user_id == user.id).first()
         plan_id = sub.plan_id if sub else "starter"
         full_token = create_access_token(data={"sub": str(user.id), "is_admin": user.is_admin, "plan_id": plan_id,
                                                 "tv": getattr(user, "token_version", 0) or 0})
-        
+        audit_event(db, "login_success", actor_user_id=user.id, actor_email=user.email,
+                    company_id=user.company_id, request=request, detail={"twofa": True})
         return {"access_token": full_token, "token_type": "bearer", "verified": True}
     else:
+        audit_event(db, "login_2fa_failure", actor_user_id=user.id, actor_email=user.email,
+                    company_id=user.company_id, request=request)
         raise HTTPException(status_code=400, detail="Codigo incorrecto. Intenta de nuevo.")
 
 @router.get("/status")

@@ -71,6 +71,50 @@ settings = get_settings()
 scheduler = BackgroundScheduler()
 
 
+# ── Error tracking (Sentry) ─────────────────────────────────────────────────
+# Enabled only when SENTRY_DSN is set, so local/dev stays a no-op. PII scrubbing
+# is on (send_default_pii=False) and a before_send hook strips the Authorization
+# header so tokens never reach Sentry.
+def _init_sentry():
+    if not settings.SENTRY_DSN:
+        return
+    try:
+        import sentry_sdk
+        from sentry_sdk.integrations.fastapi import FastApiIntegration
+        from sentry_sdk.integrations.starlette import StarletteIntegration
+        from sentry_sdk.integrations.logging import LoggingIntegration
+
+        def _before_send(event, hint):
+            try:
+                headers = event.get("request", {}).get("headers")
+                if isinstance(headers, dict):
+                    for h in list(headers):
+                        if h.lower() in ("authorization", "cookie", "x-api-key"):
+                            headers[h] = "[redacted]"
+            except Exception:
+                pass
+            return event
+
+        sentry_sdk.init(
+            dsn=settings.SENTRY_DSN,
+            environment=settings.ENVIRONMENT,
+            release=f"{settings.APP_NAME}@{settings.APP_VERSION}",
+            traces_sample_rate=settings.SENTRY_TRACES_SAMPLE_RATE,
+            send_default_pii=False,
+            before_send=_before_send,
+            integrations=[
+                StarletteIntegration(), FastApiIntegration(),
+                LoggingIntegration(level=logging.INFO, event_level=logging.ERROR),
+            ],
+        )
+        logging.getLogger("vela").info("Sentry error tracking enabled (env=%s)", settings.ENVIRONMENT)
+    except Exception as e:
+        logging.getLogger("vela").warning("Sentry init failed (continuing without it): %s", e)
+
+
+_init_sentry()
+
+
 # The background scheduler must run in exactly ONE process. With multiple
 # gunicorn/uvicorn workers, starting it in every worker would duplicate every
 # scheduled job. Gate it on an env var: enable it in a single process (default
@@ -120,6 +164,16 @@ async def unhandled_exception_handler(request, exc):
     import uuid
     error_id = uuid.uuid4().hex[:12]
     _error_log.exception("Unhandled error [%s] on %s %s", error_id, request.method, request.url.path)
+    # Capture to Sentry (no-op if not initialised) with the correlation id so the
+    # server log line and the Sentry issue can be cross-referenced.
+    if settings.SENTRY_DSN:
+        try:
+            import sentry_sdk
+            with sentry_sdk.push_scope() as scope:
+                scope.set_tag("error_id", error_id)
+                sentry_sdk.capture_exception(exc)
+        except Exception:
+            pass
     detail = str(exc) if settings.DEBUG else "Internal server error"
     return JSONResponse(status_code=500, content={"detail": detail, "error_id": error_id})
 

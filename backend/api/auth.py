@@ -1,5 +1,5 @@
 import logging
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, EmailStr
@@ -7,6 +7,7 @@ from typing import Optional
 from core.database import get_db
 from core.security import hash_password, verify_password, create_access_token
 from core.rate_limit import rate_limit
+from core.audit import audit_event
 from models.user import User, Company
 
 logger = logging.getLogger("vera.auth")
@@ -102,6 +103,7 @@ def register(data: RegisterRequest, db: Session = Depends(get_db)):
     dependencies=[Depends(rate_limit(8, 60, "login"))],
 )
 def login(
+    request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db)
 ):
@@ -110,12 +112,19 @@ def login(
     user = db.query(User).filter(User.email == form_data.username).first()
 
     if not user or not verify_password(form_data.password, user.hashed_password):
+        # Record failures even when the user doesn't exist (key credential-stuffing
+        # signal), keyed to the submitted email.
+        audit_event(db, "login_failure", actor_user_id=(user.id if user else None),
+                    actor_email=form_data.username, request=request,
+                    detail={"reason": "bad_credentials", "user_exists": user is not None})
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password"
         )
 
     if not user.is_active:
+        audit_event(db, "account_disabled", actor_user_id=user.id,
+                    actor_email=user.email, company_id=user.company_id, request=request)
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Account is disabled"
@@ -147,6 +156,8 @@ def login(
                 logger.warning("Could not parse last_2fa_verified for user %s: %s", user.id, e)
         if not skip_2fa:
             temp_token = create_access_token(data={"sub": str(user.id), "is_admin": user.is_admin, "requires_2fa": True}, expires_delta=timedelta(minutes=5))
+            audit_event(db, "login_2fa_challenge", actor_user_id=user.id,
+                        actor_email=user.email, company_id=user.company_id, request=request)
             return {"access_token": temp_token, "token_type": "bearer", "requires_2fa": True}
 
     # Get user plan
@@ -155,16 +166,20 @@ def login(
     plan_id = sub.plan_id if sub else "starter"
     token = create_access_token(data={"sub": str(user.id), "is_admin": user.is_admin, "plan_id": plan_id,
                                        "tv": getattr(user, "token_version", 0) or 0})
+    audit_event(db, "login_success", actor_user_id=user.id, actor_email=user.email,
+                company_id=user.company_id, request=request, detail={"twofa": False})
     return {"access_token": token, "token_type": "bearer", "requires_2fa": False}
 
 
 @router.post("/logout")
-def logout(db: Session = Depends(get_db),
+def logout(request: Request, db: Session = Depends(get_db),
            current_user: User = Depends(__import__('core.security', fromlist=['get_current_user']).get_current_user)):
     """Server-side logout: bump token_version so EVERY outstanding token for this
     user stops validating (real revocation, not just clearing client storage)."""
     current_user.token_version = (getattr(current_user, "token_version", 0) or 0) + 1
     db.commit()
+    audit_event(db, "logout", actor_user_id=current_user.id, actor_email=current_user.email,
+                company_id=current_user.company_id, request=request)
     return {"ok": True}
 
 

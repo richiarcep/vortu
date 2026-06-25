@@ -41,6 +41,13 @@ class Settings(BaseSettings):
     NEO4J_USER: str = "neo4j"
     FRONTEND_URL: str = "http://localhost:3000"
     BACKEND_URL: str = "http://localhost:8000"
+    # Observability / hardening (all optional; safe no-op defaults).
+    SENTRY_DSN: str = ""                       # error tracking; disabled when empty
+    ENVIRONMENT: str = "development"           # tags Sentry events (production/staging/…)
+    SENTRY_TRACES_SAMPLE_RATE: float = 0.0     # perf tracing sample rate
+    DB_STATEMENT_TIMEOUT_S: int = 30           # hard per-statement execution timeout
+    NETWORK_DAILY_USD_CAP: float = 25.0        # network-agent per-super-admin daily ceiling
+    NETWORK_PER_SESSION_USD_CAP: float = 5.0   # network-agent per-request ceiling
     model_config = {"env_file": ".env", "extra": "ignore"}
 
     @field_validator("SECRET_KEY")

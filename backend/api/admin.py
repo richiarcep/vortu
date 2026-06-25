@@ -4,7 +4,7 @@ Gestión de empresas, usuarios, planes, snapshots y prompts.
 """
 import json
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from typing import Optional, List
 from sqlalchemy.orm import Session
@@ -12,6 +12,7 @@ from sqlalchemy import func, text
 
 from core.database import get_db
 from core.security import get_admin_user
+from core.audit import audit_event
 from vera.models import OPUS
 from vera.compat import vera_client   # IA por Vera (cuota + config admin)
 from models.user import User, Company
@@ -237,6 +238,7 @@ def get_company_detail(
 def update_company_plan(
     company_id: int,
     body: PlanUpdateRequest,
+    request: Request,
     db: Session = Depends(get_db),
     admin: User = Depends(get_admin_user)
 ):
@@ -265,6 +267,9 @@ def update_company_plan(
             db.add(sub)
 
     db.commit()
+    audit_event(db, "admin_company_plan_change", actor_user_id=admin.id, actor_email=admin.email,
+                target=f"company:{company_id}", company_id=company_id, request=request,
+                detail={"plan_id": body.plan_id})
     return {"message": f"Plan actualizado a {body.plan_id}", "company_id": company_id}
 
 # ──────────────────────────────────────────────────────────────────
@@ -361,6 +366,7 @@ def list_users(
 def update_user_status(
     user_id: int,
     body: UserStatusRequest,
+    request: Request,
     db: Session = Depends(get_db),
     admin: User = Depends(get_admin_user)
 ):
@@ -372,9 +378,48 @@ def update_user_status(
     if not user:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
 
+    before = user.is_active
     user.is_active = body.is_active
+    # Disabling a user should also revoke their outstanding tokens immediately.
+    if before and not body.is_active:
+        user.token_version = (getattr(user, "token_version", 0) or 0) + 1
     db.commit()
+    audit_event(db, "admin_user_status_change", actor_user_id=admin.id, actor_email=admin.email,
+                target=f"user:{user_id}", company_id=user.company_id, request=request,
+                detail={"is_active": {"before": before, "after": body.is_active}})
     return {"message": f"Usuario {'activado' if body.is_active else 'desactivado'}", "user_id": user_id}
+
+
+@router.get("/security-audit")
+def get_security_audit(
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_admin_user),
+    event: Optional[str] = None,
+    limit: int = 100,
+    offset: int = 0,
+):
+    """Security audit log (logins, 2FA, privileged admin changes, exports) with a
+    tamper-evidence chain check. Superadmin-only."""
+    from core.audit import verify_chain
+    limit = max(1, min(limit, 500))
+    where = "WHERE event = :event" if event else ""
+    params = {"lim": limit, "off": max(0, offset)}
+    if event:
+        params["event"] = event
+    rows = db.execute(text(f"""
+        SELECT id, ts, event, actor_user_id, actor_email, target, company_id, ip, user_agent, detail
+        FROM security_audit_log {where}
+        ORDER BY id DESC LIMIT :lim OFFSET :off
+    """), params).fetchall()
+    return {
+        "integrity": verify_chain(db),
+        "events": [
+            {"id": r[0], "ts": r[1], "event": r[2], "actor_user_id": r[3],
+             "actor_email": r[4], "target": r[5], "company_id": r[6],
+             "ip": r[7], "user_agent": r[8], "detail": r[9]}
+            for r in rows
+        ],
+    }
 
 
 # ── Snapshots ──────────────────────────────────────────────────────────────────
@@ -721,6 +766,7 @@ def billing_overview(
 def update_fase(
     company_id: int,
     body: FaseUpdateRequest,
+    request: Request,
     db: Session = Depends(get_db),
     admin: User = Depends(get_admin_user)
 ):
@@ -750,6 +796,9 @@ def update_fase(
         sub.status = "trialing"
 
     db.commit()
+    audit_event(db, "admin_company_fase_change", actor_user_id=admin.id, actor_email=admin.email,
+                target=f"company:{company_id}", company_id=company_id, request=request,
+                detail={"fase": body.fase, "fase_expiry_days": body.fase_expiry_days})
     return {"message": f"Fase actualizada a {body.fase}", "company_id": company_id}
 
 

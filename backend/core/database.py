@@ -153,6 +153,31 @@ def ensure_runtime_schema():
         for stmt in _network_tables_ddl():
             conn.execute(text(stmt))
 
+        # Security audit log — tamper-evident (hash-chained) record of logins,
+        # 2FA, privileged admin changes, exports and AI tool calls. Written via
+        # core.audit.audit_event. Append-only by convention; on Postgres add a
+        # BEFORE UPDATE/DELETE trigger to enforce it at the DB layer.
+        _audit_pk = "id SERIAL PRIMARY KEY" if engine.dialect.name == "postgresql" else "id INTEGER PRIMARY KEY AUTOINCREMENT"
+        conn.execute(text(f"""
+            CREATE TABLE IF NOT EXISTS security_audit_log (
+                {_audit_pk},
+                ts TEXT NOT NULL,
+                event TEXT NOT NULL,
+                actor_user_id INTEGER,
+                actor_email TEXT,
+                target TEXT,
+                company_id INTEGER,
+                ip TEXT,
+                user_agent TEXT,
+                detail TEXT,
+                prev_hash TEXT,
+                row_hash TEXT
+            )
+        """))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_audit_event ON security_audit_log (event)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_audit_actor ON security_audit_log (actor_email)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_audit_ts ON security_audit_log (ts)"))
+
         # Estado temporal del flujo documentos analyze→confirm. Antes vivía en un
         # dict global en memoria (se rompía con >1 worker: /confirm caía en otro
         # proceso → "documento caducado"). Persistido aquí (portable SQLite/PG).
