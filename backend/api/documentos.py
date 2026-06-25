@@ -616,6 +616,19 @@ def execute_sql_action(action: dict, db: Session, current_user: User, doc_id: in
         # El asiento contable se postea por separado (post_asiento) tras la aprobación.
         result['created'] = True
         result['record'] = record
+        # Audit the AI-initiated write into the tenant's business records
+        # (extraction pipeline). Attributes which actor/company/table/doc the AI
+        # mutated, so AI-created financial rows can be reviewed. No Request here
+        # (internal call), so IP is omitted.
+        try:
+            from core.audit import audit_event
+            audit_event(db, "ai_record_write", actor_user_id=current_user.id,
+                        actor_email=current_user.email, target=f"doc:{doc_id}",
+                        company_id=current_user.company_id,
+                        detail={"table": table, "amount": val_amount,
+                                "record_id": result.get(f"{table[:-1]}_id") or result.get("cost_entry_id")})
+        except Exception:
+            pass
         return result
 
     except Exception as e:

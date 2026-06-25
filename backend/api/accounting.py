@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Request
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -11,6 +11,7 @@ import logging
 
 from core.database import get_db
 from core.security import get_current_user
+from core.audit import audit_event
 from models.user import User
 from modules.accounting.journal import (
     setup_chart_of_accounts,
@@ -185,6 +186,7 @@ def get_registro(
 @router.post("/plantilla")
 def generar_plantilla(
     fecha: date,
+    request: Request,
     tipo_negocio: str = "mixto",
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -215,6 +217,9 @@ def generar_plantilla(
         logo_path=logo_path
     )
 
+    audit_event(db, "data_export", actor_user_id=current_user.id, actor_email=current_user.email,
+                company_id=current_user.company_id, request=request,
+                detail={"resource": "cierre_caja_pdf", "fecha": str(fecha)})
     return FileResponse(
         filename,
         media_type="application/pdf",
@@ -516,6 +521,7 @@ def validar_documento(
 def reporte_pl(
     fecha_inicio: date,
     fecha_fin: date,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -535,6 +541,9 @@ def reporte_pl(
         pl_data, company_data,
         {"inicio": str(fecha_inicio), "fin": str(fecha_fin)}
     )
+    audit_event(db, "data_export", actor_user_id=current_user.id, actor_email=current_user.email,
+                company_id=current_user.company_id, request=request,
+                detail={"resource": "estado_resultados_pdf", "inicio": str(fecha_inicio), "fin": str(fecha_fin)})
     return FileResponse(filename, media_type="application/pdf",
                         filename=f"estado_resultados_{fecha_inicio}.pdf")
 
@@ -542,6 +551,7 @@ def reporte_pl(
 @router.post("/reporte/balance-general")
 def reporte_balance(
     fecha: date,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -557,6 +567,9 @@ def reporte_balance(
     }
     balance_data = generate_balance_sheet(db, current_user.company_id, fecha)
     filename = generate_balance_report(balance_data, company_data, str(fecha))
+    audit_event(db, "data_export", actor_user_id=current_user.id, actor_email=current_user.email,
+                company_id=current_user.company_id, request=request,
+                detail={"resource": "balance_general_pdf", "fecha": str(fecha)})
     return FileResponse(filename, media_type="application/pdf",
                         filename=f"balance_general_{fecha}.pdf")
 
@@ -565,6 +578,7 @@ def reporte_balance(
 def reporte_flujo(
     fecha_inicio: date,
     fecha_fin: date,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -584,6 +598,9 @@ def reporte_flujo(
         cf_data, company_data,
         {"inicio": str(fecha_inicio), "fin": str(fecha_fin)}
     )
+    audit_event(db, "data_export", actor_user_id=current_user.id, actor_email=current_user.email,
+                company_id=current_user.company_id, request=request,
+                detail={"resource": "flujo_efectivo_pdf", "inicio": str(fecha_inicio), "fin": str(fecha_fin)})
     return FileResponse(filename, media_type="application/pdf",
                         filename=f"flujo_efectivo_{fecha_inicio}.pdf")
 # ── Financial Snapshots ───────────────────────────────────────────────────────

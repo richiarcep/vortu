@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from typing import Optional
 from core.database import get_db
 from core.security import get_current_user
+from core.audit import audit_event
 from models.user import User
 from models.document import Document
 from modules.hr.employees import Employee, EmployeeFeedback, analyze_feedback
@@ -265,6 +266,7 @@ def process_payroll_document(
 @router.get("/payslip/{employee_name}")
 def download_payslip(
     employee_name: str,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -305,6 +307,9 @@ def download_payslip(
             detail="Payslip not found. Run payroll processing first."
         )
 
+    audit_event(db, "data_export", actor_user_id=current_user.id, actor_email=current_user.email,
+                target=f"employee:{owns.id}", company_id=current_user.company_id, request=request,
+                detail={"resource": "payslip_pdf"})
     return FileResponse(
         filename,
         media_type="application/pdf",
