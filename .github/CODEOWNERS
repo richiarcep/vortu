@@ -1,0 +1,9 @@
+# Default owner for everything in the repo. Required reviews route here.
+# Add finer-grained owners per path as the team grows.
+*               @richiarcep
+
+# Security-sensitive areas — keep an extra eye on these.
+/backend/core/          @richiarcep
+/backend/api/auth.py    @richiarcep
+/backend/api/privacy.py @richiarcep
+/.github/               @richiarcep

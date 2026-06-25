@@ -21,3 +21,30 @@ Multi-agent security review of the session's changes (new endpoints, raw SQL, fr
 - **A-3 — `documentos.execute_sql_action`** writes payslip/contract from AI-derived `employee_id` without a company check (row stays in caller's company → misattribution, not IDOR).
 - **A-6 (info) — `EmployeeFeedback` has no `company_id` column** (isolation depends on the write-time employee→company check; add a denormalized column for defense-in-depth).
 - **A-8 (info) — dead `?redirect=` param** in `lib/api.js` `handleUnauthorized` (login ignores it; no open-redirect — remove or validate same-origin).
+
+## Supply chain — dependency scanning & branch protection (§11)
+
+**In the repo (done):**
+- `.github/workflows/security.yml` — `pip-audit` (backend, `--no-deps` against the
+  pinned `requirements.txt`) + `npm audit --audit-level=high` (frontend), on every
+  PR, on push to `main`, and weekly (catches newly-disclosed CVEs in already-pinned
+  deps without a code change).
+- `.github/dependabot.yml` — weekly bump PRs for pip (`/backend`), npm (`/frontend`)
+  and the GitHub Actions themselves.
+- `.github/CODEOWNERS` — default review owner; security-sensitive paths called out.
+- Direct-dep CVE fixes applied to `requirements.txt`: cryptography 47.0.0→48.0.1,
+  idna 3.13→3.15, pydantic-settings 2.14.0→2.14.2, starlette 1.0.0→1.0.1. Remaining
+  advisories are transitive (chromadb → torch/aiohttp); Dependabot will track them.
+
+**On GitHub (manual — server-side settings, cannot live in the repo):**
+Enable branch protection on `main`:
+- Require a pull request + ≥1 approving review; dismiss stale approvals on new commits.
+- Require status checks to pass: `pip-audit (backend)`, `npm audit (frontend)`.
+- Require branches to be up to date before merge; require linear history.
+- Block force-pushes and deletions; include administrators.
+
+Verify once `gh` is authenticated:
+```
+gh api repos/richiarcep/vortu/branches/main/protection
+```
+
