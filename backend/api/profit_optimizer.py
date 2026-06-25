@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
 from core.database import get_db
 from core.security import get_current_user
+from core.pagination import LimitQuery
 from models.profit_optimizer import CommercialLine, OptimizerProduct, OptimizerInputs, OptimizerRun
 from modules.profit_optimizer.engine import run_optimizer
 
@@ -193,7 +194,7 @@ def run(body: RunRequest, db=Depends(get_db), current_user=Depends(get_current_u
 
 
 @router.get("/runs")
-def get_runs(limit: int=10, db=Depends(get_db), current_user=Depends(get_current_user)):
+def get_runs(limit: int = LimitQuery(10), db=Depends(get_db), current_user=Depends(get_current_user)):
     runs = db.query(OptimizerRun).filter(
         OptimizerRun.company_id==current_user.company_id,
     ).order_by(OptimizerRun.run_at.desc()).limit(limit).all()

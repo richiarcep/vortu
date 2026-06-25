@@ -10,6 +10,7 @@ import json
 
 from core.database import get_db
 from core.security import get_current_user
+from core.pagination import LimitQuery
 from models.user import User
 from vera.network_engine import network_chat, get_pulso, get_company_drilldown, lab_compare
 
@@ -232,7 +233,7 @@ def lab(
 # ──────────────────────────────────────────────────────────────────
 @router.get("/audit")
 def get_audit(
-    limit: int = 50,
+    limit: int = LimitQuery(50),
     db: Session = Depends(get_db),
     admin: User = Depends(require_superadmin),
 ):

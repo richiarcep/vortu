@@ -10,6 +10,7 @@ from decimal import Decimal
 from core.database import get_db
 from services.graph.sync import sync_sale, sync_product
 from core.security import get_current_user
+from core.pagination import LimitQuery, OffsetQuery
 from models.user import User
 from models.sales import Product, Sale, SaleItem, SaleRefund, SaleRefundItem
 from modules.sales.qr_generator import (
@@ -719,8 +720,8 @@ def refund_sale(
 
 @router.get("/devoluciones")
 def list_refunds(
-    limit: int = 50,
-    offset: int = 0,
+    limit: int = LimitQuery(50),
+    offset: int = OffsetQuery(),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -735,8 +736,8 @@ def list_refunds(
 
 @router.get("/historial")
 def get_sales_history(
-    limit: int = 50,
-    offset: int = 0,
+    limit: int = LimitQuery(50),
+    offset: int = OffsetQuery(),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):

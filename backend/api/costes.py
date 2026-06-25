@@ -24,6 +24,7 @@ import unicodedata
 
 from core.database import get_db
 from core.security import get_current_user
+from core.pagination import LimitQuery, OffsetQuery
 from models.user import User
 from models.costs import CostCategory, CostDepartment, CostEntry, CostProvider
 from models.document import Document
@@ -263,8 +264,8 @@ def list_gastos(
     max_amount: Optional[float] = None,
     con_asiento: Optional[bool] = None,
     search: Optional[str] = None,
-    limit: int = Query(100, le=500),
-    offset: int = 0,
+    limit: int = LimitQuery(100),
+    offset: int = OffsetQuery(),
     order_by: str = "date_desc",
 ):
     """Lista de gastos LIVE desde contabilidad (journal_entries = fuente única de
@@ -549,7 +550,7 @@ def agg_categorias(db: Session = Depends(get_db), current_user: User = Depends(g
 
 
 @router.get("/agg/proveedores")
-def agg_proveedores(db: Session = Depends(get_db), current_user: User = Depends(get_current_user), limit: int = 50):
+def agg_proveedores(db: Session = Depends(get_db), current_user: User = Depends(get_current_user), limit: int = LimitQuery(50)):
     """Agrega por proveedor parseando notes (en memoria, ya que es VARCHAR)."""
     year_inicio = date(date.today().year, 1, 1)
     entries = db.query(CostEntry).filter(

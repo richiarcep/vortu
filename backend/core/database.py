@@ -1,3 +1,4 @@
+import time
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker, declarative_base
 from core.config import get_settings
@@ -5,6 +6,13 @@ from core.config import get_settings
 settings = get_settings()
 
 _is_sqlite = "sqlite" in settings.DATABASE_URL
+
+# Hard per-statement execution timeout. SQLite's busy_timeout only governs LOCK
+# waits, not a long-running scan, and there is otherwise no ceiling on a runaway
+# read (the worst case is the super-admin text-to-SQL agent, which can compose a
+# cross-tenant Cartesian/unindexed query). This bounds CPU/connection time so a
+# single query can't wedge a worker.
+STATEMENT_TIMEOUT_S = float(getattr(settings, "DB_STATEMENT_TIMEOUT_S", 30) or 30)
 
 # connect_args only needed for SQLite. `timeout` da margen para esperar a que se
 # libere el lock de escritura (SQLite serializa escrituras) en vez de fallar al
@@ -30,6 +38,28 @@ if _is_sqlite:
         cur.execute("PRAGMA journal_mode=WAL")
         cur.execute("PRAGMA busy_timeout=5000")
         cur.execute("PRAGMA foreign_keys=ON")
+        cur.close()
+
+    @event.listens_for(engine, "before_cursor_execute")
+    def _sqlite_statement_timeout(conn, cursor, statement, parameters, context, executemany):
+        """Abort any statement that runs past STATEMENT_TIMEOUT_S. The progress
+        handler fires every N VM ops; returning non-zero raises OperationalError
+        ('interrupted'). A fresh closure per statement captures its own deadline,
+        so we don't have to track state on the raw connection."""
+        dbapi_conn = conn.connection.dbapi_connection
+        deadline = time.monotonic() + STATEMENT_TIMEOUT_S
+
+        def _abort_if_over_deadline():
+            return 1 if time.monotonic() > deadline else 0
+
+        dbapi_conn.set_progress_handler(_abort_if_over_deadline, 10000)
+else:
+    @event.listens_for(engine, "connect")
+    def _pg_statement_timeout(dbapi_conn, _record):
+        """Postgres: hard per-session statement timeout enforced server-side.
+        The server cancels any query exceeding it, freeing the connection."""
+        cur = dbapi_conn.cursor()
+        cur.execute("SET statement_timeout = %s" % int(STATEMENT_TIMEOUT_S * 1000))
         cur.close()
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

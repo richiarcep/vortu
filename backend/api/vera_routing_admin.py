@@ -12,6 +12,7 @@ import json
 
 from core.database import get_db
 from core.security import get_current_user
+from core.pagination import LimitQuery
 from models.user import User
 
 router = APIRouter(prefix="/api/backoffice/vera-routing", tags=["Backoffice Vera"])
@@ -230,7 +231,7 @@ def update_model(
 def list_logs(
     db: Session = Depends(get_db),
     admin: User = Depends(require_admin),
-    limit: int = 50,
+    limit: int = LimitQuery(50),
 ):
     rows = db.execute(text("""
         SELECT id, rule_id, user_id, question, module, strategy_used,
