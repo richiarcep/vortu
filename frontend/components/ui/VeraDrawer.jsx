@@ -374,6 +374,13 @@ export default function VeraDrawer({
               Abrir chat completo →
             </a>
           </div>
+
+          {/* EU AI Act (riesgo limitado): transparencia — el usuario debe saber
+              que interactúa con una IA. Disclosure persistente. */}
+          <div style={{ marginTop: 8, fontSize: 10, color: T.text4, lineHeight: 1.4 }}>
+            {veraName} es una asistente de inteligencia artificial. Puede cometer
+            errores; verifica los datos importantes.
+          </div>
         </div>
       </div>
     </div>

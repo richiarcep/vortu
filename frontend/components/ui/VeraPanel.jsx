@@ -305,6 +305,11 @@ export default function VeraPanel({
         </button>
       </div>
 
+      {/* EU AI Act (riesgo limitado): transparencia hacia el usuario. */}
+      <div style={{ marginTop: 8, fontSize: 10, color: T.text4, lineHeight: 1.4 }}>
+        {isPlus ? 'Vera Plus' : 'Vera'} es una IA. Puede cometer errores; verifica los datos importantes.
+      </div>
+
       <button onClick={() => router.push('/vera')} style={{
         background: 'none', border: 'none',
         color: isPlus ? '#3730A3' : T.blue,

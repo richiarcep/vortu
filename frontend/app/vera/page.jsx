@@ -1018,6 +1018,10 @@ export default function VeraModule() {
                       </svg>
                     </button>
                   </div>
+                  {/* EU AI Act (riesgo limitado): transparencia hacia el usuario. */}
+                  <div style={{ marginTop: 8, fontSize: 10.5, color: T.text4, textAlign: 'center', lineHeight: 1.4 }}>
+                    {isPlus ? 'Vera Plus' : 'Vera'} es una asistente de inteligencia artificial. Puede cometer errores; verifica los datos importantes.
+                  </div>
                 </div>
               </>
             ) : (
