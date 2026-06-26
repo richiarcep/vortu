@@ -81,6 +81,10 @@ stack_up() {
   ensure_env
   say "Building + starting the stack…"
   "${SSH[@]}" "cd $REMOTE_DIR && $COMPOSE up -d --build"
+  # Caddy loads its config at start; a mounted Caddyfile change does NOT recreate the
+  # container, so reload it explicitly to pick up routing changes (keeps the cert).
+  say "Reloading Caddy (picks up Caddyfile changes)…"
+  "${SSH[@]}" "cd $REMOTE_DIR && $COMPOSE restart caddy" >/dev/null 2>&1 || true
   verify
 }
 
