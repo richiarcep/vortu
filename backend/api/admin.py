@@ -471,8 +471,13 @@ def generate_all(
     db: Session = Depends(get_db),
     admin: User = Depends(get_admin_user)
 ):
-    """Genera snapshots para todas las empresas."""
-    results = generate_all_snapshots(db)
+    """Genera snapshots para todas las empresas (cross-tenant → worker session)."""
+    from core.database import worker_session
+    wdb = worker_session()
+    try:
+        results = generate_all_snapshots(wdb)
+    finally:
+        wdb.close()
     return {"results": results, "total": len(results)}
 
 

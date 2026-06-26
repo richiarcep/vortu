@@ -55,6 +55,7 @@ class Settings(BaseSettings):
     RLS_ENABLED: bool = True                    # Postgres RLS kill-switch (ignored on SQLite)
     APP_DB_ROLE: str = ""                       # optional non-BYPASSRLS role to SET ROLE into
     NETWORK_DB_URL: str = ""                    # read-only BYPASSRLS DSN for the cross-tenant agent
+    WORKER_DB_URL: str = ""                      # write-capable BYPASSRLS DSN for background jobs (else SessionLocal)
     AEAT_VERIFACTU_ENDPOINT: str = ""           # AEAT remittance endpoint; empty → SANDBOX (no real submit)
     CONNECT_APPLICATION_FEE_BPS: int = 0        # platform fee on company sales (bps; 0 = none)
     STRIPE_USE_CONFIGURED_PRICES: bool = False  # use STRIPE_PRICE_* ids; default → inline price_data

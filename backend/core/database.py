@@ -87,6 +87,28 @@ def get_db():
 RLS_ENABLED = (engine.dialect.name == "postgresql") and bool(getattr(settings, "RLS_ENABLED", True))
 
 
+# Background jobs (scheduler, snapshot/memory workers) run OUTSIDE a request and
+# legitimately span tenants (enumerate companies, then write per-company data).
+# Under FORCE RLS the non-BYPASSRLS app role can't do that, so they use a separate
+# write-capable BYPASSRLS connection (WORKER_DB_URL) when configured; on dev/SQLite
+# (no WORKER_DB_URL) this is just the normal SessionLocal — behaviour unchanged.
+_WORKER_ENGINE = None
+_WorkerSession = None
+
+
+def worker_session():
+    """A DB session for background jobs. Uses WORKER_DB_URL (BYPASSRLS, write) when
+    set, else the normal SessionLocal."""
+    global _WORKER_ENGINE, _WorkerSession
+    url = getattr(settings, "WORKER_DB_URL", "") or ""
+    if not url:
+        return SessionLocal()
+    if _WorkerSession is None:
+        _WORKER_ENGINE = create_engine(url, pool_pre_ping=True)
+        _WorkerSession = sessionmaker(autocommit=False, autoflush=False, bind=_WORKER_ENGINE)
+    return _WorkerSession()
+
+
 def create_tables():
     """Creates all tables in the database. Called once at startup."""
     Base.metadata.create_all(bind=engine)

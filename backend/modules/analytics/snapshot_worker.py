@@ -221,11 +221,15 @@ def generate_snapshot(db: Session, company_id: int, target_date: date = None) ->
 
 
 def generate_all_snapshots(db: Session):
-    """Genera snapshots para todas las empresas activas."""
+    """Genera snapshots para todas las empresas activas. Cross-tenant: pásale una
+    worker_session (BYPASSRLS) bajo RLS para que la enumeración y las escrituras
+    por empresa funcionen."""
+    from core.security import set_tenant_context
     companies = db.query(Company).all()
     results = []
     for company in companies:
         try:
+            set_tenant_context(db, company.id)  # scope per company (no-op on SQLite)
             snap = generate_snapshot(db, company.id)
             if snap:
                 results.append({"company_id": company.id, "status": "ok"})

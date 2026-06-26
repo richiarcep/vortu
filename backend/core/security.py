@@ -135,6 +135,17 @@ def get_tenant_db(db: Session = Depends(get_db), current_user=Depends(get_curren
     return db
 
 
+def set_tenant_context(db, company_id):
+    """Bind a company to a session OUTSIDE a request (background jobs that loop over
+    companies). Issues set_config('app.current_company_id', …, true) on Postgres so
+    per-company writes pass RLS WITH CHECK; no-op on SQLite. Pair with worker_session()
+    for the cross-tenant enumeration."""
+    from core.database import RLS_ENABLED
+    if RLS_ENABLED:
+        db.execute(text("SELECT set_config('app.current_company_id', :cid, true)"),
+                   {"cid": str(company_id or 0)})
+
+
 def get_admin_user(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db)

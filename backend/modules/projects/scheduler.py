@@ -1,6 +1,6 @@
 from datetime import date, datetime
 from sqlalchemy.orm import Session
-from core.database import SessionLocal
+from core.database import SessionLocal, worker_session
 from models.project import Project, Task
 from modules.projects.health import update_project_health
 from modules.projects.velocity import calculate_velocity
@@ -11,7 +11,7 @@ def scan_all_projects():
     Runs daily at 8am. Scans every active project,
     recalculates health scores, and detects at-risk projects.
     """
-    db: Session = SessionLocal()
+    db: Session = worker_session()
     try:
         projects = db.query(Project).filter(
             Project.status == "active"
@@ -125,7 +125,7 @@ def generate_weekly_projects_digest(company_id: int) -> dict:
     """
     Called every Monday. Summarizes all projects for the week.
     """
-    db: Session = SessionLocal()
+    db: Session = worker_session()
     try:
         projects = db.query(Project).filter(
             Project.company_id == company_id
@@ -192,7 +192,7 @@ def setup_project_scheduler(scheduler):
 
 def _verifactu_retry_tick():
     """Drain the Veri*Factu retry queue (failed AEAT remittances)."""
-    db = SessionLocal()
+    db = worker_session()
     try:
         from modules.fiscal.verifactu.retry import process_pending
         process_pending(db)

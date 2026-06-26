@@ -55,11 +55,12 @@ runs on Postgres. **Remaining for activation:** point the agent at `NETWORK_DB_U
 `SET TRANSACTION READ ONLY` on Postgres; re-point `api/admin.py` cross-tenant reads at
 the same connection.
 
-### 3. Give background workers a tenant context
-`modules/projects/scheduler.py`, `modules/analytics/snapshot_worker.py`,
-`modules/analytics/memory_updater.py` touch tenant tables **outside a request** (no
-`current_user`). Under FORCE RLS they'd see zero rows. Either loop + `set_config` per
-company they process, or run them under the BYPASSRLS role.
+### 3. Give background workers a tenant context — ✅ DONE (set WORKER_DB_URL)
+Background jobs now use `core.database.worker_session()` (the scheduler jobs) and
+`core.security.set_tenant_context(db, company_id)` per company (snapshot driver),
+both no-ops on SQLite. **For activation:** set `WORKER_DB_URL` to a write-capable
+**BYPASSRLS** Postgres role so the jobs can enumerate companies and write
+per-company data under FORCE RLS. (Empty → plain SessionLocal, current behaviour.)
 
 ### 4. Backfill nullable `company_id`
 Marketing tables (`marketing_*`) have nullable `company_id`. Backfill from the
