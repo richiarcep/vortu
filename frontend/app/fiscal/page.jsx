@@ -143,6 +143,9 @@ export default function FiscalConfig() {
   const [tieneCert, setTieneCert] = useState(false)
   const [testResult, setTestResult] = useState(null)
   const [stats, setStats] = useState(null)
+  const [vfRegistros, setVfRegistros] = useState(null)
+  const [vfChain, setVfChain] = useState(null)
+  const [vfBusy, setVfBusy] = useState(false)
 
   const getToken = () => localStorage.getItem('vela_token')
 
@@ -153,6 +156,40 @@ export default function FiscalConfig() {
     try{const p=JSON.parse(atob(t.split('.')[1]));setUser({name:p.name||p.sub||'Usuario'})}catch{}
     loadConfig()
   },[])
+
+  // Veri*Factu (España): cargar registro de facturación + verificar cadena.
+  async function loadVerifactu() {
+    const t = getToken()
+    try {
+      const [r1, r2] = await Promise.allSettled([
+        fetch(`${API}/api/fiscal/verifactu/registro?limit=50`,{headers:{Authorization:`Bearer ${t}`}}),
+        fetch(`${API}/api/fiscal/verifactu/cadena/verificar`,{headers:{Authorization:`Bearer ${t}`}}),
+      ])
+      if(r1.status==='fulfilled'&&r1.value.ok){ const d=await r1.value.json(); setVfRegistros(d.registros||[]) }
+      if(r2.status==='fulfilled'&&r2.value.ok) setVfChain(await r2.value.json())
+    } catch {}
+  }
+
+  async function vfAnular(id) {
+    if(!confirm('¿Anular este registro? Se creará un registro de anulación enlazado (no se borra el original).')) return
+    setVfBusy(true)
+    const t = getToken()
+    try {
+      const res = await fetch(`${API}/api/fiscal/verifactu/registro/${id}/anular`,{method:'POST',headers:{Authorization:`Bearer ${t}`}})
+      if(res.ok){ setMsg({type:'success',text:'Registro anulado'}); await loadVerifactu() }
+      else { const d=await res.json().catch(()=>({})); setMsg({type:'error',text:d.detail||'No se pudo anular'}) }
+      setTimeout(()=>setMsg(null),2500)
+    } finally { setVfBusy(false) }
+  }
+
+  function vfDownloadXml(id) {
+    const t = getToken()
+    fetch(`${API}/api/fiscal/verifactu/registro/${id}/xml`,{headers:{Authorization:`Bearer ${t}`}})
+      .then(r=>r.text()).then(xml=>{
+        const blob=new Blob([xml],{type:'application/xml'}); const url=URL.createObjectURL(blob)
+        const a=document.createElement('a'); a.href=url; a.download=`verifactu-${id}.xml`; a.click(); URL.revokeObjectURL(url)
+      }).catch(()=>{})
+  }
 
   async function loadConfig() {
     const t = getToken()
@@ -241,6 +278,9 @@ export default function FiscalConfig() {
   }
 
   const isConfigured = config?.wizard_completado
+  const isES = (paisSeleccionado || '').toUpperCase() === 'ES'
+
+  useEffect(()=>{ if(isConfigured && isES && token) loadVerifactu() }, [isConfigured, isES, token])
 
   return (
     <div style={{minHeight:'100dvh',background:T.bg,display:'flex',fontFamily:FONT,WebkitFontSmoothing:'antialiased'}}>
@@ -284,6 +324,56 @@ export default function FiscalConfig() {
                 </Card>
               ))}
             </div>
+          )}
+
+          {/* Veri*Factu (España) — registro de facturación */}
+          {isConfigured && isES && (
+            <Card style={{marginBottom:24}}>
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}}>
+                <div>
+                  <div style={{fontSize:16,fontWeight:600,color:T.text,letterSpacing:-0.2}}>Veri*Factu — Registro de facturación</div>
+                  <div style={{fontSize:12,color:T.text4}}>Registros firmados, encadenados por huella e inmutables (AEAT)</div>
+                </div>
+                {vfChain && (
+                  <div style={{padding:'4px 11px',borderRadius:999,fontSize:11,fontWeight:600,display:'inline-flex',alignItems:'center',gap:5,
+                    background:vfChain.ok?T.greenSoft:T.redSoft, color:vfChain.ok?T.green:T.red}}>
+                    {vfChain.ok ? <>✓ Cadena íntegra ({vfChain.records_verified||0})</> : <>⚠ Cadena rota (#{vfChain.broken_at_id})</>}
+                  </div>
+                )}
+              </div>
+
+              {(!vfRegistros || vfRegistros.length===0) ? (
+                <div style={{padding:'18px',textAlign:'center',color:T.text4,fontSize:13,background:T.sidebar,borderRadius:10}}>
+                  Aún no hay registros. Las facturas emitidas aparecerán aquí con su huella y QR de cotejo AEAT.
+                </div>
+              ) : (
+                <div style={{border:`.5px solid ${T.hairline}`,borderRadius:10,overflow:'hidden'}}>
+                  <div style={{display:'grid',gridTemplateColumns:'90px 1fr 110px 110px 150px',gap:8,padding:'9px 14px',background:T.sidebar,fontSize:11,fontWeight:600,color:T.text4}}>
+                    <div>Nº</div><div>Fecha</div><div style={{textAlign:'right'}}>Importe</div><div>Estado</div><div style={{textAlign:'right'}}>Acciones</div>
+                  </div>
+                  {vfRegistros.map(r=>(
+                    <div key={r.id} style={{display:'grid',gridTemplateColumns:'90px 1fr 110px 110px 150px',gap:8,padding:'10px 14px',borderTop:`.5px solid ${T.hairline}`,alignItems:'center',fontSize:12.5,color:T.text}}>
+                      <div style={{fontWeight:600,fontVariantNumeric:'tabular-nums'}}>{r.serie}{r.numero}</div>
+                      <div style={{color:T.text3}}>{r.fecha_expedicion}</div>
+                      <div style={{textAlign:'right',fontVariantNumeric:'tabular-nums'}}>{Number(r.importe_total||0).toLocaleString('es-ES',{minimumFractionDigits:2})} €</div>
+                      <div>
+                        <span style={{fontSize:10.5,fontWeight:600,padding:'2px 8px',borderRadius:999,
+                          background:r.tipo==='anulacion'?T.redSoft:(r.estado==='sin_firma'?T.amberSoft||T.sidebar:T.greenSoft),
+                          color:r.tipo==='anulacion'?T.red:(r.estado==='sin_firma'?T.amber:T.green)}}>
+                          {r.tipo==='anulacion'?'anulada':(r.estado==='sin_firma'?'sin firma':'registrada')}
+                        </span>
+                      </div>
+                      <div style={{display:'flex',gap:6,justifyContent:'flex-end'}}>
+                        <button onClick={()=>vfDownloadXml(r.id)} style={{fontSize:11,padding:'4px 9px',borderRadius:7,border:`.5px solid ${T.hairline}`,background:T.card,color:T.text3,cursor:'pointer',fontFamily:'inherit'}}>XML</button>
+                        {r.tipo!=='anulacion' && (
+                          <button onClick={()=>vfAnular(r.id)} disabled={vfBusy} style={{fontSize:11,padding:'4px 9px',borderRadius:7,border:`.5px solid ${T.red}`,background:T.redSoft,color:T.red,cursor:vfBusy?'default':'pointer',fontFamily:'inherit',opacity:vfBusy?.5:1}}>Anular</button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card>
           )}
 
           {/* PASO 1 — Seleccionar pais */}
