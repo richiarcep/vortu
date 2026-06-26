@@ -208,7 +208,8 @@ def handle_webhook(db, payload, sig_header):
             _meta = _session_check.get("metadata", {}) or {}
             # ─── POS sale paid via Stripe Connect → record the real sale now ───
             if _meta.get("type") == "pos_sale":
-                _finalize_pos_sale(db, _meta.get("vela_pos_temp_id"))
+                _finalize_pos_sale(db, _meta.get("vela_pos_temp_id"),
+                                   payment_intent=_session_check.get("payment_intent"))
                 db.commit()
                 return {"received": True, "type": "pos_sale"}
             # ─── Vera Plus checkout (atajo: detectar antes que la lógica Vela) ───
@@ -239,9 +240,10 @@ def handle_webhook(db, payload, sig_header):
     db.commit()
     return {"status": "processed"}
 
-def _finalize_pos_sale(db, temp_id):
+def _finalize_pos_sale(db, temp_id, payment_intent=None):
     """A POS card/Apple Pay payment succeeded → record the real sale from the held
-    cart and mark the pending row paid. Idempotent (safe on duplicate webhooks)."""
+    cart and mark the pending row paid. Idempotent (safe on duplicate webhooks).
+    Stores the Stripe PaymentIntent on the sale so it can be refunded later."""
     if not temp_id:
         return
     from sqlalchemy import text
@@ -262,6 +264,9 @@ def _finalize_pos_sale(db, temp_id):
     )
     sale = persist_sale(db, row["company_id"], data, status="completed")
     sid = sale.get("id") if isinstance(sale, dict) else None
+    if sid and payment_intent:
+        db.execute(text("UPDATE sales SET stripe_payment_intent=:pi WHERE id=:s"),
+                   {"pi": payment_intent, "s": sid})
     db.execute(text("UPDATE pending_pos_sales SET status='paid', sale_id=:s WHERE temp_id=:t"),
                {"s": sid, "t": temp_id})
 

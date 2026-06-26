@@ -116,6 +116,9 @@ def serialize_sale(s: Sale) -> dict:
         "notes":           s.notes,
         "status":          getattr(s, "status", None) or "completed",
         "refunded_amount": getattr(s, "refunded_amount", 0.0) or 0.0,
+        # True when this sale was paid by card/Apple Pay via Vela (Stripe Connect),
+        # so the refund flow can offer a real refund to the customer's card.
+        "card_refundable": bool(getattr(s, "stripe_payment_intent", None)),
         "items": [
             {
                 "id":                  i.id,

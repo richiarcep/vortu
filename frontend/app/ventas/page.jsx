@@ -250,6 +250,7 @@ export default function Ventas() {
   const [refundLines, setRefundLines] = useState({})        // { sale_item_id: cantidad a devolver }
   const [refundReason, setRefundReason] = useState('')
   const [refundRestock, setRefundRestock] = useState(true)
+  const [refundToCard, setRefundToCard] = useState(true)
   const [refundLoading, setRefundLoading] = useState(false)
 
   // Productos
@@ -361,6 +362,7 @@ export default function Ventas() {
       setRefundLines(lines)
       setRefundReason('')
       setRefundRestock(true)
+      setRefundToCard(true)
     } catch {
       setMsg({ type: 'error', text: 'Error de conexión' })
     }
@@ -402,7 +404,17 @@ export default function Ventas() {
       })
       const data = await res.json()
       if (res.ok) {
-        setMsg({ type: 'success', text: `Devolución registrada · ${data.credit_note_number} · €${data.total?.toFixed(2)}` })
+        // Real card refund (Stripe Connect) when the sale was paid by card via Vela.
+        if (refundSale.card_refundable && refundToCard) {
+          try {
+            const rr = await fetch(`${API}/api/connect/sale/${refundSale.id}/refund`, {
+              method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+              body: JSON.stringify({ amount: data.total || null }),
+            })
+            if (!rr.ok) { const rd = await rr.json().catch(() => ({})); setMsg({ type: 'error', text: `Devolución registrada, pero el reembolso a tarjeta falló: ${rd.detail || ''}` }) }
+          } catch {}
+        }
+        setMsg(m => m || { type: 'success', text: `Devolución registrada · ${data.credit_note_number} · €${data.total?.toFixed(2)}` })
         setRefundSale(null)
         loadHistorial()
         loadResumen()
@@ -953,6 +965,12 @@ export default function Ventas() {
                       <input type="checkbox" checked={refundRestock} onChange={e => setRefundRestock(e.target.checked)} />
                       Reponer stock de las unidades devueltas
                     </label>
+                    {refundSale.card_refundable && (
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, fontSize: 13, color: T.text2, cursor: 'pointer' }}>
+                        <input type="checkbox" checked={refundToCard} onChange={e => setRefundToCard(e.target.checked)} />
+                        Reembolsar el cobro a la tarjeta del cliente (Stripe)
+                      </label>
+                    )}
 
                     <div style={{
                       display: 'flex', justifyContent: 'space-between', alignItems: 'center',

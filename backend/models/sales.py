@@ -45,6 +45,9 @@ class Sale(Base):
     # reintento de red. Unicidad real (company_id, idempotency_key) garantizada por
     # índice parcial en core.database.ensure_runtime_schema.
     idempotency_key = Column(String(80), nullable=True, index=True)
+    # Stripe PaymentIntent id when paid by card/Apple Pay via Connect — lets us
+    # issue a real refund to the customer's card on the connected account.
+    stripe_payment_intent = Column(String(120), nullable=True)
     created_at     = Column(DateTime, server_default=func.now())
 
     items   = relationship("SaleItem", back_populates="sale", cascade="all, delete-orphan")

@@ -127,6 +127,38 @@ def connect_sale_payment(body: SalePaymentRequest, request: Request,
     return {"url": result["url"], "temp_id": temp_id, "amount": total}
 
 
+class RefundRequest(BaseModel):
+    amount: Optional[float] = None  # None → full refund
+
+
+@router.post("/sale/{sale_id}/refund")
+def connect_refund_sale(sale_id: int, body: RefundRequest, request: Request,
+                        db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """Refund a card/Apple Pay POS payment to the customer's card (on the company's
+    connected account). Only works for sales paid via Connect (have a PaymentIntent)."""
+    if not CS.enabled():
+        raise HTTPException(status_code=400, detail="Pagos no configurados todavía.")
+    from sqlalchemy import text
+    row = db.execute(text(
+        "SELECT stripe_payment_intent, total FROM sales WHERE id=:s AND company_id=:c"
+    ), {"s": sale_id, "c": current_user.company_id}).mappings().first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Venta no encontrada")
+    if not row["stripe_payment_intent"]:
+        raise HTTPException(status_code=400, detail="Esta venta no se cobró con tarjeta vía Vela; no hay cobro que reembolsar.")
+    company = _company(db, current_user)
+    try:
+        result = CS.refund_payment(company.stripe_connect_id, row["stripe_payment_intent"], amount=body.amount)
+    except CS.ConnectError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Stripe: {e}")
+    audit_event(db, "connect_refund", actor_user_id=current_user.id, actor_email=current_user.email,
+                target=f"sale:{sale_id}", company_id=current_user.company_id, request=request,
+                detail={"amount": result.get("amount"), "status": result.get("status")})
+    return result
+
+
 @router.get("/sale-status/{temp_id}")
 def connect_sale_status(temp_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Poll whether the card payment completed and the sale was recorded."""

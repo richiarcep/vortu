@@ -301,6 +301,8 @@ def ensure_runtime_schema():
                 conn.execute(text("ALTER TABLE sales ADD COLUMN refunded_amount REAL DEFAULT 0"))
             if "idempotency_key" not in sale_cols:
                 conn.execute(text("ALTER TABLE sales ADD COLUMN idempotency_key TEXT"))
+            if "stripe_payment_intent" not in sale_cols:
+                conn.execute(text("ALTER TABLE sales ADD COLUMN stripe_payment_intent TEXT"))
         item_cols = existing_columns(conn, "sale_items")
         if item_cols is not None and "refunded_quantity" not in item_cols:
             conn.execute(text("ALTER TABLE sale_items ADD COLUMN refunded_quantity INTEGER DEFAULT 0"))

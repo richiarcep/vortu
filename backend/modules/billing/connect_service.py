@@ -116,3 +116,17 @@ def create_sale_payment(account_id: str, amount: float, currency: str, descripti
         kwargs["expires_at"] = expires_at
     session = stripe.checkout.Session.create(**kwargs)
     return {"url": session.url, "id": session.id}
+
+
+def refund_payment(account_id: str, payment_intent: str, amount: float = None) -> dict:
+    """Refund a Connect card/Apple Pay payment to the customer's card, on the
+    connected account. amount=None → full refund; else a partial amount in the
+    sale currency. Returns {id, status, amount}."""
+    _require_enabled()
+    if not payment_intent:
+        raise ConnectError("Esta venta no tiene un pago con tarjeta que reembolsar.")
+    kwargs = {"payment_intent": payment_intent}
+    if amount is not None:
+        kwargs["amount"] = int(round(float(amount) * 100))
+    refund = stripe.Refund.create(stripe_account=account_id, **kwargs)
+    return {"id": refund.id, "status": refund.status, "amount": (refund.amount or 0) / 100}
