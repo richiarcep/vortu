@@ -33,7 +33,7 @@ class Sale(Base):
     company_id     = Column(Integer, ForeignKey("companies.id"), nullable=False)
     sale_date      = Column(Date, nullable=False)
     sale_time      = Column(String(10), nullable=True)
-    payment_method = Column(String(50), default="efectivo")  # efectivo|tarjeta|bizum|otro
+    payment_method = Column(String(50), default="efectivo")  # cash|card|apple_pay|google_pay|transfer|bizum|otro
     subtotal       = Column(Float, default=0.0)
     iva_amount     = Column(Float, default=0.0)
     total          = Column(Float, default=0.0)

@@ -166,6 +166,14 @@ function PlanCard({ plan, onChoose, loading }) {
         }
       </button>
 
+      {/* Métodos de pago — Stripe Checkout muestra Apple Pay / Google Pay
+          automáticamente en dispositivos compatibles. */}
+      <div style={{ textAlign: 'center', marginTop: '-14px', marginBottom: '20px',
+        fontSize: '11px', fontWeight: 600, letterSpacing: '0.02em',
+        color: plan.highlight ? 'rgba(255,255,255,0.55)' : '#9ca3af' }}>
+        Tarjeta ·  Apple Pay · Google Pay
+      </div>
+
       {/* Modules */}
       <div style={{ flex: 1 }}>
         <div style={{ fontSize: '11px', fontWeight: '700', color: plan.highlight ? 'rgba(255,255,255,0.4)' : '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '12px' }}>Módulos incluidos</div>

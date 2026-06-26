@@ -660,6 +660,8 @@ export default function Ventas() {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(90px,1fr))', gap: 6 }}>
                   {[
                     { key: 'card', label: 'Tarjeta' },
+                    { key: 'apple_pay', label: ' Apple Pay' },
+                    { key: 'google_pay', label: 'Google Pay' },
                     { key: 'cash', label: 'Efectivo' },
                     { key: 'transfer', label: 'Transfer.' },
                     { key: 'bizum', label: 'Bizum' },

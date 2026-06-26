@@ -119,20 +119,56 @@ def set_pais_fiscal(data: dict, db: Session = Depends(get_db), current_user: Use
 
 @router.post("/certificado")
 async def upload_certificado(file: UploadFile = File(...), password: str = Form(""), db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """Upload the COMPANY's own qualified certificate (.p12) for its country's
+    e-invoicing. The cert belongs to the client (obligado tributario), never to
+    Vela. We validate it unlocks with the password and extract its expiry before
+    storing (the password is Fernet-encrypted; the .p12 lives on the encrypted
+    uploads volume, referenced by cert_ref — never the bytes in the DB)."""
     # password must be Form() — it arrives as a multipart field, not a query param.
     from core.files import enforce_upload_size
     enforce_upload_size(file, max_mb=5)
+    content = await file.read()
+
+    # Validate: the .p12 must parse AND the password must unlock it. Extract expiry.
+    valid_until = None
+    try:
+        from cryptography.hazmat.primitives.serialization import pkcs12
+        _key, cert, _chain = pkcs12.load_key_and_certificates(
+            content, password.encode() if password else None)
+        if cert is not None:
+            try:
+                valid_until = cert.not_valid_after_utc.isoformat()
+            except AttributeError:
+                valid_until = cert.not_valid_after.isoformat()
+    except Exception:
+        raise HTTPException(status_code=400,
+                            detail="Certificado o contraseña inválidos. Sube tu .p12 y la contraseña correcta.")
+
     upload_dir = f"uploads/fiscal/{current_user.company_id}"
     os.makedirs(upload_dir, exist_ok=True)
     path = f"{upload_dir}/certificado_{current_user.company_id}.p12"
-    content = await file.read()
     with open(path, "wb") as f:
         f.write(content)
+
     from core.crypto import encrypt
     db.execute(text("UPDATE config_fiscal SET certificado_path=:path, certificado_password=:pwd, tiene_certificado=1, updated_at=:now WHERE company_id=:cid"),
         {"path": path, "pwd": encrypt(password), "now": NOW(), "cid": current_user.company_id})
+    # Wire the cert into the e-invoicing config (cert_ref = stored reference, never
+    # the bytes). Upsert the verifactu_config row so cert_ref/validity are tracked.
+    exists = db.execute(text("SELECT 1 FROM verifactu_config WHERE company_id=:c"),
+                        {"c": current_user.company_id}).first()
+    if exists:
+        db.execute(text("UPDATE verifactu_config SET cert_ref=:r, cert_valid_until=:v WHERE company_id=:c"),
+                   {"r": path, "v": valid_until, "c": current_user.company_id})
+    else:
+        db.execute(text("""
+            INSERT INTO verifactu_config (company_id, verifactu_mode, environment, cert_ref, cert_valid_until, created_at)
+            VALUES (:c, 'VERIFACTU', 'SANDBOX', :r, :v, :now)
+        """), {"c": current_user.company_id, "r": path, "v": valid_until, "now": NOW()})
     db.commit()
-    return {"ok": True, "mensaje": "Certificado subido correctamente"}
+    audit_event(db, "fiscal_cert_upload", actor_user_id=current_user.id, actor_email=current_user.email,
+                company_id=current_user.company_id, detail={"valid_until": valid_until})
+    return {"ok": True, "mensaje": "Certificado validado y subido correctamente", "valid_until": valid_until}
 
 @router.post("/validar-nit")
 async def validar_nit(data: dict, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):

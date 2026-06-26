@@ -283,8 +283,14 @@ export default function FiscalConfig() {
     const res = await fetch(`${API}/api/fiscal/certificado`,{
       method:'POST', headers:{Authorization:`Bearer ${getToken()}`}, body:fd
     })
-    if(res.ok){ setTieneCert(true); setMsg({type:'success',text:'Certificado subido correctamente'}) }
-    else setMsg({type:'error',text:'Error subiendo certificado'})
+    const d = await res.json().catch(()=>({}))
+    if(res.ok){
+      setTieneCert(true)
+      const exp = d.valid_until ? ` Válido hasta ${new Date(d.valid_until).toLocaleDateString('es-ES')}.` : ''
+      setMsg({type:'success',text:`Certificado validado correctamente.${exp}`})
+      if(isES) loadEinvoicing()
+    }
+    else setMsg({type:'error',text:d.detail||'Error subiendo certificado'})
     setLoading(false)
   }
 

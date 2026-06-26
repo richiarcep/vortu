@@ -41,6 +41,12 @@ def create_subscription_checkout(db, user_id, email, name, plan_id):
     Suscripcion directa sin licencia.
     """
     customer_id = get_or_create_customer(email, name, user_id)
+    # NOTE: we deliberately do NOT set payment_method_types — that lets Stripe
+    # Checkout surface the account's dynamic payment methods, which include
+    # Apple Pay + Google Pay automatically on supported devices (hosted Checkout
+    # runs on checkout.stripe.com, so no Apple Pay domain verification is needed).
+    # Enable Apple Pay / Google Pay once in the Stripe Dashboard → Payment methods
+    # (both are on by default for most accounts).
     session = stripe.checkout.Session.create(
         customer=customer_id,
         mode="subscription",
