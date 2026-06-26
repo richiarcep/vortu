@@ -170,7 +170,7 @@ def serialize_refund(r: SaleRefund) -> dict:
 @router.post("/productos", status_code=201)
 def create_product(
     data: ProductCreate,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     product = Product(
@@ -199,7 +199,7 @@ def create_product(
 def list_products(
     category: Optional[str] = None,
     low_stock: Optional[bool] = None,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     query = db.query(Product).filter(
@@ -233,7 +233,7 @@ def list_products(
 @router.get("/productos/buscar/{code}")
 def find_product(
     code: str,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     """
@@ -259,7 +259,7 @@ def find_product(
 @router.get("/productos/{product_id}")
 def get_product(
     product_id: int,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     product = db.query(Product).filter(
@@ -277,7 +277,7 @@ def get_product(
 def update_product(
     product_id: int,
     data: ProductUpdate,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     product = db.query(Product).filter(
@@ -299,7 +299,7 @@ def update_product(
 def get_product_qr(
     product_id: int,
     size: int = 200,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     """Returns the NaviLens-style SVG QR code for a product."""
@@ -322,7 +322,7 @@ def get_product_qr(
 def get_product_label_pdf(
     product_id: int,
     copies: int = 1,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     """Returns a printable PDF label for a product."""
@@ -347,7 +347,7 @@ def get_product_label_pdf(
 @router.post("/venta", status_code=201)
 def create_sale(
     data: SaleCreate,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     """Creates a complete sale with all items (deducts stock, computes totals)."""
@@ -507,7 +507,7 @@ def persist_sale(db, cid: int, data: SaleCreate, status: str = "completed"):
 @router.get("/venta/{sale_id}")
 def get_sale_detail(
     sale_id: int,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user),
 ):
     """Detalle de una venta, incluyendo cuántas unidades quedan por devolver."""
@@ -564,7 +564,7 @@ def _build_credit_note_entries(db: Session, company_id: int, refund: SaleRefund)
 def refund_sale(
     sale_id: int,
     data: RefundCreate,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user),
 ):
     """Registra una devolución / nota de crédito (total o parcial) sobre una venta.
@@ -775,7 +775,7 @@ def get_sales_history(
 
 @router.get("/resumen")
 def get_dashboard(
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     return get_sales_dashboard(db, current_user.company_id)
@@ -784,7 +784,7 @@ def get_dashboard(
 @router.get("/reporte/dia")
 def get_daily_sales_report(
     fecha: Optional[str] = None,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     report_date = date.fromisoformat(fecha) if fecha else date.today()
@@ -793,7 +793,7 @@ def get_daily_sales_report(
 
 @router.get("/alertas/stock")
 def get_stock_alerts(
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     products = db.query(Product).filter(

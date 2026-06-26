@@ -28,6 +28,18 @@ engine = create_engine(
 )
 
 
+def _attach_pg_statement_timeout(eng):
+    """Hard per-session statement_timeout on a Postgres engine — the server cancels
+    any query exceeding it, freeing the connection. Applied to EVERY engine we open
+    (primary + the BYPASSRLS worker/network engines), so the cross-tenant roles keep
+    a CPU ceiling too (e.g. the super-admin text-to-SQL agent)."""
+    @event.listens_for(eng, "connect")
+    def _set_statement_timeout(dbapi_conn, _record):
+        cur = dbapi_conn.cursor()
+        cur.execute("SET statement_timeout = %s" % int(STATEMENT_TIMEOUT_S * 1000))
+        cur.close()
+
+
 if _is_sqlite:
     @event.listens_for(engine, "connect")
     def _sqlite_pragmas(dbapi_conn, _record):
@@ -54,13 +66,7 @@ if _is_sqlite:
 
         dbapi_conn.set_progress_handler(_abort_if_over_deadline, 10000)
 else:
-    @event.listens_for(engine, "connect")
-    def _pg_statement_timeout(dbapi_conn, _record):
-        """Postgres: hard per-session statement timeout enforced server-side.
-        The server cancels any query exceeding it, freeing the connection."""
-        cur = dbapi_conn.cursor()
-        cur.execute("SET statement_timeout = %s" % int(STATEMENT_TIMEOUT_S * 1000))
-        cur.close()
+    _attach_pg_statement_timeout(engine)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
@@ -105,6 +111,8 @@ def worker_session():
         return SessionLocal()
     if _WorkerSession is None:
         _WORKER_ENGINE = create_engine(url, pool_pre_ping=True)
+        if _WORKER_ENGINE.dialect.name == "postgresql":
+            _attach_pg_statement_timeout(_WORKER_ENGINE)
         _WorkerSession = sessionmaker(autocommit=False, autoflush=False, bind=_WORKER_ENGINE)
     return _WorkerSession()
 
@@ -181,6 +189,102 @@ def ensure_runtime_schema():
     with engine.begin() as conn:
         for stmt in _network_tables_ddl():
             conn.execute(text(stmt))
+
+        # ── Raw fiscal / finance tables (company_id-scoped, no ORM model) ────────
+        # Moved onto the boot path from setup_db.create_raw_tables() so they exist
+        # under create_all+ensure_runtime_schema, are owned by the schema owner, and
+        # are present BEFORE the RLS migration ALTERs them. On a fresh (boot-managed)
+        # Postgres DB they were otherwise never created → fiscal/finance endpoints
+        # 500 'relation does not exist'. Portable DDL (SERIAL vs AUTOINCREMENT,
+        # TIMESTAMP not the SQLite-only DATETIME).
+        _raw_pk = "id SERIAL PRIMARY KEY" if engine.dialect.name == "postgresql" else "id INTEGER PRIMARY KEY AUTOINCREMENT"
+        conn.execute(text(f"""
+            CREATE TABLE IF NOT EXISTS config_fiscal (
+                {_raw_pk},
+                company_id INTEGER NOT NULL UNIQUE,
+                pais TEXT DEFAULT 'SV',
+                nombre_comercial TEXT, nombre_legal TEXT, nit TEXT, nrc TEXT,
+                giro TEXT, actividad_economica TEXT,
+                tipo_contribuyente TEXT DEFAULT 'mediano',
+                departamento TEXT, municipio TEXT, direccion TEXT, telefono TEXT,
+                email_fiscal TEXT,
+                ambiente TEXT DEFAULT 'pruebas', serie_dte TEXT DEFAULT 'A',
+                siguiente_numero INTEGER DEFAULT 1, iva_porcentaje REAL DEFAULT 0.13,
+                tiene_certificado INTEGER DEFAULT 0, certificado_path TEXT,
+                certificado_password TEXT,
+                api_key TEXT, api_secret TEXT, token_actual TEXT, token_expiry TEXT,
+                wizard_completado INTEGER DEFAULT 0, wizard_paso INTEGER DEFAULT 1,
+                activo INTEGER DEFAULT 0,
+                created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+            )
+        """))
+        conn.execute(text(f"""
+            CREATE TABLE IF NOT EXISTS dte_contingencia (
+                {_raw_pk},
+                company_id INTEGER NOT NULL, tipo TEXT DEFAULT 'falla_api',
+                inicio TEXT NOT NULL, fin TEXT, motivo TEXT,
+                dte_ids TEXT DEFAULT '[]', resuelto INTEGER DEFAULT 0,
+                created_at TEXT NOT NULL
+            )
+        """))
+        conn.execute(text(f"""
+            CREATE TABLE IF NOT EXISTS dte_emitidos (
+                {_raw_pk},
+                company_id INTEGER NOT NULL, tipo_dte TEXT NOT NULL,
+                codigo_tipo TEXT NOT NULL, numero_control TEXT NOT NULL,
+                codigo_generacion TEXT NOT NULL, sello_recepcion TEXT,
+                emisor_nit TEXT, emisor_nrc TEXT, emisor_nombre TEXT,
+                receptor_tipo TEXT DEFAULT 'consumidor_final', receptor_nombre TEXT,
+                receptor_nit TEXT, receptor_nrc TEXT, receptor_email TEXT,
+                receptor_direccion TEXT,
+                subtotal REAL DEFAULT 0, descuento REAL DEFAULT 0, iva REAL DEFAULT 0,
+                total REAL DEFAULT 0,
+                estado TEXT DEFAULT 'borrador', ambiente TEXT DEFAULT 'pruebas',
+                fecha_emision TEXT NOT NULL, fecha_envio TEXT, fecha_aceptacion TEXT,
+                json_dte TEXT, json_respuesta TEXT, pdf_path TEXT,
+                sale_id INTEGER, invalidado INTEGER DEFAULT 0, motivo_invalidacion TEXT,
+                created_at TEXT NOT NULL
+            )
+        """))
+        conn.execute(text(f"""
+            CREATE TABLE IF NOT EXISTS dte_recibidos (
+                {_raw_pk},
+                company_id INTEGER NOT NULL, tipo_dte TEXT, numero_control TEXT,
+                codigo_generacion TEXT,
+                proveedor_nit TEXT, proveedor_nrc TEXT, proveedor_nombre TEXT,
+                subtotal REAL DEFAULT 0, iva REAL DEFAULT 0, total REAL DEFAULT 0,
+                concepto TEXT,
+                estado TEXT DEFAULT 'recibido', fecha_emision TEXT,
+                fecha_recepcion TEXT NOT NULL, registrado_contabilidad INTEGER DEFAULT 0,
+                json_dte TEXT, documento_id INTEGER, created_at TEXT NOT NULL
+            )
+        """))
+        conn.execute(text(f"""
+            CREATE TABLE IF NOT EXISTS financial_snapshots (
+                {_raw_pk},
+                company_id INTEGER NOT NULL, period_label TEXT NOT NULL,
+                fecha_inicio TEXT NOT NULL, fecha_fin TEXT NOT NULL,
+                data_json TEXT NOT NULL, generated_at TEXT NOT NULL
+            )
+        """))
+        conn.execute(text(f"""
+            CREATE TABLE IF NOT EXISTS proyecciones_snapshots (
+                {_raw_pk},
+                company_id INTEGER NOT NULL, context_ids TEXT DEFAULT '[]',
+                data_json TEXT NOT NULL, generated_at TEXT NOT NULL,
+                expires_at TEXT NOT NULL
+            )
+        """))
+        conn.execute(text(f"""
+            CREATE TABLE IF NOT EXISTS registro_diario (
+                {_raw_pk},
+                fecha DATE NOT NULL, tipo VARCHAR NOT NULL,
+                categoria VARCHAR NOT NULL, descripcion VARCHAR NOT NULL,
+                monto NUMERIC(15, 2) NOT NULL, referencia VARCHAR,
+                cuenta_contable VARCHAR, notas TEXT, company_id INTEGER NOT NULL,
+                creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """))
 
         # Security audit log — tamper-evident (hash-chained) record of logins,
         # 2FA, privileged admin changes, exports and AI tool calls. Written via

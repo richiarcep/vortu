@@ -20,15 +20,29 @@ from typing import List
 # they don't appear in Base.metadata. Keep in sync with ensure_runtime_schema /
 # setup_db when new raw tenant tables are added.
 RAW_TENANT_TABLES = [
+    # Fiscal (multi-country e-invoicing) — created in ensure_runtime_schema.
     "config_fiscal",
     "dte_emitidos",
+    "dte_recibidos",
+    "dte_contingencia",
+    # Evidence-extraction pipeline.
     "doc_fingerprints",
     "extraction_runs",
     "extraction_feedback",
     "extraction_review_queue",
+    "registro_diario",
+    # Finance snapshots (per-tenant projections / business snapshots).
+    "financial_snapshots",
+    "proyecciones_snapshots",
+    # Transient request/payment state (carry company_id).
     "pending_documents",
+    "pending_pos_sales",
+    # Veri*Factu (España).
     "verifactu_registro",
     "verifactu_eventos",
+    "verifactu_config",
+    "verifactu_mode_audit",
+    "verifactu_retry_queue",
 ]
 
 # Identity/auth tables that must NOT get a plain company_id RLS policy.

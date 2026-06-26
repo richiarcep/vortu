@@ -53,9 +53,11 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30        # rotating refresh-token lifetime
     REFRESH_COOKIE_NAME: str = "vela_refresh"  # HttpOnly refresh-token cookie name
     RLS_ENABLED: bool = True                    # Postgres RLS kill-switch (ignored on SQLite)
+    MANAGE_SCHEMA: bool = True                   # run create_all + ensure_runtime_schema at startup. Set false when the app connects as a NON-OWNER role (vela_app under RLS): that role can't run the DROP/CREATE INDEX/TRIGGER DDL, so schema is managed out-of-band by the owner.
     APP_DB_ROLE: str = ""                       # optional non-BYPASSRLS role to SET ROLE into
     NETWORK_DB_URL: str = ""                    # read-only BYPASSRLS DSN for the cross-tenant agent
     WORKER_DB_URL: str = ""                      # write-capable BYPASSRLS DSN for background jobs (else SessionLocal)
+    ADMIN_DATABASE_URL: str = ""                 # OWNER/superuser DSN used ONLY for DDL + alembic migrations (creates/ALTERs tables, applies RLS policies). MUST NOT be set in the web tier — it bypasses RLS. Falls back to DATABASE_URL when empty.
     AEAT_VERIFACTU_ENDPOINT: str = ""           # AEAT remittance endpoint; empty → SANDBOX (no real submit)
     CONNECT_APPLICATION_FEE_BPS: int = 0        # platform fee on company sales (bps; 0 = none)
     STRIPE_USE_CONFIGURED_PRICES: bool = False  # use STRIPE_PRICE_* ids; default → inline price_data

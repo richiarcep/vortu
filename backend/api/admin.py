@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, text
 
 from core.database import get_db
-from core.security import get_admin_user
+from core.security import get_admin_user, get_admin_db
 from core.audit import audit_event
 from vera.models import OPUS
 from vera.compat import vera_client   # IA por Vera (cuota + config admin)
@@ -56,7 +56,7 @@ class MemoryUpdateRequest(BaseModel):
 
 @router.get("/overview")
 def get_overview(
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_admin_db),
     admin: User = Depends(get_admin_user)
 ):
     """Stats globales de Vela para el backoffice."""
@@ -101,7 +101,7 @@ def get_overview(
 
 @router.get("/companies")
 def list_companies(
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_admin_db),
     admin: User = Depends(get_admin_user)
 ):
     """Lista todas las empresas con su info de suscripción."""
@@ -182,7 +182,7 @@ def list_companies(
 @router.get("/companies/{company_id}")
 def get_company_detail(
     company_id: int,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_admin_db),
     admin: User = Depends(get_admin_user)
 ):
     """Detalle completo de una empresa."""
@@ -239,7 +239,7 @@ def update_company_plan(
     company_id: int,
     body: PlanUpdateRequest,
     request: Request,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_admin_db),
     admin: User = Depends(get_admin_user)
 ):
     """Cambia el plan de una empresa manualmente."""
@@ -283,7 +283,7 @@ class VeraPlanUpdate(BaseModel):
 def update_company_vera_plan(
     company_id: int,
     body: VeraPlanUpdate,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_admin_db),
     admin: User = Depends(get_admin_user),
 ):
     """
@@ -340,7 +340,7 @@ def update_company_vera_plan(
 
 @router.get("/users")
 def list_users(
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_admin_db),
     admin: User = Depends(get_admin_user)
 ):
     """Lista todos los usuarios."""
@@ -367,7 +367,7 @@ def update_user_status(
     user_id: int,
     body: UserStatusRequest,
     request: Request,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_admin_db),
     admin: User = Depends(get_admin_user)
 ):
     """Activa o desactiva un usuario."""
@@ -392,7 +392,7 @@ def update_user_status(
 
 @router.get("/security-audit")
 def get_security_audit(
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_admin_db),
     admin: User = Depends(get_admin_user),
     event: Optional[str] = None,
     limit: int = 100,
@@ -426,7 +426,7 @@ def get_security_audit(
 
 @router.get("/snapshots")
 def get_all_snapshots(
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_admin_db),
     admin: User = Depends(get_admin_user)
 ):
     """Tabla maestra de snapshots de todas las empresas."""
@@ -468,7 +468,7 @@ def get_all_snapshots(
 
 @router.post("/snapshots/generate-all")
 def generate_all(
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_admin_db),
     admin: User = Depends(get_admin_user)
 ):
     """Genera snapshots para todas las empresas (cross-tenant → worker session)."""
@@ -484,10 +484,12 @@ def generate_all(
 @router.post("/snapshots/generate/{company_id}")
 def generate_one(
     company_id: int,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_admin_db),
     admin: User = Depends(get_admin_user)
 ):
     """Genera snapshot para una empresa específica."""
+    from core.security import set_tenant_context
+    set_tenant_context(db, company_id)  # defensive; db is the BYPASSRLS worker session
     snap = generate_snapshot(db, company_id)
     if not snap:
         raise HTTPException(status_code=500, detail="Error generando snapshot")
@@ -590,7 +592,7 @@ No repitas hechos que ya están en los conocidos anteriores.""",
 
 @router.get("/prompts")
 def list_prompts(
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_admin_db),
     admin: User = Depends(get_admin_user)
 ):
     """Lista todos los prompts desde PostgreSQL."""
@@ -612,7 +614,7 @@ def list_prompts(
 @router.get("/prompts/{prompt_key}")
 def get_prompt_detail(
     prompt_key: str,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_admin_db),
     admin: User = Depends(get_admin_user)
 ):
     """Obtiene un prompt específico desde PostgreSQL."""
@@ -632,7 +634,7 @@ def get_prompt_detail(
 def update_prompt(
     prompt_key: str,
     body: PromptUpdateRequest,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_admin_db),
     admin: User = Depends(get_admin_user)
 ):
     """Actualiza el prompt en PostgreSQL e invalida la cache."""
@@ -664,7 +666,7 @@ class FaseUpdateRequest(BaseModel):
 
 @router.get("/billing/overview")
 def billing_overview(
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_admin_db),
     admin: User = Depends(get_admin_user)
 ):
     """Vista completa de billing — fases, MRR, uso de IA."""
@@ -772,7 +774,7 @@ def update_fase(
     company_id: int,
     body: FaseUpdateRequest,
     request: Request,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_admin_db),
     admin: User = Depends(get_admin_user)
 ):
     """Cambia la fase de una empresa (beta/early_adopter/paid)."""
@@ -811,7 +813,7 @@ def update_fase(
 
 @router.post("/graph/migrate")
 def migrate_to_graph(
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_admin_db),
     admin: User = Depends(get_admin_user)
 ):
     """Migra todos los datos de PostgreSQL a Neo4j."""
@@ -823,7 +825,7 @@ def migrate_to_graph(
 @router.get("/graph/overview/{company_id}")
 def graph_overview(
     company_id: int,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_admin_db),
     admin: User = Depends(get_admin_user)
 ):
     """Vista general del negocio como grafo."""
@@ -852,7 +854,7 @@ def graph_stats(
 
 @router.post("/ai-insights")
 def get_ai_insights(
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_admin_db),
     admin: User = Depends(get_admin_user)
 ):
     """Claude analiza los datos de la plataforma y devuelve oportunidades y riesgos."""
@@ -954,7 +956,7 @@ DATOS REALES DE LA PLATAFORMA:
 @router.get("/memory/{company_id}/entries")
 def get_memory_entries(
     company_id: int,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_admin_db),
     admin: User = Depends(get_admin_user)
 ):
     """Lista todas las entradas de memoria de una empresa con trazabilidad."""
@@ -995,7 +997,7 @@ def get_memory_entries(
 @router.get("/memory/{company_id}/download")
 def download_memory_txt(
     company_id: int,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_admin_db),
     admin: User = Depends(get_admin_user)
 ):
     """Devuelve el TXT completo de memoria para descargar."""
@@ -1007,7 +1009,7 @@ def download_memory_txt(
 def admin_update_memory(
     company_id: int,
     body: MemoryUpdateRequest,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_admin_db),
     admin: User = Depends(get_admin_user)
 ):
     """Admin actualiza la memoria IA de una empresa."""
@@ -1025,7 +1027,7 @@ def admin_update_memory(
 @router.post("/memory/{company_id}/auto-update")
 def admin_auto_update_memory(
     company_id: int,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_admin_db),
     admin: User = Depends(get_admin_user)
 ):
     """Admin dispara actualización automática de memoria para una empresa."""

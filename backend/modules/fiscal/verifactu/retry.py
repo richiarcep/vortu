@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 from .aeat_client import submit, AeatRemisionError
 from .config import get_config
 from .eventos import log_evento
+from core.security import set_tenant_context
 
 _BACKOFF_MIN = [1, 5, 15, 60, 240]  # minutes; last value repeats
 
@@ -47,6 +48,9 @@ def process_pending(db: Session, limit: int = 50) -> dict:
 
     accepted, failed = 0, 0
     for item in due:
+        # Bind the tenant for this item's per-registro writes (defensive: the queue
+        # scan above is cross-tenant and requires the BYPASSRLS worker session).
+        set_tenant_context(db, item["company_id"])
         reg = db.execute(text("SELECT * FROM verifactu_registro WHERE id=:r"),
                          {"r": item["registro_id"]}).mappings().first()
         if not reg:

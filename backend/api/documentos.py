@@ -45,10 +45,19 @@ ALLOWED_EXTENSIONS = {".pdf", ".csv", ".xlsx", ".xls", ".docx", ".txt", ".jpg", 
 # Pending analyze→confirm state, persisted in the DB (was a process-global dict,
 # which broke under multiple workers). Uses a short-lived engine transaction so
 # it's independent of the request session and visible to any worker.
+def _set_pending_guc(conn, company_id):
+    """pending_documents is RLS'd; these helpers use their own engine transaction
+    (not the request session), so bind the tenant explicitly. No-op on non-RLS."""
+    from sqlalchemy import text
+    conn.execute(text("SELECT set_config('app.current_company_id', :cid, true)"),
+                 {"cid": str(company_id or 0)})
+
+
 def _pending_put(temp_id: str, payload: dict):
     from core.database import engine
     from sqlalchemy import text
     with engine.begin() as conn:
+        _set_pending_guc(conn, payload.get("company_id"))
         conn.execute(text("DELETE FROM pending_documents WHERE temp_id=:t"), {"t": temp_id})
         conn.execute(text(
             "INSERT INTO pending_documents (temp_id, user_id, company_id, payload, expires_at) "
@@ -57,10 +66,11 @@ def _pending_put(temp_id: str, payload: dict):
             "p": json.dumps(payload), "e": payload.get("expires_at")})
 
 
-def _pending_get(temp_id: str):
+def _pending_get(temp_id: str, company_id=None):
     from core.database import engine
     from sqlalchemy import text
     with engine.begin() as conn:
+        _set_pending_guc(conn, company_id)
         row = conn.execute(
             text("SELECT payload, expires_at FROM pending_documents WHERE temp_id=:t"),
             {"t": temp_id},
@@ -74,10 +84,11 @@ def _pending_get(temp_id: str):
         return json.loads(payload)
 
 
-def _pending_delete(temp_id: str):
+def _pending_delete(temp_id: str, company_id=None):
     from core.database import engine
     from sqlalchemy import text
     with engine.begin() as conn:
+        _set_pending_guc(conn, company_id)
         conn.execute(text("DELETE FROM pending_documents WHERE temp_id=:t"), {"t": temp_id})
 
 
@@ -754,7 +765,7 @@ def confirm_document(
     db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user),
 ):
-    pending = _pending_get(body.temp_id)
+    pending = _pending_get(body.temp_id, current_user.company_id)
     if not pending:
         raise HTTPException(404, "Documento temporal no encontrado o caducado")
 
@@ -764,7 +775,7 @@ def confirm_document(
     if not body.approved:
         try: os.remove(pending['path'])
         except Exception: pass
-        _pending_delete(body.temp_id)
+        _pending_delete(body.temp_id, current_user.company_id)
         return {"approved": False, "message": "Documento rechazado y eliminado"}
 
     analysis = pending['analysis']
@@ -943,7 +954,7 @@ def confirm_document(
     except Exception as e:
         logger.info(f"[Chroma skip] {e}")
 
-    _pending_delete(body.temp_id)
+    _pending_delete(body.temp_id, current_user.company_id)
 
     return {
         "approved": True,

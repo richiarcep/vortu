@@ -125,11 +125,60 @@ _init_sentry()
 _ENABLE_SCHEDULER = os.getenv("ENABLE_SCHEDULER", "true").lower() in ("1", "true", "yes")
 
 
+def _rls_preflight():
+    """Fail fast on an RLS misconfiguration BEFORE serving traffic.
+
+    Two states the app must never start in:
+      1. RLS on + the app serves traffic (MANAGE_SCHEMA=false) as a SUPERUSER /
+         BYPASSRLS role → RLS is silently bypassed, no isolation (e.g. a leaked
+         ADMIN_DATABASE_URL in the web tier).
+      2. RLS on + WORKER_DB_URL/NETWORK_DB_URL unset → the scheduler and the
+         superadmin backoffice run cross-tenant on the RLS-bound role and silently
+         return 0 rows / fail WITH CHECK.
+    """
+    from core.database import RLS_ENABLED, engine
+    if not RLS_ENABLED:
+        return
+    from sqlalchemy import text
+    log = logging.getLogger("vela")
+    try:
+        with engine.connect() as conn:
+            is_super = str(conn.execute(text("SELECT current_setting('is_superuser')")).scalar()).lower()
+            bypass = conn.execute(text("SELECT rolbypassrls FROM pg_roles WHERE rolname = current_user")).scalar()
+    except Exception as e:
+        log.warning("RLS preflight: could not introspect the DB role (%s) — skipping", e)
+        return
+    privileged = is_super in ("on", "true", "t", "1", "yes") or bool(bypass)
+    if settings.MANAGE_SCHEMA:
+        return  # owner/build mode — a privileged role is expected here
+    if privileged:
+        raise RuntimeError(
+            "RLS_ENABLED and MANAGE_SCHEMA=false, but the app connects as a "
+            "SUPERUSER/BYPASSRLS role → RLS would be bypassed (no tenant isolation). "
+            "Point DATABASE_URL at vela_app (NOSUPERUSER, NOBYPASSRLS)."
+        )
+    if not settings.WORKER_DB_URL or not settings.NETWORK_DB_URL:
+        raise RuntimeError(
+            "RLS_ENABLED but WORKER_DB_URL/NETWORK_DB_URL are unset. The scheduler "
+            "and superadmin backoffice run cross-tenant and need the BYPASSRLS "
+            "worker/network roles; without them they silently return 0 rows. Set "
+            "both DSNs, or set RLS_ENABLED=false."
+        )
+    log.info("RLS preflight OK · app role is RLS-subject · worker/network DSNs set")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup
-    create_tables()
-    ensure_runtime_schema()
+    # Startup — schema DDL. Skipped when MANAGE_SCHEMA=false (the app connects as a
+    # non-owner role like vela_app under RLS, which can't run the DROP/CREATE INDEX
+    # /TRIGGER DDL in ensure_runtime_schema). In that case the OWNER builds/migrates
+    # the schema out-of-band (deploy step / one-off) before the app boots.
+    if settings.MANAGE_SCHEMA:
+        create_tables()
+        ensure_runtime_schema()
+    else:
+        logging.getLogger("vela").info("MANAGE_SCHEMA=false → skipping startup DDL (schema managed by owner)")
+    _rls_preflight()
     if _ENABLE_SCHEDULER:
         setup_project_scheduler(scheduler)
         scheduler.start()

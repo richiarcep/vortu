@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 
 from core.database import get_db
-from core.security import get_admin_user
+from core.security import get_admin_user, get_tenant_db
 from models.user import User
 
 logger = logging.getLogger("vera.extraction.review")
@@ -20,7 +20,7 @@ router = APIRouter(prefix="/api/admin/extraction-review", tags=["Extraction Revi
 
 
 @router.get("")
-def list_pending(db: Session = Depends(get_db), admin: User = Depends(get_admin_user)):
+def list_pending(db: Session = Depends(get_tenant_db), admin: User = Depends(get_admin_user)):
     """Pending review items for the admin's company, with extracted data for context."""
     rows = db.execute(text("""
         SELECT q.id, q.document_id, q.run_id, q.doc_template_slug, q.reason,
@@ -51,7 +51,7 @@ def list_pending(db: Session = Depends(get_db), admin: User = Depends(get_admin_
 
 
 @router.post("/{queue_id}/resolve")
-def resolve(queue_id: int, data: dict, db: Session = Depends(get_db),
+def resolve(queue_id: int, data: dict, db: Session = Depends(get_tenant_db),
             admin: User = Depends(get_admin_user)):
     """Resolve a review item. Body: {corrections: {field_key: corrected_value}, provider_cif?}.
     Stores corrections as extraction_feedback (the learning signal) and closes the item."""

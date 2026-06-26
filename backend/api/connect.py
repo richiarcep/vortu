@@ -7,7 +7,7 @@ from typing import Optional
 from sqlalchemy.orm import Session
 
 from core.database import get_db
-from core.security import get_current_user
+from core.security import get_current_user, get_tenant_db
 from core.audit import audit_event
 from core.config import get_settings
 from models.user import User, Company
@@ -37,7 +37,7 @@ def _company(db: Session, current_user: User) -> Company:
 
 
 @router.get("/status")
-def connect_status(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def connect_status(db: Session = Depends(get_tenant_db), current_user: User = Depends(get_current_user)):
     """Onboarding / charging status of the company's connected account."""
     if not CS.enabled():
         return {"available": False, "connected": False, "charges_enabled": False}
@@ -52,7 +52,7 @@ def connect_status(db: Session = Depends(get_db), current_user: User = Depends(g
 
 
 @router.post("/onboard")
-def connect_onboard(request: Request, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def connect_onboard(request: Request, db: Session = Depends(get_tenant_db), current_user: User = Depends(get_current_user)):
     """Create (if needed) the company's Express account and return a Stripe-hosted
     onboarding URL to complete identity + bank details."""
     if not CS.enabled():
@@ -77,7 +77,7 @@ def connect_onboard(request: Request, db: Session = Depends(get_db), current_use
 
 @router.post("/sale-payment")
 def connect_sale_payment(body: SalePaymentRequest, request: Request,
-                         db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+                         db: Session = Depends(get_tenant_db), current_user: User = Depends(get_current_user)):
     """Charge a cart with card/Apple Pay/Google Pay into the company's connected
     account. The cart is held PENDING; the real sale is recorded only when the
     payment webhook confirms (so the cashier does one step, not two). Returns the
@@ -133,7 +133,7 @@ class RefundRequest(BaseModel):
 
 @router.post("/sale/{sale_id}/refund")
 def connect_refund_sale(sale_id: int, body: RefundRequest, request: Request,
-                        db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+                        db: Session = Depends(get_tenant_db), current_user: User = Depends(get_current_user)):
     """Refund a card/Apple Pay POS payment to the customer's card (on the company's
     connected account). Only works for sales paid via Connect (have a PaymentIntent)."""
     if not CS.enabled():
@@ -160,7 +160,7 @@ def connect_refund_sale(sale_id: int, body: RefundRequest, request: Request,
 
 
 @router.get("/sale-status/{temp_id}")
-def connect_sale_status(temp_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def connect_sale_status(temp_id: str, db: Session = Depends(get_tenant_db), current_user: User = Depends(get_current_user)):
     """Poll whether the card payment completed and the sale was recorded."""
     from sqlalchemy import text
     row = db.execute(text(

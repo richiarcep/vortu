@@ -31,11 +31,16 @@ router = APIRouter(prefix="/api/vera/v2", tags=["Vera v2"])
 def get_user_plan(user: User) -> str:
     """Delega al quota_manager. Plan POR EMPRESA."""
     from core.database import SessionLocal
+    from core.security import set_tenant_context
     db = SessionLocal()
     try:
         company_id = getattr(user, "company_id", None)
         if not company_id:
             return "base"
+        # Bind the tenant so the companies id-policy passes under RLS; without it
+        # get_company_plan's SELECT on companies returns 0 rows → every paying
+        # tenant silently degrades to 'base'. No-op on SQLite/non-RLS.
+        set_tenant_context(db, company_id)
         plan_info = get_company_plan(db, company_id)
         return plan_info.get("plan_key", "base")
     finally:

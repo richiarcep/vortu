@@ -142,7 +142,10 @@ def network_ro_sessionmaker():
     if _NETWORK_RO_ENGINE is None:
         from sqlalchemy import create_engine
         from sqlalchemy.orm import sessionmaker
+        from core.database import _attach_pg_statement_timeout
         _NETWORK_RO_ENGINE = create_engine(url, pool_pre_ping=True)
+        if _NETWORK_RO_ENGINE.dialect.name == "postgresql":
+            _attach_pg_statement_timeout(_NETWORK_RO_ENGINE)
         _NETWORK_RO_ENGINE._vela_sm = sessionmaker(bind=_NETWORK_RO_ENGINE)
     return _NETWORK_RO_ENGINE._vela_sm
 

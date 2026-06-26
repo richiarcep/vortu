@@ -146,6 +146,23 @@ def set_tenant_context(db, company_id):
                    {"cid": str(company_id or 0)})
 
 
+def get_admin_db():
+    """DB session for the superadmin backoffice — cross-tenant BY DESIGN. Uses the
+    BYPASSRLS worker connection (reads every tenant, writes any tenant); the
+    RLS-bound app role (vela_app) would otherwise return 0 rows across the whole
+    backoffice. No behavioural change on dev/non-RLS (worker_session falls back to
+    the normal SessionLocal)."""
+    from core.database import worker_session
+    db = worker_session()
+    try:
+        yield db
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        db.close()
+
+
 def get_admin_user(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db)

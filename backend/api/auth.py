@@ -6,7 +6,7 @@ from sqlalchemy import text
 from pydantic import BaseModel, EmailStr
 from typing import Optional
 from core.database import get_db
-from core.security import hash_password, verify_password, create_access_token
+from core.security import hash_password, verify_password, create_access_token, get_tenant_db, set_tenant_context
 from core.rate_limit import rate_limit, account_throttle
 from core.audit import audit_event
 from core import refresh as refresh_service
@@ -51,53 +51,66 @@ class UserResponse(BaseModel):
 def register(data: RegisterRequest, db: Session = Depends(get_db)):
     """Register a new company and its first admin user."""
 
-    # Check email not already taken
+    # Check email not already taken (users is not RLS'd → fine on the request session).
     if db.query(User).filter(User.email == data.email).first():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email already registered"
         )
 
-    # Create the company
-    company = Company(name=data.company_name, email=data.email, country=data.country)
-    db.add(company)
-    db.flush()  # get company.id without committing
+    # Provisioning a brand-new tenant can't satisfy the companies/id RLS policy: the
+    # new id isn't known before INSERT and the GUC is unset pre-tenant, so the WITH
+    # CHECK would reject the companies INSERT (and the chart-of-accounts rows). Do it
+    # on the BYPASSRLS worker session. No-op difference on dev/non-RLS.
+    from core.database import worker_session
+    wdb = worker_session()
+    try:
+        # Create the company
+        company = Company(name=data.company_name, email=data.email, country=data.country)
+        wdb.add(company)
+        wdb.flush()  # get company.id without committing
 
-    # Create the user
-    user = User(
-        email=data.email,
-        full_name=data.full_name,
-        hashed_password=hash_password(data.password),
-        is_admin=True,
-        company_id=company.id
-    )
-    db.add(user)
-    db.flush()
-    from models.billing import Subscription, License
-    sub = Subscription(user_id=user.id, plan_id="starter", status="none", fase="beta", license_paid=False)
-    lic = License(user_id=user.id, plan_id="starter", status="pending", amount_paid=0)
-    db.add(sub)
-    db.add(lic)
-    db.commit()
-    db.refresh(user)
+        # Create the user
+        user = User(
+            email=data.email,
+            full_name=data.full_name,
+            hashed_password=hash_password(data.password),
+            is_admin=True,
+            company_id=company.id
+        )
+        wdb.add(user)
+        wdb.flush()
+        from models.billing import Subscription, License
+        sub = Subscription(user_id=user.id, plan_id="starter", status="none", fase="beta", license_paid=False)
+        lic = License(user_id=user.id, plan_id="starter", status="pending", amount_paid=0)
+        wdb.add(sub)
+        wdb.add(lic)
+        wdb.commit()
+        wdb.refresh(user)
+        wdb.refresh(company)
 
-    # If the country is already known at registration, seed its chart of accounts.
-    # (Otherwise it's seeded later in set_country once the user picks a country.)
-    if company.country:
-        try:
-            from modules.accounting.journal import setup_chart_of_accounts
-            setup_chart_of_accounts(db, company.id, company.country)
-        except Exception as e:
-            logger.warning("Could not seed chart of accounts for company %s (%s): %s",
-                           company.id, company.country, e)
+        result = {
+            "id": user.id,
+            "email": user.email,
+            "full_name": user.full_name,
+            "is_admin": user.is_admin,
+            "country": company.country,
+        }
 
-    return {
-        "id": user.id,
-        "email": user.email,
-        "full_name": user.full_name,
-        "is_admin": user.is_admin,
-        "country": company.country,
-    }
+        # If the country is already known at registration, seed its chart of accounts.
+        # (Otherwise it's seeded later in set_country once the user picks a country.)
+        if company.country:
+            try:
+                set_tenant_context(wdb, company.id)
+                from modules.accounting.journal import setup_chart_of_accounts
+                setup_chart_of_accounts(wdb, company.id, company.country)
+                wdb.commit()
+            except Exception as e:
+                logger.warning("Could not seed chart of accounts for company %s (%s): %s",
+                               company.id, company.country, e)
+        return result
+    finally:
+        wdb.close()
 
 
 @router.post(
@@ -260,6 +273,9 @@ def get_me(db: Session = Depends(get_db),
     """Returns the currently logged in user."""
     from core.security import get_current_user
     user = get_current_user(token=token, db=db)
+    # Bind the tenant so the RLS'd companies row (user.company) loads under RLS;
+    # otherwise user.company is None and country comes back null.
+    set_tenant_context(db, user.company_id)
     return {
         "id": user.id,
         "email": user.email,
@@ -271,7 +287,7 @@ def get_me(db: Session = Depends(get_db),
 @router.post("/set-country")
 def set_country(
     data: dict,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(__import__('core.security', fromlist=['get_current_user']).get_current_user)
 ):
     """Fija el país de la empresa. Solo se puede hacer una vez (Opción A)."""

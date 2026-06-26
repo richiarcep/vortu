@@ -20,7 +20,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from core.database import get_db
-from core.security import get_current_user
+from core.security import get_current_user, get_tenant_db
 from core.audit import audit_event
 from models.user import User, Company
 
@@ -41,7 +41,7 @@ def _anon_email(original: str) -> str:
 # ── Right of access / portability (Art.15 / Art.20) ──────────────────────────
 
 @router.get("/api/me/export")
-def export_my_data(request: Request, db: Session = Depends(get_db),
+def export_my_data(request: Request, db: Session = Depends(get_tenant_db),
                    current_user: User = Depends(get_current_user)):
     """Return the authenticated user's personal data as JSON (data portability)."""
     company = db.query(Company).filter(Company.id == current_user.company_id).first()
@@ -91,7 +91,7 @@ def export_my_data(request: Request, db: Session = Depends(get_db),
 # ── Right to erasure (Art.17) ────────────────────────────────────────────────
 
 @router.delete("/api/me/erase")
-def erase_my_account(request: Request, db: Session = Depends(get_db),
+def erase_my_account(request: Request, db: Session = Depends(get_tenant_db),
                      current_user: User = Depends(get_current_user)):
     """Erase (pseudonymize) the caller's own account. Disables sign-in, revokes
     all outstanding tokens, clears 2FA secrets, and anonymizes name/email. The
@@ -131,7 +131,7 @@ def erase_my_account(request: Request, db: Session = Depends(get_db),
 
 
 @router.post("/api/admin/privacy/customers/{contact_id}/erase")
-def erase_customer(contact_id: int, request: Request, db: Session = Depends(get_db),
+def erase_customer(contact_id: int, request: Request, db: Session = Depends(get_tenant_db),
                    current_user: User = Depends(get_current_user)):
     """Company admin erases a customer/contact's PII, scoped to their company."""
     if not current_user.is_admin:
@@ -167,7 +167,7 @@ def erase_customer(contact_id: int, request: Request, db: Session = Depends(get_
 
 
 @router.post("/api/admin/privacy/employees/{employee_id}/erase")
-def erase_employee(employee_id: int, request: Request, db: Session = Depends(get_db),
+def erase_employee(employee_id: int, request: Request, db: Session = Depends(get_tenant_db),
                    current_user: User = Depends(get_current_user)):
     """Company admin erases an employee's PII, scoped to their company. Salary /
     structural figures are kept (payroll retention) but the identity is removed."""

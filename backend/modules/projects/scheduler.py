@@ -4,6 +4,7 @@ from core.database import SessionLocal, worker_session
 from models.project import Project, Task
 from modules.projects.health import update_project_health
 from modules.projects.velocity import calculate_velocity
+from core.security import set_tenant_context
 
 
 def scan_all_projects():
@@ -20,6 +21,9 @@ def scan_all_projects():
         alerts_generated = []
 
         for project in projects:
+            # Bind the tenant for this project's writes (defensive; the scan above
+            # is cross-tenant via the BYPASSRLS worker session).
+            set_tenant_context(db, project.company_id)
             # Recalculate health
             update_project_health(db, project.id)
             db.refresh(project)

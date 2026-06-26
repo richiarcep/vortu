@@ -259,27 +259,40 @@ def _finalize_pos_sale(db, temp_id, payment_intent=None):
         return
     from sqlalchemy import text
     import json
-    row = db.execute(text(
-        "SELECT company_id, payload, status FROM pending_pos_sales WHERE temp_id=:t"
-    ), {"t": temp_id}).mappings().first()
-    if not row or row["status"] == "paid":
-        return  # unknown or already recorded
-    payload = json.loads(row["payload"])
-    from api.sales import persist_sale, SaleCreate
-    data = SaleCreate(
-        items=payload.get("items", []),
-        payment_method=payload.get("payment_method", "card"),
-        notes=payload.get("notes"),
-        allow_oversell=True,                      # the customer already paid
-        idempotency_key=f"pos_{temp_id}",         # dedupe on retried webhooks
-    )
-    sale = persist_sale(db, row["company_id"], data, status="completed")
-    sid = sale.get("id") if isinstance(sale, dict) else None
-    if sid and payment_intent:
-        db.execute(text("UPDATE sales SET stripe_payment_intent=:pi WHERE id=:s"),
-                   {"pi": payment_intent, "s": sid})
-    db.execute(text("UPDATE pending_pos_sales SET status='paid', sale_id=:s WHERE temp_id=:t"),
-               {"s": sid, "t": temp_id})
+    from core.database import worker_session
+    from core.security import set_tenant_context
+    # pending_pos_sales is RLS'd and the tenant is unknown until the row is read
+    # (lookup is by the unguessable temp_id), so the RLS-bound webhook session would
+    # see 0 rows. Use the BYPASSRLS worker session for the cross-tenant lookup, then
+    # bind that tenant for the write. Every statement is still scoped by company_id.
+    wdb = worker_session()
+    try:
+        row = wdb.execute(text(
+            "SELECT company_id, payload, status FROM pending_pos_sales WHERE temp_id=:t"
+        ), {"t": temp_id}).mappings().first()
+        if not row or row["status"] == "paid":
+            return  # unknown or already recorded
+        cid = row["company_id"]
+        payload = json.loads(row["payload"])
+        from api.sales import persist_sale, SaleCreate
+        data = SaleCreate(
+            items=payload.get("items", []),
+            payment_method=payload.get("payment_method", "card"),
+            notes=payload.get("notes"),
+            allow_oversell=True,                      # the customer already paid
+            idempotency_key=f"pos_{temp_id}",         # dedupe on retried webhooks
+        )
+        set_tenant_context(wdb, cid)                  # bind tenant for persist_sale
+        sale = persist_sale(wdb, cid, data, status="completed")
+        sid = sale.get("id") if isinstance(sale, dict) else None
+        if sid and payment_intent:
+            wdb.execute(text("UPDATE sales SET stripe_payment_intent=:pi WHERE id=:s AND company_id=:c"),
+                        {"pi": payment_intent, "s": sid, "c": cid})
+        wdb.execute(text("UPDATE pending_pos_sales SET status='paid', sale_id=:s WHERE temp_id=:t AND company_id=:c"),
+                    {"s": sid, "t": temp_id, "c": cid})
+        wdb.commit()
+    finally:
+        wdb.close()
 
 
 def _handle_connect_account_updated(db, account):

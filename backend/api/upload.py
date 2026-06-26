@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from core.database import get_db
 from core.config import get_settings
-from core.security import get_current_user
+from core.security import get_current_user, get_tenant_db
 from models.user import User
 from models.document import Document
 from services.parsers import parse_file
@@ -41,7 +41,7 @@ class DocumentResponse(BaseModel):
 def upload_file(
     file: UploadFile = File(...),
     module: str = Form(...),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     """
@@ -123,7 +123,7 @@ def upload_file(
 
 @router.get("/", response_model=list[DocumentResponse])
 def get_documents(
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     """Returns all documents uploaded by the current user's company."""
@@ -136,7 +136,7 @@ def get_documents(
 @router.get("/{document_id}", response_model=DocumentResponse)
 def get_document(
     document_id: int,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     """Returns a single document by ID."""
