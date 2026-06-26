@@ -178,4 +178,25 @@ def setup_project_scheduler(scheduler):
         replace_existing=True,
     )
 
+    # Veri*Factu: retry any AEAT remittances that failed (every 2 min, §3.4).
+    scheduler.add_job(
+        _verifactu_retry_tick,
+        trigger="interval",
+        minutes=2,
+        id="verifactu_retry",
+        replace_existing=True,
+    )
+
     print("✓ Project scheduler jobs registered")
+
+
+def _verifactu_retry_tick():
+    """Drain the Veri*Factu retry queue (failed AEAT remittances)."""
+    db = SessionLocal()
+    try:
+        from modules.fiscal.verifactu.retry import process_pending
+        process_pending(db)
+    except Exception as e:
+        print(f"⚠ verifactu retry tick error: {e}")
+    finally:
+        db.close()

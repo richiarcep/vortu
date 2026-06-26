@@ -192,5 +192,60 @@ class TestVerifactu(unittest.TestCase):
         db.close()
 
 
+class TestVerifactuMode(unittest.TestCase):
+    def _seed_es(self, cid):
+        db = SessionLocal()
+        db.execute(text(
+            "INSERT INTO config_fiscal (company_id, pais, nit, serie_dte, siguiente_numero, ambiente, created_at, updated_at) "
+            "VALUES (:c,'ES','B12345678','A',1,'pruebas',:ts,:ts)"), {"c": cid, "ts": "2026-06-26"})
+        db.commit()
+        return db
+
+    def test_default_mode_and_permanence_guard(self):
+        from modules.fiscal.verifactu import emitir
+        from modules.fiscal.verifactu.config import get_config, set_mode, can_switch_to_no_verifactu
+        from modules.fiscal.verifactu.service import VerifactuError
+        from models.user import User
+        email, pw = _register(country="ES")
+        db = SessionLocal()
+        cid = db.query(User).filter(User.email == email).first().company_id
+        db.execute(text(
+            "INSERT INTO config_fiscal (company_id, pais, nit, serie_dte, siguiente_numero, ambiente, created_at, updated_at) "
+            "VALUES (:c,'ES','B1','A',1,'pruebas',:ts,:ts)"), {"c": cid, "ts": "2026-06-26"})
+        db.commit()
+        self.assertEqual(get_config(db, cid)["verifactu_mode"], "VERIFACTU")  # default
+        # VERIFACTU emit → remitted in sandbox + tacit opt-in recorded
+        r = emitir(db, cid, {"importe_total": 121.0, "cuota_total": 21.0}, idempotency_key="a")
+        self.assertEqual(r["modo"], "VERIFACTU")
+        self.assertEqual(r["estado"], "aceptado")  # sandbox simulated acceptance
+        cfg = get_config(db, cid)
+        self.assertIsNotNone(cfg["verifactu_opted_in_at"])
+        # permanence: cannot leave VERIFACTU the same year
+        self.assertFalse(can_switch_to_no_verifactu(cfg))
+        with self.assertRaises(VerifactuError):
+            set_mode(db, cid, "NO_VERIFACTU", user_id=1, ip="1.1.1.1")
+        db.close()
+
+    def test_no_verifactu_signs_and_audits(self):
+        from modules.fiscal.verifactu import emitir
+        from modules.fiscal.verifactu.config import set_mode
+        from models.user import User
+        email, pw = _register(country="ES")
+        db = SessionLocal()
+        cid = db.query(User).filter(User.email == email).first().company_id
+        db.execute(text(
+            "INSERT INTO config_fiscal (company_id, pais, nit, serie_dte, siguiente_numero, ambiente, created_at, updated_at) "
+            "VALUES (:c,'ES','B2','A',1,'pruebas',:ts,:ts)"), {"c": cid, "ts": "2026-06-26"})
+        db.commit()
+        # never opted in → switching to NO_VERIFACTU is allowed
+        set_mode(db, cid, "NO_VERIFACTU", user_id=1, ip="1.1.1.1")
+        n = db.execute(text("SELECT count(*) FROM verifactu_mode_audit WHERE company_id=:c"), {"c": cid}).scalar()
+        self.assertGreaterEqual(n, 1)  # mode change audited
+        r = emitir(db, cid, {"importe_total": 50.0}, idempotency_key="b")
+        self.assertEqual(r["modo"], "NO_VERIFACTU")
+        self.assertIn(r["estado"], ("sin_firma", "firmado"))  # signed path, not remitted
+        db.close()
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

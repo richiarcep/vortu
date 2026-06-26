@@ -49,6 +49,10 @@ def emitir(db: Session, company_id: int, payload: dict,
     fecha_expedicion, tipo_factura, cuota_total, importe_total, cliente_nombre,
     cliente_nif, lineas (list), sale_id (optional)."""
     cfg = _config_fiscal(db, company_id)
+    from .config import get_config
+    vf = get_config(db, company_id)
+    modo = (vf.get("verifactu_mode") or "VERIFACTU").upper()
+    environment = vf.get("environment") or "SANDBOX"
 
     # Idempotency: return the existing record if this key was already used.
     if idempotency_key:
@@ -93,14 +97,19 @@ def emitir(db: Session, company_id: int, payload: dict,
         "prev_registro_id": (prev["id"] if prev else None), "estado": "registrado",
         "ambiente": ambiente, "qr_url": qr, "sale_id": payload.get("sale_id"),
         "idempotency_key": idempotency_key, "ts_generacion": ts_gen,
-        "created_at": _ts_now(),
+        "created_at": _ts_now(), "modo": modo, "aeat_csv": None, "incidencia": "N",
     }
 
-    # Signature (NullSigner in dev → estado sin_firma; still hashed+chained).
+    # Mode branch (§2). NO_VERIFACTU REQUIRES a per-record XAdES signature — that
+    # IS its integrity guarantee (no real-time AEAT remittance). VERIFACTU does not
+    # require the signature (the remittance provides the assurance); remittance
+    # happens after the record is durably stored, so a failure queues a retry.
     signature = get_signer(cfg).sign(export_xml({**registro}))
-    if signature is None:
-        registro["estado"] = "sin_firma"
     registro["firma"] = signature
+    if modo == "NO_VERIFACTU":
+        registro["estado"] = "firmado" if signature is not None else "sin_firma"
+    else:  # VERIFACTU
+        registro["estado"] = "registrado"  # pending remittance
     registro["xml"] = export_xml(registro)
 
     try:
@@ -109,12 +118,12 @@ def emitir(db: Session, company_id: int, payload: dict,
                 (company_id, tipo, serie, numero, fecha_expedicion, nif_emisor, tipo_factura,
                  cuota_total, importe_total, cliente_nombre, cliente_nif, lineas_json,
                  huella, huella_anterior, prev_registro_id, estado, ambiente, qr_url, xml, firma,
-                 sale_id, idempotency_key, ts_generacion, created_at)
+                 sale_id, idempotency_key, ts_generacion, created_at, modo, aeat_csv, incidencia)
             VALUES
                 (:company_id, :tipo, :serie, :numero, :fecha_expedicion, :nif_emisor, :tipo_factura,
                  :cuota_total, :importe_total, :cliente_nombre, :cliente_nif, :lineas_json,
                  :huella, :huella_anterior, :prev_registro_id, :estado, :ambiente, :qr_url, :xml, :firma,
-                 :sale_id, :idempotency_key, :ts_generacion, :created_at)
+                 :sale_id, :idempotency_key, :ts_generacion, :created_at, :modo, :aeat_csv, :incidencia)
         """), registro)
         new_id = cur.lastrowid
         # Bump the company's counter and log the event in the SAME transaction.
@@ -135,6 +144,26 @@ def emitir(db: Session, company_id: int, payload: dict,
         raise
 
     registro["id"] = new_id
+
+    # VERIFACTU remittance phase — AFTER the record is durably stored + chained, so
+    # a failure queues a retry rather than losing the registro (§3.4). The first
+    # successful remittance is the TACIT opt-in that starts the permanence clock (§3.1).
+    if modo == "VERIFACTU":
+        from .aeat_client import submit, AeatRemisionError
+        from .config import mark_opted_in
+        from .retry import enqueue
+        mark_opted_in(db, company_id)
+        try:
+            result = submit(registro, environment=environment, cert_ref=vf.get("cert_ref"))
+            db.execute(text("UPDATE verifactu_registro SET estado=:e, aeat_csv=:csv, incidencia=:inc WHERE id=:r"),
+                       {"e": result["estado"], "csv": result.get("csv"), "inc": result.get("incidencia", "N"), "r": new_id})
+            log_evento(db, company_id, "remision_ok", registro_id=new_id, detalle=result.get("csv"), commit=False)
+            db.commit()
+            registro.update(estado=result["estado"], aeat_csv=result.get("csv"), incidencia=result.get("incidencia", "N"))
+        except AeatRemisionError as e:
+            enqueue(db, company_id, new_id, str(e))  # → estado='incidencia', incidencia='S', queued
+            registro.update(estado="incidencia", incidencia="S")
+
     return registro
 
 

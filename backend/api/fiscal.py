@@ -288,6 +288,43 @@ def _require_es(current_user: User, db: Session) -> str:
     return pais
 
 
+class VerifactuModeRequest(BaseModel):
+    verifactu_mode: str  # 'VERIFACTU' | 'NO_VERIFACTU'
+
+
+@router.get("/verifactu/mode")
+def verifactu_get_mode(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """Modo Veri*Factu de la empresa + si puede cambiar a NO_VERIFACTU (permanencia)."""
+    _require_es(current_user, db)
+    from modules.fiscal.verifactu.config import get_config, can_switch_to_no_verifactu
+    cfg = get_config(db, current_user.company_id)
+    return {
+        "verifactu_mode": cfg.get("verifactu_mode"),
+        "environment": cfg.get("environment"),
+        "verifactu_opted_in_at": cfg.get("verifactu_opted_in_at"),
+        "can_switch_to_no_verifactu": can_switch_to_no_verifactu(cfg),
+        "has_cert": bool(cfg.get("cert_ref")),
+    }
+
+
+@router.post("/verifactu/mode")
+def verifactu_set_mode(body: VerifactuModeRequest, request: Request,
+                       db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """Fija/cambia el modo de operación (con la regla de permanencia §3.2 + auditoría)."""
+    _require_es(current_user, db)
+    from core.audit import client_ip
+    from modules.fiscal.verifactu.config import set_mode
+    from modules.fiscal.verifactu.service import VerifactuError
+    try:
+        cfg = set_mode(db, current_user.company_id, body.verifactu_mode,
+                       user_id=current_user.id, ip=client_ip(request))
+    except VerifactuError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    audit_event(db, "verifactu_mode_change", actor_user_id=current_user.id, actor_email=current_user.email,
+                company_id=current_user.company_id, request=request, detail={"mode": cfg.get("verifactu_mode")})
+    return {"verifactu_mode": cfg.get("verifactu_mode"), "environment": cfg.get("environment")}
+
+
 @router.post("/verifactu/emitir", dependencies=[Depends(rate_limit(30, 60, "verifactu-emitir"))])
 def verifactu_emitir(body: VerifactuEmitirRequest, request: Request,
                      db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
@@ -301,9 +338,14 @@ def verifactu_emitir(body: VerifactuEmitirRequest, request: Request,
         raise HTTPException(status_code=400, detail=str(e))
     audit_event(db, "verifactu_emitir", actor_user_id=current_user.id, actor_email=current_user.email,
                 target=f"verifactu:{reg.get('id')}", company_id=current_user.company_id, request=request,
-                detail={"serie": reg.get("serie"), "numero": reg.get("numero"), "estado": reg.get("estado")})
-    return {k: reg.get(k) for k in ("id", "serie", "numero", "fecha_expedicion", "importe_total",
-                                    "cuota_total", "estado", "huella", "huella_anterior", "qr_url", "ambiente")}
+                detail={"serie": reg.get("serie"), "numero": reg.get("numero"),
+                        "estado": reg.get("estado"), "modo": reg.get("modo")})
+    out = {k: reg.get(k) for k in ("id", "serie", "numero", "fecha_expedicion", "importe_total",
+                                   "cuota_total", "estado", "huella", "huella_anterior", "qr_url",
+                                   "ambiente", "modo", "aeat_csv", "incidencia")}
+    # Legend is shown on the invoice ONLY in VERIFACTU mode (§2 / RD 1619/2012).
+    out["leyenda"] = "VERI*FACTU" if (reg.get("modo") or "VERIFACTU") == "VERIFACTU" else None
+    return out
 
 
 @router.get("/verifactu/registro")

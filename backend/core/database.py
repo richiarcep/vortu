@@ -400,6 +400,61 @@ def ensure_runtime_schema():
         """))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_verifactu_eventos_company ON verifactu_eventos(company_id, id)"))
 
+        # Veri*Factu per-tenant operating mode (VERIFACTU = remit to AEAT in real
+        # time; NO_VERIFACTU = keep signed records locally). Chosen at onboarding;
+        # legally binding (permanence rule, §3.2). cert_ref points to the .p12 in a
+        # secrets store — never the cert itself. One row per company (tenant).
+        conn.execute(text(f"""
+            CREATE TABLE IF NOT EXISTS verifactu_config (
+                company_id INTEGER PRIMARY KEY,
+                verifactu_mode TEXT NOT NULL DEFAULT 'VERIFACTU',
+                mode_set_at TEXT,
+                mode_set_by INTEGER,
+                verifactu_opted_in_at TEXT,
+                environment TEXT NOT NULL DEFAULT 'SANDBOX',
+                cert_ref TEXT,
+                cert_valid_until TEXT,
+                created_at TEXT
+            )
+        """))
+        # Append-only audit of every mode change (who/when/from-where).
+        conn.execute(text(f"""
+            CREATE TABLE IF NOT EXISTS verifactu_mode_audit (
+                {_vf_pk},
+                company_id INTEGER NOT NULL,
+                old_mode TEXT,
+                new_mode TEXT NOT NULL,
+                user_id INTEGER,
+                ip TEXT,
+                ts TEXT NOT NULL
+            )
+        """))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_verifactu_mode_audit_company ON verifactu_mode_audit(company_id, id)"))
+        # Retry queue for failed AEAT remisión (VERIFACTU mode). No fixed deadline —
+        # retried until accepted, marking Incidencia='S' on resend (§3.4).
+        conn.execute(text(f"""
+            CREATE TABLE IF NOT EXISTS verifactu_retry_queue (
+                {_vf_pk},
+                company_id INTEGER NOT NULL,
+                registro_id INTEGER NOT NULL,
+                intentos INTEGER NOT NULL DEFAULT 0,
+                last_error TEXT,
+                next_retry_at TEXT,
+                estado TEXT NOT NULL DEFAULT 'pendiente',
+                created_at TEXT
+            )
+        """))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_verifactu_retry_pending ON verifactu_retry_queue(estado, next_retry_at)"))
+        # Registro: mode used at emission + AEAT response (CSV) + incidencia flag.
+        _vfr_cols = existing_columns(conn, "verifactu_registro")
+        if _vfr_cols is not None:
+            if "modo" not in _vfr_cols:
+                conn.execute(text("ALTER TABLE verifactu_registro ADD COLUMN modo TEXT DEFAULT 'VERIFACTU'"))
+            if "aeat_csv" not in _vfr_cols:
+                conn.execute(text("ALTER TABLE verifactu_registro ADD COLUMN aeat_csv TEXT"))
+            if "incidencia" not in _vfr_cols:
+                conn.execute(text("ALTER TABLE verifactu_registro ADD COLUMN incidencia TEXT DEFAULT 'N'"))
+
     # ── Veri*Factu append-only enforcement (Postgres only) ──────────────────
     # DB-level immutability for the fiscal registro/eventos: a BEFORE UPDATE/DELETE
     # trigger that RAISEs. Runs in its OWN transaction with try/except so a trigger

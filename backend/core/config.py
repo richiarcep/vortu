@@ -55,6 +55,7 @@ class Settings(BaseSettings):
     RLS_ENABLED: bool = True                    # Postgres RLS kill-switch (ignored on SQLite)
     APP_DB_ROLE: str = ""                       # optional non-BYPASSRLS role to SET ROLE into
     NETWORK_DB_URL: str = ""                    # read-only BYPASSRLS DSN for the cross-tenant agent
+    AEAT_VERIFACTU_ENDPOINT: str = ""           # AEAT remittance endpoint; empty → SANDBOX (no real submit)
     model_config = {"env_file": ".env", "extra": "ignore"}
 
     @field_validator("SECRET_KEY")

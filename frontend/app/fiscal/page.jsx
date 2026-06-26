@@ -146,6 +146,7 @@ export default function FiscalConfig() {
   const [vfRegistros, setVfRegistros] = useState(null)
   const [vfChain, setVfChain] = useState(null)
   const [vfBusy, setVfBusy] = useState(false)
+  const [vfMode, setVfMode] = useState(null)
 
   const getToken = () => localStorage.getItem('vela_token')
 
@@ -161,13 +162,28 @@ export default function FiscalConfig() {
   async function loadVerifactu() {
     const t = getToken()
     try {
-      const [r1, r2] = await Promise.allSettled([
+      const [r1, r2, r3] = await Promise.allSettled([
         fetch(`${API}/api/fiscal/verifactu/registro?limit=50`,{headers:{Authorization:`Bearer ${t}`}}),
         fetch(`${API}/api/fiscal/verifactu/cadena/verificar`,{headers:{Authorization:`Bearer ${t}`}}),
+        fetch(`${API}/api/fiscal/verifactu/mode`,{headers:{Authorization:`Bearer ${t}`}}),
       ])
       if(r1.status==='fulfilled'&&r1.value.ok){ const d=await r1.value.json(); setVfRegistros(d.registros||[]) }
       if(r2.status==='fulfilled'&&r2.value.ok) setVfChain(await r2.value.json())
+      if(r3.status==='fulfilled'&&r3.value.ok) setVfMode(await r3.value.json())
     } catch {}
+  }
+
+  async function vfSetMode(mode) {
+    setVfBusy(true)
+    const t = getToken()
+    try {
+      const res = await fetch(`${API}/api/fiscal/verifactu/mode`,{method:'POST',
+        headers:{'Content-Type':'application/json',Authorization:`Bearer ${t}`},
+        body:JSON.stringify({verifactu_mode:mode})})
+      if(res.ok){ setMsg({type:'success',text:`Modo: ${mode==='VERIFACTU'?'VERI*FACTU':'NO VERI*FACTU'}`}); await loadVerifactu() }
+      else { const d=await res.json().catch(()=>({})); setMsg({type:'error',text:d.detail||'No se pudo cambiar el modo'}) }
+      setTimeout(()=>setMsg(null),3500)
+    } finally { setVfBusy(false) }
   }
 
   async function vfAnular(id) {
@@ -341,6 +357,31 @@ export default function FiscalConfig() {
                   </div>
                 )}
               </div>
+
+              {/* Modo de operación (§1) — VERI*FACTU (remite a AEAT) vs NO VERI*FACTU (firma local) */}
+              {vfMode && (
+                <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:14,padding:'10px 14px',background:T.sidebar,borderRadius:10,flexWrap:'wrap'}}>
+                  <span style={{fontSize:12,color:T.text3}}>Modo de operación:</span>
+                  {['VERIFACTU','NO_VERIFACTU'].map(m=>{
+                    const active = vfMode.verifactu_mode===m
+                    const blocked = m==='NO_VERIFACTU' && !vfMode.can_switch_to_no_verifactu && !active
+                    return (
+                      <button key={m} disabled={active||blocked||vfBusy} onClick={()=>vfSetMode(m)}
+                        title={blocked?'Permanencia obligatoria hasta fin de año desde tu primer envío a la AEAT':''}
+                        style={{fontSize:12,fontWeight:600,padding:'5px 12px',borderRadius:8,fontFamily:'inherit',
+                          border:`.5px solid ${active?T.blue:T.hairline}`,
+                          background:active?'rgba(61,43,255,.08)':T.card, color:active?T.blue:(blocked?T.text4:T.text),
+                          cursor:(active||blocked||vfBusy)?'default':'pointer', opacity:blocked?.5:1}}>
+                        {m==='VERIFACTU'?'VERI*FACTU':'NO VERI*FACTU'}{active?' ✓':''}
+                      </button>
+                    )
+                  })}
+                  <span style={{fontSize:10.5,color:T.text4,marginLeft:'auto'}}>
+                    {vfMode.verifactu_mode==='VERIFACTU' ? 'Las facturas se remiten a la AEAT en tiempo real.' : 'Conservas registros firmados localmente (4 años).'}
+                    {' · '}{vfMode.environment==='PRODUCTION'?'Producción':'Pruebas'}
+                  </span>
+                </div>
+              )}
 
               {(!vfRegistros || vfRegistros.length===0) ? (
                 <div style={{padding:'18px',textAlign:'center',color:T.text4,fontSize:13,background:T.sidebar,borderRadius:10}}>
