@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import JurisdictionGuard from "@/components/JurisdictionGuard";
+import TokenRefresher from "@/components/TokenRefresher";
 import { ThemeProvider } from "@/components/ui/tokens";
 
 export const metadata: Metadata = {
@@ -31,6 +32,7 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: themeInit }} />
         <a href="#main-content" className="skip-link">Saltar al contenido</a>
         <ThemeProvider>
+          <TokenRefresher />
           <JurisdictionGuard>
             {children}
           </JurisdictionGuard>
