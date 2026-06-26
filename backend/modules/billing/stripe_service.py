@@ -204,18 +204,21 @@ def handle_webhook(db, payload, sig_header):
     try:
         obj = _stripe_to_dict(event["data"]["object"])
         if event["type"] == "checkout.session.completed":
-            _session_check = event["data"]["object"]
-            _meta = _session_check.get("metadata", {}) or {}
+            # Use the plain dict (obj), never the raw Stripe object — `.get()` on a
+            # StripeObject raises AttributeError on stripe-python 15.x.
+            _meta = obj.get("metadata") or {}
+            if not isinstance(_meta, dict):
+                _meta = {}
             # ─── POS sale paid via Stripe Connect → record the real sale now ───
             if _meta.get("type") == "pos_sale":
                 _finalize_pos_sale(db, _meta.get("vela_pos_temp_id"),
-                                   payment_intent=_session_check.get("payment_intent"))
+                                   payment_intent=obj.get("payment_intent"))
                 db.commit()
                 return {"received": True, "type": "pos_sale"}
             # ─── Vera Plus checkout (atajo: detectar antes que la lógica Vela) ───
             if _meta.get("product") == "vera_plus":
-                _company_id = int(_session_check["metadata"].get("vela_company_id", 0))
-                _sub_id = _session_check.get("subscription")
+                _company_id = int(_meta.get("vela_company_id", 0))
+                _sub_id = obj.get("subscription")
                 if _company_id and _sub_id:
                     activate_vera_plus(db, _company_id, _sub_id)
                     db.commit()
