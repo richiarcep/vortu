@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
 import { FONT, I, useT, useTheme } from '@/components/ui/tokens'
 
-import { API_BASE as API } from '@/lib/api'
+import { API_BASE as API, logout } from '@/lib/api'
 const VERA_BLUE = '#3D2BFF'
 const VERA_PLUS_BLUE = '#3730A3'
 
@@ -70,7 +70,7 @@ function ProfileBtn({ user, router }) {
           border: `.5px solid ${T.hairline}`,
           boxShadow: '0 8px 32px rgba(0,0,0,.12)', zIndex: 200, overflow: 'hidden',
         }}>
-          <button onClick={() => { localStorage.removeItem('vela_token'); router.push('/login') }} style={{
+          <button onClick={() => { logout() }} style={{
             width: '100%', padding: '10px 14px', background: 'none',
             border: 'none', cursor: 'pointer', fontFamily: 'inherit',
             fontSize: 13, color: T.red, textAlign: 'left',

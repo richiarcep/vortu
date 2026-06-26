@@ -30,7 +30,8 @@ export default function LoginPage() {
       const res = await fetch(`${API_BASE}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: form.toString()
+        body: form.toString(),
+        credentials: 'include', // store the HttpOnly refresh cookie (prod same-origin)
       })
       const data = await res.json()
       if (!res.ok) { setError(data.detail || 'Credenciales incorrectas'); return }
@@ -59,7 +60,8 @@ export default function LoginPage() {
       const res = await fetch(`${API_BASE}/api/auth/2fa/verify-login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${tempToken}` },
-        body: JSON.stringify({ code: totpCode })
+        body: JSON.stringify({ code: totpCode }),
+        credentials: 'include', // store the HttpOnly refresh cookie (prod same-origin)
       })
       const data = await res.json()
       if (!res.ok) { setError(data.detail || 'Codigo incorrecto'); return }

@@ -1,6 +1,7 @@
 'use client'
 import { useId, useState, useRef, useEffect } from 'react'
 import { useT, I } from './tokens'
+import { logout } from '@/lib/api'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const AVATAR_COLORS = ['#3D2BFF', '#3D2BFF', '#059669', '#dc2626', '#d97706', '#0EA5E9', '#6366F1']
@@ -490,7 +491,7 @@ export function ProfileBtn({ user, router }) {
             }}>Configuración</button>
           </div>
           <div style={{ padding: '6px 8px 10px', borderTop: `.5px solid ${T.hairline}` }}>
-            <button onClick={() => { localStorage.removeItem('vela_token'); router.push('/login') }} style={{
+            <button onClick={() => { logout() }} style={{
               width: '100%', padding: '8px', background: T.redSoft,
               border: 'none', borderRadius: 8, color: T.red,
               fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',

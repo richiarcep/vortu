@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
 
-import { API_BASE as API } from '@/lib/api'
+import { API_BASE as API, logout } from '@/lib/api'
 const T = {
   bg:'#FBFBFD', sidebar:'#F5F5F7', card:'#FFFFFF',
   hairline:'rgba(0,0,0,0.08)', hairlineSoft:'rgba(0,0,0,0.05)',
@@ -305,7 +305,7 @@ function ProfileBtn({ user }) {
             >Configuracion</button>
           </div>
           <div style={{padding:'6px 8px 10px',borderTop:`.5px solid ${T.hairlineSoft}`}}>
-            <button onClick={()=>{localStorage.removeItem('vela_token');router.push('/login')}} style={{width:'100%',padding:'8px',background:T.redSoft,border:'none',borderRadius:8,color:T.red,fontSize:13,fontWeight:500,cursor:'pointer',fontFamily:'inherit'}}>
+            <button onClick={()=>{logout()}} style={{width:'100%',padding:'8px',background:T.redSoft,border:'none',borderRadius:8,color:T.red,fontSize:13,fontWeight:500,cursor:'pointer',fontFamily:'inherit'}}>
               Cerrar sesion
             </button>
           </div>

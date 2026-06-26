@@ -56,6 +56,7 @@ export default function RegisterPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: form.toString(),
+        credentials: 'include', // store the HttpOnly refresh cookie (prod same-origin)
       })
       const loginData = await loginRes.json()
       if (!loginRes.ok) {

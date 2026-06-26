@@ -44,13 +44,59 @@ export function handleUnauthorized() {
   }
 }
 
+// Silent token refresh. The refresh token lives in an HttpOnly cookie set at
+// login; POST /api/auth/refresh rotates it and returns a fresh access token.
+// In production (same-origin behind Caddy) the cookie is sent and this keeps the
+// session alive past the access-token TTL. In dev (cross-origin http) the
+// SameSite cookie isn't attached, so refresh 401s and we fall back to the normal
+// logout path — identical to today's behaviour, no regression.
+let _refreshPromise = null
+export async function refreshAccessToken() {
+  if (!_refreshPromise) {
+    _refreshPromise = (async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/auth/refresh`, {
+          method: 'POST', credentials: 'include',
+        })
+        if (!res.ok) return false
+        const data = await res.json().catch(() => null)
+        if (data && data.access_token) { setToken(data.access_token); return true }
+        return false
+      } catch { return false }
+    })()
+    _refreshPromise.finally(() => { _refreshPromise = null })
+  }
+  return _refreshPromise
+}
+
+/** Full logout: revoke the refresh token + bump token_version server-side
+ *  (best-effort), clear local state, and redirect to /login. Always completes
+ *  the local logout even if the server call fails. */
+export async function logout() {
+  try {
+    await fetch(`${API_BASE}/api/auth/logout`, {
+      method: 'POST', credentials: 'include', headers: authHeaders(),
+    })
+  } catch { /* proceed with local logout regardless */ }
+  clearToken()
+  if (typeof window !== 'undefined') window.location.href = '/login'
+}
+
 /** Centralized API fetch — PREFER THIS over raw fetch() in pages/components.
- *  Prefixes API_BASE, attaches auth headers, and routes 401s through
- *  handleUnauthorized(). Returns the Response (callers still check res.ok). */
+ *  Prefixes API_BASE, attaches auth headers, and on a 401 tries ONE silent
+ *  token refresh + retry before routing through handleUnauthorized().
+ *  Returns the Response (callers still check res.ok). */
 export async function apiFetch(path, options = {}) {
-  const { headers, ...rest } = options
+  const { headers, _retried, ...rest } = options
   const url = path.startsWith('http') ? path : `${API_BASE}${path}`
-  const res = await fetch(url, { ...rest, headers: authHeaders(headers || {}) })
-  if (res.status === 401) handleUnauthorized()
+  const res = await fetch(url, { ...rest, headers: authHeaders(headers || {}), credentials: 'include' })
+  if (res.status === 401 && !_retried && !url.includes('/api/auth/refresh')) {
+    if (await refreshAccessToken()) {
+      return apiFetch(path, { ...options, _retried: true })
+    }
+    handleUnauthorized()
+  } else if (res.status === 401) {
+    handleUnauthorized()
+  }
   return res
 }
