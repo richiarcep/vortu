@@ -88,13 +88,20 @@ verify() {
   echo "❌ /health did not return 200 over HTTPS. Check:  ./deploy.sh logs"; exit 1
 }
 
-logs() { "${SSH[@]}" "cd $REMOTE_DIR && $COMPOSE logs --tail=120 app caddy"; }
+logs() { "${SSH[@]}" "cd $REMOTE_DIR && $COMPOSE logs --tail=120 ${2:-app} ${3:-}"; }
+
+restart() {
+  say "Restarting the app (picks up .env changes without a rebuild)…"
+  "${SSH[@]}" "cd $REMOTE_DIR && $COMPOSE restart app"
+  verify
+}
 
 case "${1:-deploy}" in
-  deploy) ensure_ssh; install_docker; sync_code; stack_up ;;
-  sync)   ensure_ssh; sync_code ;;
-  up)     ensure_ssh; stack_up ;;
-  verify) ensure_ssh; verify ;;
-  logs)   ensure_ssh; logs ;;
-  *) echo "Usage: ./deploy.sh [deploy|sync|up|verify|logs]"; exit 1 ;;
+  deploy)  ensure_ssh; install_docker; sync_code; stack_up ;;
+  sync)    ensure_ssh; sync_code ;;
+  up)      ensure_ssh; stack_up ;;
+  restart) ensure_ssh; restart ;;
+  verify)  ensure_ssh; verify ;;
+  logs)    ensure_ssh; logs "$@" ;;
+  *) echo "Usage: ./deploy.sh [deploy|sync|up|restart|verify|logs]"; exit 1 ;;
 esac
