@@ -91,8 +91,12 @@ verify() {
 logs() { "${SSH[@]}" "cd $REMOTE_DIR && $COMPOSE logs --tail=120 ${2:-app} ${3:-}"; }
 
 restart() {
-  say "Restarting the app (picks up .env changes without a rebuild)…"
-  "${SSH[@]}" "cd $REMOTE_DIR && $COMPOSE restart app"
+  # `docker compose restart` does NOT reload env_file — it restarts the SAME
+  # container with the environment it was created with. To pick up .env changes
+  # we must recreate the container (`up --force-recreate`), which re-reads .env
+  # without rebuilding the image. `--no-deps` leaves postgres/redis untouched.
+  say "Recreating the app container so it re-reads .env (no image rebuild)…"
+  "${SSH[@]}" "cd $REMOTE_DIR && $COMPOSE up -d --force-recreate --no-deps app"
   verify
 }
 
