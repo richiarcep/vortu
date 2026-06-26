@@ -34,8 +34,30 @@ _FIELD_ALIASES = {
                          "numero", "numerodocumento", "number", "folio", "invoiceno"],
     "concepto": ["concept", "concepto", "description", "descripcion", "subject", "memo", "detail"],
     "iban": ["iban", "bankaccount", "cuenta", "cuentabancaria"],
-    "nif_emisor": ["vendortaxid", "taxid", "nif", "cif", "vat", "vatnumber", "proveedorcif",
+    "nif_emisor": ["vendortaxid", "taxid", "nif", "cif", "vatnumber", "proveedorcif",
                    "nifemisor", "rfc", "nit"],
+    # Vera invoice gold schema extras (tax-focused): kept in extracted_data so they
+    # surface in the review UI even though they aren't part of Vela's core asiento set.
+    "moneda": ["currency", "moneda", "divisa"],
+    "pais": ["pais", "country"],
+    "total_impuestos": ["totaltax", "totalimpuestos", "taxtotal", "totaltaxamount"],
+}
+
+# Reverse map (Vela canonical key → Vera invoice field name) for /v1/train, so human
+# corrections land 1:1 against Vera's schema. Unknown keys pass through unchanged.
+_VELA_TO_VERA = {
+    "emisor": "VendorCompanyName",
+    "receptor": "CustomerCompanyName",
+    "numero_documento": "DocumentNumber",
+    "fecha": "DocumentDate",
+    "vencimiento": "DueDate",
+    "importe": "TotalAmount",
+    "nif_emisor": "VendorTaxID",
+    "concepto": "Description",
+    "iban": "IBAN",
+    "moneda": "Currency",
+    "pais": "Pais",
+    "total_impuestos": "TotalTax",
 }
 
 
@@ -122,15 +144,22 @@ def vera_to_analysis(vera_resp: dict, *, filename: str = "", fallback_text: str 
 
 
 def corrections_to_train_output(corrections: dict, raw_document: Optional[dict] = None) -> dict:
-    """Build the `output` for /v1/train from Vela's {field_key: corrected_value} map.
+    """Build the `output` for /v1/train, named with VERA's invoice field names.
 
-    Starts from the model's raw Document (if available) and overlays the human
-    corrections, so the label is a complete record, not just the diff. Vera accepts a
-    wrapped or unwrapped object and validates against its own (all-nullable) schema.
+    Starts from the prior extraction (if available) and overlays the human
+    corrections, so the label is a complete record — not just the diff — then renames
+    known Vela keys to Vera's schema (VendorCompanyName, …) so corrections land 1:1.
+    Vera accepts a wrapped or unwrapped object and validates against its own
+    (all-nullable) schema; unknown keys pass through unchanged.
     """
-    base = dict(raw_document) if isinstance(raw_document, dict) else {}
+    out: dict[str, Any] = {}
+
+    def _put(key: str, value: Any) -> None:
+        out[_VELA_TO_VERA.get(key, key)] = value
+
+    for k, v in (raw_document or {}).items():
+        _put(k, v)
     for k, v in (corrections or {}).items():
         # field keys may be section-prefixed (e.g. "encabezado.proveedor_cif") → leaf
-        leaf = k.split(".")[-1]
-        base[leaf] = v
-    return base
+        _put(k.split(".")[-1], v)
+    return out

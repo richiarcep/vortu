@@ -874,7 +874,7 @@ export default function DocumentosPage() {
     setToken(t)
     try {
       const p = JSON.parse(atob(t.split('.')[1]))
-      setUser({ email: p.sub || '', name: p.name || p.sub || 'Usuario' })
+      setUser({ email: p.sub || '', name: p.name || p.sub || 'Usuario', is_admin: !!p.is_admin })
     } catch { setUser({ email: '', name: 'Usuario' }) }
     loadAll(t)
   }, [])
@@ -898,6 +898,20 @@ export default function DocumentosPage() {
       } catch {}
     } catch {}
     setLoading(false)
+  }
+
+  // Admin-only: switch the extraction provider in place (Vera API ⇄ Vela nativo).
+  async function toggleVeraProvider() {
+    if (!token || !veraStatus?.configured) return
+    const next = veraStatus.mode === 'vera' ? 'internal' : 'vera'
+    try {
+      const r = await fetch(`${API}/api/documentos/vera-mode`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: next }),
+      })
+      if (r.ok) setVeraStatus(await r.json())
+    } catch {}
   }
 
   async function handleFileSelect(e) {
@@ -1032,6 +1046,19 @@ export default function DocumentosPage() {
                   <span style={{ width: 6, height: 6, borderRadius: 999, background: 'currentColor' }} />
                   {veraStatus.healthy ? 'Vera API conectada' : 'Vera API sin conexión'}
                 </span>
+              )}
+              {user?.is_admin && veraStatus?.configured && (
+                <button onClick={toggleVeraProvider}
+                  title="Cambiar proveedor de extracción (Vera API ⇄ motor nativo)"
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 5, cursor: 'pointer',
+                    fontSize: 10, fontWeight: 700, padding: '2px 9px', borderRadius: 999,
+                    border: `1px solid ${T.hairline}`, background: T.sidebar, color: T.text,
+                  }}>
+                  <span style={{ width: 6, height: 6, borderRadius: 999, background: veraStatus.mode === 'vera' ? '#3D2BFF' : T.text4 }} />
+                  Proveedor: {veraStatus.mode === 'vera' ? 'Vera API' : 'Vera nativo'}
+                  <span style={{ color: T.text4, fontWeight: 600 }}>· cambiar</span>
+                </button>
               )}
             </span>
           }

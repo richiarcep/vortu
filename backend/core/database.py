@@ -190,6 +190,18 @@ def ensure_runtime_schema():
         for stmt in _network_tables_ddl():
             conn.execute(text(stmt))
 
+        # Global runtime settings (admin-toggleable; e.g. the extraction provider:
+        # external Vera API vs Vela's native engine). NOT tenant data → no company_id,
+        # no RLS. Simple key-value store.
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS app_settings (
+                key TEXT PRIMARY KEY,
+                value TEXT,
+                updated_at TEXT,
+                updated_by INTEGER
+            )
+        """))
+
         # ── Raw fiscal / finance tables (company_id-scoped, no ORM model) ────────
         # Moved onto the boot path from setup_db.create_raw_tables() so they exist
         # under create_all+ensure_runtime_schema, are owned by the schema owner, and

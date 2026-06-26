@@ -22,7 +22,7 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
 from core.database import get_db
-from core.security import get_current_user, get_tenant_db
+from core.security import get_current_user, get_tenant_db, get_admin_user, get_admin_db
 from models.user import User
 from models.document import Document
 from services.parsers import parse_file
@@ -655,11 +655,29 @@ def execute_sql_action(action: dict, db: Session, current_user: User, doc_id: in
 # on the event loop would stall every other request. FastAPI runs sync routes in
 # a worker thread, keeping the server responsive under concurrent uploads.
 @router.get("/vera-status")
-def vera_connector_status(current_user: User = Depends(get_current_user)):
-    """Estado del conector Vera EXTERNO (configurado, modo, salud de la API) — para
-    el indicador de conexión en la UI de documentos."""
+def vera_connector_status(db: Session = Depends(get_tenant_db),
+                          current_user: User = Depends(get_current_user)):
+    """Estado del conector Vera EXTERNO (configurado, modo efectivo, salud de la API)
+    — para el indicador de conexión + el toggle de proveedor en la UI."""
     from modules.vera_connector import service as vera_connector
-    return vera_connector.connector_status()
+    return vera_connector.connector_status(db)
+
+
+class VeraModeBody(BaseModel):
+    mode: str  # "vera" (API externa, con el router) | "internal" (motor nativo de Vela)
+
+
+@router.post("/vera-mode")
+def set_vera_mode(body: VeraModeBody, db: Session = Depends(get_admin_db),
+                  admin: User = Depends(get_admin_user)):
+    """Cambia el proveedor de extracción en caliente (solo admin): Vera API ⇄ nativo.
+    Se persiste en app_settings y tiene efecto inmediato, sin reiniciar."""
+    from modules.vera_connector import service as vera_connector
+    try:
+        vera_connector.set_mode(db, body.mode, user_id=admin.id)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    return vera_connector.connector_status(db)
 
 
 @router.post("/analyze")
@@ -718,6 +736,7 @@ def analyze_document(
         text_content=text_content,
         filename=file.filename,
         internal_extractor=_internal_extract,
+        db=db,
     )
 
     # Duplicados
