@@ -299,12 +299,22 @@ function RegistrarModal({ open, onClose, onSaved, token }) {
   const [veraIn, setVeraIn] = useState('')
   const [parsing, setParsing] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [form, setForm] = useState({ description: '', amount: '', iva_rate: 21, date: new Date().toISOString().slice(0, 10), provider: '', pgc_cuenta_gasto: '629', notes: '' })
+  const [form, setForm] = useState({ description: '', amount: '', iva_rate: 21, date: new Date().toISOString().slice(0, 10), provider: '', category_id: '', pgc_cuenta_gasto: '629', notes: '' })
+  const [cats, setCats] = useState([])
 
   useEffect(() => {
-    if (open) { setStep('input'); setVeraIn(''); setForm({ description: '', amount: '', iva_rate: 21, date: new Date().toISOString().slice(0, 10), provider: '', pgc_cuenta_gasto: '629', notes: '' }) }
+    if (open) {
+      setStep('input'); setVeraIn(''); setForm({ description: '', amount: '', iva_rate: 21, date: new Date().toISOString().slice(0, 10), provider: '', category_id: '', pgc_cuenta_gasto: '629', notes: '' })
+      call('/api/costes/catalog/categorias', token).then(r => setCats(r?.items || [])).catch(() => {})
+    }
   }, [open])
   if (!open) return null
+
+  // Selecting a category drives the accounting account (the backend maps it too).
+  const pickCategory = (id) => {
+    const c = cats.find(x => String(x.id) === String(id))
+    setForm(f => ({ ...f, category_id: id, pgc_cuenta_gasto: (c && c.pgc_account_code) || f.pgc_cuenta_gasto }))
+  }
 
   const handleVera = async () => {
     if (!veraIn.trim()) return
@@ -319,7 +329,7 @@ function RegistrarModal({ open, onClose, onSaved, token }) {
   const handleSave = async () => {
     setSaving(true)
     try {
-      await call('/api/costes/registrar', token, { method: 'POST', body: JSON.stringify({ ...form, amount: Number(form.amount), iva_rate: Number(form.iva_rate), crear_asiento: true }) })
+      await call('/api/costes/registrar', token, { method: 'POST', body: JSON.stringify({ ...form, amount: Number(form.amount), iva_rate: Number(form.iva_rate), category_id: form.category_id ? Number(form.category_id) : null, crear_asiento: true }) })
       onSaved()
     } catch (e) { alert('Error: ' + e.message) }
     finally { setSaving(false) }
@@ -355,6 +365,10 @@ function RegistrarModal({ open, onClose, onSaved, token }) {
             <PreviewField label="Fecha" value={form.date} onChange={v => setForm({ ...form, date: v })} type="date" />
             <PreviewField label="Proveedor" value={form.provider} onChange={v => setForm({ ...form, provider: v })} />
           </div>
+          {cats.length > 0 && (
+            <PreviewField label="Categoría" value={form.category_id} onChange={pickCategory} type="select"
+              options={[{ v: '', l: '— Sin categoría —' }, ...cats.map(c => ({ v: c.id, l: c.name }))]} />
+          )}
           <PreviewField label="Cuenta contable" value={form.pgc_cuenta_gasto} onChange={v => setForm({ ...form, pgc_cuenta_gasto: v })} type="select" options={Object.entries(nombresPGC).map(([v, l]) => ({ v, l: `${v} · ${l}` }))} />
         </div>}
       </div>

@@ -10,6 +10,9 @@ class CostCategory(Base):
     name       = Column(String(100), nullable=False)
     color      = Column(String(20), default="#6b7280")
     icon       = Column(String(10), default="💰")
+    # PGC expense account this category maps to (e.g. "627"). Drives the accounting
+    # entry on a manual expense so the chosen category posts to the right account.
+    pgc_account_code = Column(String(10), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     expenses   = relationship("CostEntry", back_populates="category")
 

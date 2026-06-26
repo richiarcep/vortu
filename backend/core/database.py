@@ -332,6 +332,11 @@ def ensure_runtime_schema():
             "ON journal_entries(company_id, date)"
         ))
 
+        # Costes: la categoría mapea a una cuenta de gasto del PGC (dirige el asiento).
+        catcols = existing_columns(conn, "cost_categories")
+        if catcols is not None and "pgc_account_code" not in catcols:
+            conn.execute(text("ALTER TABLE cost_categories ADD COLUMN pgc_account_code TEXT"))
+
         # Costes: FK provider_id en cost_entries + unicidad por nombre normalizado.
         cost_cols = existing_columns(conn, "cost_entries")
         if cost_cols is not None and "provider_id" not in cost_cols:

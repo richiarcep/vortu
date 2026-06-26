@@ -611,7 +611,8 @@ def agg_evolucion(db: Session = Depends(get_db), current_user: User = Depends(ge
 @router.get("/catalog/categorias")
 def get_categorias(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     rows = db.query(CostCategory).filter(CostCategory.company_id == current_user.company_id).order_by(CostCategory.name).all()
-    return {"items": [{"id": c.id, "name": c.name, "color": c.color, "icon": c.icon} for c in rows]}
+    return {"items": [{"id": c.id, "name": c.name, "color": c.color, "icon": c.icon,
+                       "pgc_account_code": _pgc_for_category(c)} for c in rows]}
 
 
 @router.get("/catalog/departamentos")
@@ -691,6 +692,18 @@ def registrar_gasto_manual(payload: GastoManual, db: Session = Depends(get_db), 
                 {"c": code, "cid": company_id}
             ).first()
             return r[0] if r else None
+
+        # Map the chosen CATEGORY to its PGC expense account — the category is the
+        # meaningful signal from the UI. Only override when that account actually
+        # exists for the company (so a Spanish 62x code doesn't break a non-ES chart).
+        if payload.category_id:
+            cat = db.query(CostCategory).filter(
+                CostCategory.id == payload.category_id,
+                CostCategory.company_id == company_id,
+            ).first()
+            cat_code = _pgc_for_category(cat)
+            if cat_code and get_account_id(cat_code):
+                cuenta_gasto = cat_code
 
         acc_gasto = get_account_id(cuenta_gasto)
         acc_acreedor = get_account_id(cuenta_acreedor)
@@ -789,16 +802,34 @@ CATEGORIAS_SEED = [
     {"name": "Otros gastos",           "color": "#86868B", "icon": "box",       "pgc_hint": "629"},
 ]
 
+# Category name → PGC expense account (for backfilling categories created before
+# the pgc_account_code column existed).
+_PGC_BY_CAT_NAME = {s["name"]: s["pgc_hint"] for s in CATEGORIAS_SEED}
+
+
+def _pgc_for_category(cat) -> Optional[str]:
+    """The PGC expense account a category maps to (stored, or inferred by name)."""
+    if cat is None:
+        return None
+    return cat.pgc_account_code or _PGC_BY_CAT_NAME.get(cat.name)
+
 
 @router.post("/inicializar-categorias")
 def inicializar_categorias(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Crea las 8 categorías típicas y autoclasifica los gastos existentes por palabras clave en notes/description."""
     company_id = current_user.company_id
 
-    # Si ya hay categorías, devolver las que hay
+    # Si ya hay categorías, devolver las que hay (rellenando el PGC que falte).
     existentes = db.query(CostCategory).filter(CostCategory.company_id == company_id).count()
     if existentes > 0:
         rows = db.query(CostCategory).filter(CostCategory.company_id == company_id).all()
+        changed = False
+        for c in rows:
+            if not c.pgc_account_code and _PGC_BY_CAT_NAME.get(c.name):
+                c.pgc_account_code = _PGC_BY_CAT_NAME[c.name]
+                changed = True
+        if changed:
+            db.commit()
         return {"ok": True, "ya_inicializadas": True, "items": [{"id": c.id, "name": c.name} for c in rows]}
 
     creadas = []
@@ -808,6 +839,7 @@ def inicializar_categorias(db: Session = Depends(get_db), current_user: User = D
             name=seed["name"],
             color=seed["color"],
             icon=seed["icon"],
+            pgc_account_code=seed["pgc_hint"],
         )
         db.add(cat)
         db.flush()
