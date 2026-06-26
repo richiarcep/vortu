@@ -192,6 +192,14 @@ def handle_webhook(db, payload, sig_header):
         event = stripe.Webhook.construct_event(payload, sig_header, settings.STRIPE_WEBHOOK_SECRET)
     except Exception as e:
         return {"error": str(e)}
+    # Signature is verified above. Re-parse the raw payload into a plain dict so all
+    # downstream access is on native dicts — StripeObject→dict is unreliable on
+    # stripe-python 15.x (.get() raises AttributeError; the _raw_response fallback
+    # round-trips to a bare str). json.loads accepts bytes or str.
+    try:
+        event = json.loads(payload)
+    except Exception:
+        pass  # keep the stripe Event object as a fallback
     existing = db.query(BillingEvent).filter(BillingEvent.stripe_event_id == event["id"]).first()
     if existing:
         return {"status": "already_processed"}
@@ -289,19 +297,36 @@ def _handle_connect_account_updated(db, account):
 
 
 def _stripe_to_dict(obj):
+    """Best-effort conversion of a Stripe object / JSON string into a plain dict.
+    ALWAYS returns a dict — never a str/list/None — so callers can `.get()` safely.
+    Prefer stripe-python's own recursive conversion; fall back to JSON round-trips."""
     if isinstance(obj, dict):
         return obj
     if isinstance(obj, str):
         try:
-            return json.loads(obj)
+            parsed = json.loads(obj)
         except Exception:
             return {}
+        return parsed if isinstance(parsed, dict) else {}
+    # stripe-python objects: use the library's own dict conversion when available.
+    for meth in ("to_dict_recursive", "to_dict"):
+        fn = getattr(obj, meth, None)
+        if callable(fn):
+            try:
+                d = fn()
+                if isinstance(d, dict):
+                    return d
+            except Exception:
+                pass
     try:
-        return json.loads(obj.to_json())
+        d = json.loads(obj.to_json())
+        if isinstance(d, dict):
+            return d
     except Exception:
         pass
     try:
-        return json.loads(json.dumps(obj, default=lambda o: o._raw_response if hasattr(o, '_raw_response') else dict(o) if hasattr(o, 'keys') else str(o)))
+        d = dict(obj)
+        return d if isinstance(d, dict) else {}
     except Exception:
         return {}
 
