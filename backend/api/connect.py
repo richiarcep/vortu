@@ -17,9 +17,15 @@ settings = get_settings()
 router = APIRouter(prefix="/api/connect", tags=["Stripe Connect"])
 
 
+class SaleItemIn(BaseModel):
+    product_id: int
+    quantity: int = 1
+
+
 class SalePaymentRequest(BaseModel):
-    amount: float
-    description: Optional[str] = None
+    items: list[SaleItemIn]
+    payment_method: Optional[str] = "card"
+    notes: Optional[str] = None
     currency: Optional[str] = "eur"
 
 
@@ -72,25 +78,62 @@ def connect_onboard(request: Request, db: Session = Depends(get_db), current_use
 @router.post("/sale-payment")
 def connect_sale_payment(body: SalePaymentRequest, request: Request,
                          db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    """Create a card/Apple Pay/Google Pay checkout for a sale, charged into the
-    company's connected account. Returns the payment URL (open it / show a QR)."""
+    """Charge a cart with card/Apple Pay/Google Pay into the company's connected
+    account. The cart is held PENDING; the real sale is recorded only when the
+    payment webhook confirms (so the cashier does one step, not two). Returns the
+    payment URL + a temp_id to poll for completion."""
     if not CS.enabled():
         raise HTTPException(status_code=400, detail="Pagos no configurados todavía.")
     company = _company(db, current_user)
     if not company.stripe_connect_id or not company.connect_charges_enabled:
         raise HTTPException(status_code=400, detail="Conecta y verifica tu cuenta de cobros antes de cobrar con tarjeta.")
+
+    import json, time, secrets
+    from sqlalchemy import text
+    from api.sales import quote_cart
+
+    items = [it.model_dump() for it in body.items]
+    if not items:
+        raise HTTPException(status_code=400, detail="El carrito está vacío.")
+    total = quote_cart(db, current_user.company_id, items)  # server-side amount (never trust client)
+
+    temp_id = secrets.token_urlsafe(16)
+    payload = {"items": items, "payment_method": body.payment_method or "card", "notes": body.notes}
+    now = time.time()
+    db.execute(text("""
+        INSERT INTO pending_pos_sales (temp_id, company_id, payload, status, created_at, expires_at)
+        VALUES (:t, :c, :p, 'pending', :now, :exp)
+    """), {"t": temp_id, "c": current_user.company_id, "p": json.dumps(payload),
+           "now": str(now), "exp": now + 1800})
+    db.commit()
+
     base = settings.FRONTEND_URL.rstrip("/")
     try:
         result = CS.create_sale_payment(
-            company.stripe_connect_id, body.amount, body.currency or "eur",
-            body.description or "Venta",
+            company.stripe_connect_id, total, body.currency or "eur",
+            f"Venta · {len(items)} artículo(s)",
             success_url=f"{base}/ventas?pago=ok",
             cancel_url=f"{base}/ventas?pago=cancel",
+            metadata={"type": "pos_sale", "vela_pos_temp_id": temp_id,
+                      "vela_company_id": str(current_user.company_id)},
+            expires_at=int(now) + 1800,
         )
     except CS.ConnectError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Stripe: {e}")
     audit_event(db, "connect_sale_payment", actor_user_id=current_user.id, actor_email=current_user.email,
-                company_id=current_user.company_id, request=request, detail={"amount": body.amount})
-    return result
+                company_id=current_user.company_id, request=request, detail={"amount": total, "temp_id": temp_id})
+    return {"url": result["url"], "temp_id": temp_id, "amount": total}
+
+
+@router.get("/sale-status/{temp_id}")
+def connect_sale_status(temp_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """Poll whether the card payment completed and the sale was recorded."""
+    from sqlalchemy import text
+    row = db.execute(text(
+        "SELECT status, sale_id FROM pending_pos_sales WHERE temp_id=:t AND company_id=:c"
+    ), {"t": temp_id, "c": current_user.company_id}).mappings().first()
+    if not row:
+        raise HTTPException(status_code=404, detail="No encontrado")
+    return {"status": row["status"], "sale_id": row["sale_id"], "paid": row["status"] == "paid"}

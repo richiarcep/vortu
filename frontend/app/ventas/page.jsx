@@ -291,19 +291,39 @@ export default function Ventas() {
     } catch {}
   }
 
-  // Cobro online: genera un pago Stripe (tarjeta/Apple Pay/Google Pay) en la cuenta
-  // de la empresa por el total del carrito y lo abre para que el cliente pague.
+  // Cobro online: abre un pago Stripe (tarjeta/Apple Pay/Google Pay) en la cuenta
+  // de la empresa por el total del carrito. La venta se registra automáticamente
+  // cuando el pago se confirma (webhook) — el cajero NO tiene que confirmarla.
   async function cobrarOnline() {
     if (cartTotal <= 0) return
     setCharging(true)
     try {
+      const items = cart.map(c => ({ product_id: c.id, quantity: c.qty }))
       const res = await fetch(`${API}/api/connect/sale-payment`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
-        body: JSON.stringify({ amount: cartTotal, description: `Venta · ${cart.length} artículo(s)`, currency: 'eur' }),
+        body: JSON.stringify({ items, payment_method: payment, currency: 'eur' }),
       })
       const d = await res.json().catch(() => ({}))
-      if (res.ok && d.url) { window.open(d.url, '_blank') }
-      else { setMsg({ type: 'error', text: d.detail || 'No se pudo iniciar el cobro online.' }) }
+      if (!res.ok || !d.url) { setMsg({ type: 'error', text: d.detail || 'No se pudo iniciar el cobro online.' }); return }
+      window.open(d.url, '_blank')
+      setMsg({ type: 'success', text: 'Esperando el pago del cliente…' })
+      // Poll for confirmation (the webhook records the sale on success).
+      const tid = d.temp_id
+      let tries = 0
+      const poll = setInterval(async () => {
+        tries++
+        try {
+          const s = await fetch(`${API}/api/connect/sale-status/${tid}`, { headers: { Authorization: `Bearer ${getToken()}` } })
+          const sd = await s.json().catch(() => ({}))
+          if (sd.paid) {
+            clearInterval(poll)
+            setMsg({ type: 'success', text: 'Pago recibido · venta registrada' })
+            setCart([]); setShowPaymentModal(false); setClienteSelected(null); setClienteQuery('')
+            loadProducts(); loadHistorial(); loadResumen()
+          }
+        } catch {}
+        if (tries > 150) clearInterval(poll)  // ~5 min then stop polling
+      }, 2000)
     } catch { setMsg({ type: 'error', text: 'Error de conexión' }) }
     finally { setCharging(false) }
   }

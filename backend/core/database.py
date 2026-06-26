@@ -224,6 +224,22 @@ def ensure_runtime_schema():
             )
         """))
 
+        # POS sales awaiting a Stripe Connect card/Apple Pay payment. The cart is
+        # held here (NOT recorded as a sale) until the payment webhook confirms,
+        # then the real sale is created and this row deleted. Keeps the sales table
+        # free of unpaid/abandoned carts.
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS pending_pos_sales (
+                temp_id TEXT PRIMARY KEY,
+                company_id INTEGER NOT NULL,
+                payload TEXT NOT NULL,
+                sale_id INTEGER,
+                status TEXT NOT NULL DEFAULT 'pending',
+                created_at TEXT,
+                expires_at REAL
+            )
+        """))
+
         # Evidence-extraction pipeline tables (fingerprints, runs, feedback, review
         # queue). Antes solo las creaba migrate_extraction_tables.py a mano, así que
         # en una BD nueva el bucle de aprendizaje/extracción fallaba en silencio.

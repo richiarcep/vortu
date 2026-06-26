@@ -347,14 +347,33 @@ def create_sale(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """
-    Creates a complete sale with all items.
-    Automatically deducts stock and calculates totals.
-    """
+    """Creates a complete sale with all items (deducts stock, computes totals)."""
+    return persist_sale(db, current_user.company_id, data)
+
+
+def quote_cart(db, cid: int, items) -> float:
+    """Total (with IVA) of a cart of {product_id, quantity} WITHOUT persisting —
+    used to set the Stripe Connect charge amount before payment. Prices come from
+    the products server-side (never trust a client-sent amount)."""
+    total = 0.0
+    for it in items:
+        pid = it.get("product_id") if isinstance(it, dict) else it.product_id
+        qty = (it.get("quantity") if isinstance(it, dict) else it.quantity) or 0
+        p = db.query(Product).filter(Product.id == pid, Product.company_id == cid,
+                                     Product.is_active == True).first()
+        if not p or qty <= 0:
+            raise HTTPException(status_code=400, detail="Producto inválido en el carrito")
+        base = p.sale_price * qty
+        total += base + base * (p.iva_rate / 100)
+    return round(total, 2)
+
+
+def persist_sale(db, cid: int, data: SaleCreate, status: str = "completed"):
+    """Core sale persistence — shared by the POS endpoint and the Stripe Connect
+    payment webhook (which records the sale only AFTER the card/Apple Pay payment
+    succeeds). Atomic stock decrement + totals + graph sync; honours idempotency_key."""
     if not data.items:
         raise HTTPException(status_code=400, detail="La venta debe tener al menos un producto")
-
-    cid = current_user.company_id
 
     # Idempotencia: si la clave ya se usó, devolvemos la venta existente en lugar de
     # crear un duplicado (protege contra doble clic / reintento de red).
@@ -376,7 +395,7 @@ def create_sale(
         subtotal=0.0,
         iva_amount=0.0,
         total=0.0,
-        status="completed",
+        status=status,
         idempotency_key=data.idempotency_key,
     )
     db.add(sale)

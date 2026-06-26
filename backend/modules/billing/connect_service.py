@@ -83,17 +83,19 @@ def refresh_status(db, company) -> dict:
 
 
 def create_sale_payment(account_id: str, amount: float, currency: str, description: str,
-                        success_url: str, cancel_url: str) -> dict:
+                        success_url: str, cancel_url: str, metadata: dict = None,
+                        expires_at: int = None) -> dict:
     """Direct-charge Checkout Session on the connected account for a sale. The
     customer pays with card / Apple Pay / Google Pay; the money lands in the
-    company's account. Returns {url, id}."""
+    company's account. metadata is echoed on the session (so the webhook can map
+    the payment back to the pending cart). Returns {url, id}."""
     _require_enabled()
     amount_cents = int(round(float(amount) * 100))
     if amount_cents < 50:
         raise ConnectError("Importe demasiado bajo para cobro con tarjeta.")
     app_fee = int(amount_cents * APP_FEE_BPS / 10000) if APP_FEE_BPS else 0
     pi_data = {"application_fee_amount": app_fee} if app_fee else {}
-    session = stripe.checkout.Session.create(
+    kwargs = dict(
         mode="payment",
         line_items=[{
             "price_data": {
@@ -106,7 +108,11 @@ def create_sale_payment(account_id: str, amount: float, currency: str, descripti
         payment_intent_data=pi_data,
         success_url=success_url,
         cancel_url=cancel_url,
+        metadata=metadata or {},
         # The crucial bit: run the charge ON the connected account (direct charge).
         stripe_account=account_id,
     )
+    if expires_at:
+        kwargs["expires_at"] = expires_at
+    session = stripe.checkout.Session.create(**kwargs)
     return {"url": session.url, "id": session.id}

@@ -17,6 +17,38 @@ STRIPE_PRICES = {
     "vera_plus":  settings.STRIPE_PRICE_VERA_PLUS,
 }
 
+# Current (v3) monthly prices in EUR — the source of truth for amounts (mirrors
+# models.billing.PLANS). Used to build INLINE recurring prices when a real Stripe
+# price id isn't configured, so subscriptions work in test mode without pre-created
+# prices (the .env STRIPE_PRICE_* ids were stale). A configured `price_…` id always
+# wins; otherwise we fall back to price_data.
+PLAN_AMOUNTS_EUR = {"starter": 29, "pro": 59, "business": 119, "extra_user": 8, "vera_plus": 19}
+PLAN_NAMES = {
+    "starter": "Vela Starter", "pro": "Vela Pro", "business": "Vela Business",
+    "extra_user": "Usuario extra", "vera_plus": "Vera Plus",
+}
+
+
+def _price_selector(plan_id: str) -> dict:
+    """Return a Stripe price selector usable in BOTH Checkout line_items and
+    Subscription items.
+
+    Default: inline {'price_data': {...recurring monthly...}} from PLAN_AMOUNTS_EUR
+    — so checkout works in test mode with NO pre-created prices (the .env
+    STRIPE_PRICE_* ids were stale). Set STRIPE_USE_CONFIGURED_PRICES=true in prod,
+    with valid STRIPE_PRICE_* ids, to use Dashboard-managed prices instead
+    (recommended for live so prices/tax are managed in one place)."""
+    pid = STRIPE_PRICES.get(plan_id)
+    if getattr(settings, "STRIPE_USE_CONFIGURED_PRICES", False) and isinstance(pid, str) and pid.startswith("price_"):
+        return {"price": pid}
+    amount = PLAN_AMOUNTS_EUR.get(plan_id, 0)
+    return {"price_data": {
+        "currency": "eur",
+        "product_data": {"name": PLAN_NAMES.get(plan_id, plan_id)},
+        "unit_amount": int(amount * 100),
+        "recurring": {"interval": "month"},
+    }}
+
 STRIPE_LICENSE_PRICES = {
     "starter":  settings.STRIPE_LICENSE_STARTER,
     "pro":      settings.STRIPE_LICENSE_PRO,
@@ -50,7 +82,7 @@ def create_subscription_checkout(db, user_id, email, name, plan_id):
     session = stripe.checkout.Session.create(
         customer=customer_id,
         mode="subscription",
-        line_items=[{"price": STRIPE_PRICES[plan_id], "quantity": 1}],
+        line_items=[{**_price_selector(plan_id), "quantity": 1}],
         subscription_data={
             "metadata": {"vela_user_id": str(user_id), "plan_id": plan_id}
         },
@@ -86,7 +118,7 @@ def create_upgrade_checkout(db, user_id, email, name, new_plan_id):
                 current_item = stripe_sub["items"]["data"][0]
                 stripe.Subscription.modify(
                     sub.stripe_subscription_id,
-                    items=[{"id": current_item["id"], "price": STRIPE_PRICES[new_plan_id]}],
+                    items=[{"id": current_item["id"], **_price_selector(new_plan_id)}],
                     proration_behavior="none",  # No prorratea, aplica al siguiente ciclo
                     billing_cycle_anchor="unchanged",
                 )
@@ -115,7 +147,7 @@ def create_upgrade_checkout(db, user_id, email, name, new_plan_id):
             # Cambiar sub con prorrateo inmediato
             stripe.Subscription.modify(
                 sub.stripe_subscription_id,
-                items=[{"id": current_item["id"], "price": STRIPE_PRICES[new_plan_id]}],
+                items=[{"id": current_item["id"], **_price_selector(new_plan_id)}],
                 proration_behavior="create_prorations",
             )
             sub.plan_id = new_plan_id
@@ -148,7 +180,7 @@ def add_extra_user(db, user_id, subscription_id, quantity=1):
     if extra_item:
         stripe.SubscriptionItem.modify(extra_item["id"], quantity=extra_item["quantity"] + quantity)
     else:
-        stripe.Subscription.modify(subscription_id, items=[{"price": STRIPE_PRICES["extra_user"], "quantity": quantity}])
+        stripe.Subscription.modify(subscription_id, items=[{**_price_selector("extra_user"), "quantity": quantity}])
     db_sub = db.query(Subscription).filter(Subscription.user_id == user_id).first()
     if db_sub:
         db_sub.extra_users = max(0, db_sub.extra_users + quantity)
@@ -172,9 +204,15 @@ def handle_webhook(db, payload, sig_header):
     try:
         obj = _stripe_to_dict(event["data"]["object"])
         if event["type"] == "checkout.session.completed":
-            # ─── Vera Plus checkout (atajo: detectar antes que la lógica Vela) ───
             _session_check = event["data"]["object"]
-            if _session_check.get("metadata", {}).get("product") == "vera_plus":
+            _meta = _session_check.get("metadata", {}) or {}
+            # ─── POS sale paid via Stripe Connect → record the real sale now ───
+            if _meta.get("type") == "pos_sale":
+                _finalize_pos_sale(db, _meta.get("vela_pos_temp_id"))
+                db.commit()
+                return {"received": True, "type": "pos_sale"}
+            # ─── Vera Plus checkout (atajo: detectar antes que la lógica Vela) ───
+            if _meta.get("product") == "vera_plus":
                 _company_id = int(_session_check["metadata"].get("vela_company_id", 0))
                 _sub_id = _session_check.get("subscription")
                 if _company_id and _sub_id:
@@ -200,6 +238,33 @@ def handle_webhook(db, payload, sig_header):
         traceback.print_exc()
     db.commit()
     return {"status": "processed"}
+
+def _finalize_pos_sale(db, temp_id):
+    """A POS card/Apple Pay payment succeeded → record the real sale from the held
+    cart and mark the pending row paid. Idempotent (safe on duplicate webhooks)."""
+    if not temp_id:
+        return
+    from sqlalchemy import text
+    import json
+    row = db.execute(text(
+        "SELECT company_id, payload, status FROM pending_pos_sales WHERE temp_id=:t"
+    ), {"t": temp_id}).mappings().first()
+    if not row or row["status"] == "paid":
+        return  # unknown or already recorded
+    payload = json.loads(row["payload"])
+    from api.sales import persist_sale, SaleCreate
+    data = SaleCreate(
+        items=payload.get("items", []),
+        payment_method=payload.get("payment_method", "card"),
+        notes=payload.get("notes"),
+        allow_oversell=True,                      # the customer already paid
+        idempotency_key=f"pos_{temp_id}",         # dedupe on retried webhooks
+    )
+    sale = persist_sale(db, row["company_id"], data, status="completed")
+    sid = sale.get("id") if isinstance(sale, dict) else None
+    db.execute(text("UPDATE pending_pos_sales SET status='paid', sale_id=:s WHERE temp_id=:t"),
+               {"s": sid, "t": temp_id})
+
 
 def _handle_connect_account_updated(db, account):
     """A connected account changed (e.g. finished onboarding) — cache the
@@ -511,7 +576,7 @@ def create_vera_plus_checkout(db, user_id, email, name, company_id):
     session = stripe.checkout.Session.create(
         customer=customer_id,
         mode="subscription",
-        line_items=[{"price": STRIPE_PRICES["vera_plus"], "quantity": 1}],
+        line_items=[{**_price_selector("vera_plus"), "quantity": 1}],
         subscription_data={
             "metadata": {
                 "vela_user_id": str(user_id),
