@@ -10,7 +10,7 @@ from typing import Optional
 import json
 
 from core.database import get_db
-from core.security import get_current_user
+from core.security import get_current_user, get_tenant_db
 from models.user import User
 from modules.billing.stripe_service import create_vera_plus_checkout
 from core.config import get_settings
@@ -26,7 +26,7 @@ router = APIRouter(prefix="/api/vera/plus", tags=["Vera Plus"])
 @router.get("/info")
 def get_plus_info(
     user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     """
     Devuelve info de los planes base + plus desde vera_plans.
@@ -122,7 +122,7 @@ class PlusRequestCreate(BaseModel):
 def request_plus(
     payload: PlusRequestCreate,
     user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     """El cliente solicita activación de Vera Plus. Crea un registro pending."""
     company_id = getattr(user, "company_id", None)
@@ -171,7 +171,7 @@ def request_plus(
 @router.get("/requests")
 def list_requests(
     user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     """Lista todas las solicitudes Plus (solo admin)."""
     if not getattr(user, "is_admin", False):
@@ -212,7 +212,7 @@ def resolve_request(
     request_id: int,
     body: RequestResolve,
     user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     """Admin aprueba o rechaza una solicitud. Si aprueba, activa companies.plan='plus'."""
     if not getattr(user, "is_admin", False):
@@ -258,7 +258,7 @@ def resolve_request(
 @router.post("/checkout")
 def create_checkout(
     user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     """
     Crea una sesión de Stripe Checkout para que el cliente pague Vera Plus.

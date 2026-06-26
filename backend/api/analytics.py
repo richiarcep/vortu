@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from typing import Optional
 from sqlalchemy.orm import Session
 from core.database import get_db
-from core.security import get_current_user
+from core.security import get_current_user, get_tenant_db
 from models.user import User
 from models.analytics import BusinessSnapshot, BusinessAIMemory
 from modules.analytics.snapshot_worker import generate_snapshot
@@ -24,7 +24,7 @@ class ManualMemoryUpdate(BaseModel):
 
 @router.post("/snapshot/generate")
 async def generate_company_snapshot(
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     """Genera snapshot del mes actual para la empresa."""
@@ -49,7 +49,7 @@ async def generate_company_snapshot(
 @router.get("/snapshots")
 def get_snapshots(
     months: int = 12,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     """Devuelve los últimos N snapshots de la empresa."""
@@ -88,7 +88,7 @@ def get_snapshots(
 
 @router.get("/memory")
 def get_memory(
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     """Devuelve la memoria de IA de la empresa."""
@@ -111,7 +111,7 @@ def get_memory(
 
 @router.post("/memory/auto-update")
 async def trigger_auto_update(
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     """Dispara una actualización automática de la memoria IA."""
@@ -129,7 +129,7 @@ async def trigger_auto_update(
 @router.put("/memory/manual")
 def update_manual_memory(
     body: ManualMemoryUpdate,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     """El usuario actualiza manualmente la memoria del negocio."""
@@ -152,7 +152,7 @@ def update_manual_memory(
 
 @router.get("/memory/context")
 def get_ai_context(
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     """Devuelve el contexto completo que usa la IA."""

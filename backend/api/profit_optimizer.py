@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
 from core.database import get_db
-from core.security import get_current_user
+from core.security import get_current_user, get_tenant_db
 from core.pagination import LimitQuery
 from models.profit_optimizer import CommercialLine, OptimizerProduct, OptimizerInputs, OptimizerRun
 from modules.profit_optimizer.engine import run_optimizer
@@ -74,7 +74,7 @@ class RunRequest(BaseModel):
 
 
 @router.get("/lines")
-def get_lines(db=Depends(get_db), current_user=Depends(get_current_user)):
+def get_lines(db=Depends(get_tenant_db), current_user=Depends(get_current_user)):
     lines = db.query(CommercialLine).filter(
         CommercialLine.company_id == current_user.company_id,
     ).order_by(CommercialLine.id).all()
@@ -84,14 +84,14 @@ def get_lines(db=Depends(get_db), current_user=Depends(get_current_user)):
 
 
 @router.post("/lines", status_code=status.HTTP_201_CREATED)
-def create_line(body: LineCreate, db=Depends(get_db), current_user=Depends(get_current_user)):
+def create_line(body: LineCreate, db=Depends(get_tenant_db), current_user=Depends(get_current_user)):
     line = CommercialLine(company_id=current_user.company_id, **body.model_dump())
     db.add(line); db.commit(); db.refresh(line)
     return {"id":line.id,"name":line.name,"message":"Line created."}
 
 
 @router.patch("/lines/{line_id}")
-def update_line(line_id: int, body: LineUpdate, db=Depends(get_db), current_user=Depends(get_current_user)):
+def update_line(line_id: int, body: LineUpdate, db=Depends(get_tenant_db), current_user=Depends(get_current_user)):
     line = db.query(CommercialLine).filter(
         CommercialLine.id==line_id, CommercialLine.company_id==current_user.company_id
     ).first()
@@ -104,7 +104,7 @@ def update_line(line_id: int, body: LineUpdate, db=Depends(get_db), current_user
 
 
 @router.get("/lines/{line_id}/products")
-def get_products(line_id: int, db=Depends(get_db), current_user=Depends(get_current_user)):
+def get_products(line_id: int, db=Depends(get_tenant_db), current_user=Depends(get_current_user)):
     products = db.query(OptimizerProduct).filter(
         OptimizerProduct.line_id==line_id,
         OptimizerProduct.company_id==current_user.company_id,
@@ -128,7 +128,7 @@ def get_products(line_id: int, db=Depends(get_db), current_user=Depends(get_curr
 
 
 @router.post("/lines/{line_id}/products", status_code=status.HTTP_201_CREATED)
-def create_product(line_id: int, body: ProductCreate, db=Depends(get_db), current_user=Depends(get_current_user)):
+def create_product(line_id: int, body: ProductCreate, db=Depends(get_tenant_db), current_user=Depends(get_current_user)):
     line = db.query(CommercialLine).filter(
         CommercialLine.id==line_id, CommercialLine.company_id==current_user.company_id
     ).first()
@@ -140,7 +140,7 @@ def create_product(line_id: int, body: ProductCreate, db=Depends(get_db), curren
 
 
 @router.patch("/products/{product_id}")
-def update_product(product_id: int, body: ProductUpdate, db=Depends(get_db), current_user=Depends(get_current_user)):
+def update_product(product_id: int, body: ProductUpdate, db=Depends(get_tenant_db), current_user=Depends(get_current_user)):
     product = db.query(OptimizerProduct).filter(
         OptimizerProduct.id==product_id,
         OptimizerProduct.company_id==current_user.company_id,
@@ -154,7 +154,7 @@ def update_product(product_id: int, body: ProductUpdate, db=Depends(get_db), cur
 
 
 @router.get("/inputs/{period_label}")
-def get_inputs(period_label: str, db=Depends(get_db), current_user=Depends(get_current_user)):
+def get_inputs(period_label: str, db=Depends(get_tenant_db), current_user=Depends(get_current_user)):
     inputs = db.query(OptimizerInputs).filter(
         OptimizerInputs.company_id==current_user.company_id,
         OptimizerInputs.period_label==period_label,
@@ -168,7 +168,7 @@ def get_inputs(period_label: str, db=Depends(get_db), current_user=Depends(get_c
 
 
 @router.put("/inputs")
-def save_inputs(body: InputsUpdate, db=Depends(get_db), current_user=Depends(get_current_user)):
+def save_inputs(body: InputsUpdate, db=Depends(get_tenant_db), current_user=Depends(get_current_user)):
     inputs = db.query(OptimizerInputs).filter(
         OptimizerInputs.company_id==current_user.company_id,
         OptimizerInputs.period_label==body.period_label,
@@ -184,7 +184,7 @@ def save_inputs(body: InputsUpdate, db=Depends(get_db), current_user=Depends(get
 
 
 @router.post("/run")
-def run(body: RunRequest, db=Depends(get_db), current_user=Depends(get_current_user)):
+def run(body: RunRequest, db=Depends(get_tenant_db), current_user=Depends(get_current_user)):
     return run_optimizer(
         db=db, company_id=current_user.company_id,
         period_label=body.period_label,
@@ -194,7 +194,7 @@ def run(body: RunRequest, db=Depends(get_db), current_user=Depends(get_current_u
 
 
 @router.get("/runs")
-def get_runs(limit: int = LimitQuery(10), db=Depends(get_db), current_user=Depends(get_current_user)):
+def get_runs(limit: int = LimitQuery(10), db=Depends(get_tenant_db), current_user=Depends(get_current_user)):
     runs = db.query(OptimizerRun).filter(
         OptimizerRun.company_id==current_user.company_id,
     ).order_by(OptimizerRun.run_at.desc()).limit(limit).all()
@@ -204,7 +204,7 @@ def get_runs(limit: int = LimitQuery(10), db=Depends(get_db), current_user=Depen
 
 
 @router.get("/runs/{run_id}")
-def get_run(run_id: int, db=Depends(get_db), current_user=Depends(get_current_user)):
+def get_run(run_id: int, db=Depends(get_tenant_db), current_user=Depends(get_current_user)):
     run = db.query(OptimizerRun).filter(
         OptimizerRun.id==run_id,
         OptimizerRun.company_id==current_user.company_id,

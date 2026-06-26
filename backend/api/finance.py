@@ -6,7 +6,7 @@ from typing import Optional
 from datetime import date, timedelta
 import json
 from core.database import get_db
-from core.security import get_current_user
+from core.security import get_current_user, get_tenant_db
 from vera.compat import vera_client   # IA por Vera (cuota + config admin)
 from models.user import User
 from models.document import Document
@@ -31,7 +31,7 @@ router = APIRouter(prefix="/api/finance", tags=["Finanzas"])
 @router.get("/statements/{document_id}")
 def get_financial_statements(
     document_id: int,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     document = db.query(Document).filter(
@@ -51,7 +51,7 @@ def get_financial_statements(
 @router.get("/invoice/{document_id}")
 def get_invoice_analysis(
     document_id: int,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     document = db.query(Document).filter(
@@ -70,7 +70,7 @@ def get_invoice_analysis(
 
 @router.get("/summary")
 def get_finance_summary(
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     """
@@ -194,7 +194,7 @@ def get_finance_summary(
 
 @router.get("/ratios")
 def get_ratios_financieros(
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     """
@@ -367,7 +367,7 @@ class ProyeccionRequest(BaseModel):
 
 @router.get("/proyecciones/cached")
 def get_proyecciones_cached(
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     """Devuelve la ultima proyeccion guardada si existe y no ha expirado."""
@@ -384,7 +384,7 @@ def get_proyecciones_cached(
 
 @router.delete("/proyecciones/cached")
 def clear_proyecciones_cached(
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     """Borra el snapshot de proyecciones para forzar regeneracion."""
@@ -396,7 +396,7 @@ def clear_proyecciones_cached(
 @router.post("/proyecciones")
 def get_proyecciones(
     data: ProyeccionRequest,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     """

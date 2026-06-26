@@ -11,7 +11,7 @@ import json
 import time
 
 from core.database import get_db
-from core.security import get_current_user, get_admin_user
+from core.security import get_current_user, get_admin_user, get_tenant_db
 from models.user import User
 from vera.llm_router import VeraRouter
 
@@ -94,7 +94,7 @@ def _log_routing(db: Session, user: User, req: RouteRequest, result: Dict):
 @router.post("/route", response_model=RouteResponse)
 def route_message(
     req: RouteRequest,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     user: User = Depends(get_current_user),
 ):
     """
@@ -135,7 +135,7 @@ def route_message(
 
 @router.get("/route/status")
 def route_status(
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     user: User = Depends(get_admin_user),
 ):
     """

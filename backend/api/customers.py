@@ -5,7 +5,7 @@ from typing import Optional
 from datetime import datetime
 from core.database import get_db
 from services.graph.sync import sync_contact
-from core.security import get_current_user
+from core.security import get_current_user, get_tenant_db
 from models.user import User
 from models.customer import Contact, Message, KnowledgeBase, AutoResponse, EmailConfig
 from modules.customers.ai import (
@@ -109,7 +109,7 @@ def serialize_message(m: Message) -> dict:
 
 @router.get("/contactos")
 def list_contacts(
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     contacts = db.query(Contact).filter(
@@ -125,7 +125,7 @@ def list_contacts(
 @router.post("/contactos", status_code=201)
 def create_contact(
     data: ContactCreate,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     contact = Contact(
@@ -146,7 +146,7 @@ def create_contact(
 @router.get("/contactos/{contact_id}")
 def get_contact(
     contact_id: int,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     contact = db.query(Contact).filter(
@@ -172,7 +172,7 @@ def get_contact(
 @router.put("/contactos/{contact_id}/vip")
 def toggle_vip(
     contact_id: int,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     contact = db.query(Contact).filter(
@@ -191,7 +191,7 @@ def toggle_vip(
 @router.get("/inbox")
 def get_inbox(
     status: Optional[str] = None,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     query = db.query(Message).filter(
@@ -230,7 +230,7 @@ def get_inbox(
 @router.post("/mensaje", status_code=201)
 def receive_message(
     data: MessageCreate,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     """
@@ -317,7 +317,7 @@ def receive_message(
 def approve_message(
     message_id: int,
     data: ApproveMessage,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     """Approves Claude's draft and marks it as sent."""
@@ -363,7 +363,7 @@ def approve_message(
 def edit_and_send(
     message_id: int,
     data: MessageEdit,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     """Saves edited draft and marks as sent."""
@@ -396,7 +396,7 @@ def edit_and_send(
 @router.post("/mensaje/{message_id}/rechazar")
 def reject_message(
     message_id: int,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     """Rejects Claude's draft — owner will respond manually."""
@@ -415,7 +415,7 @@ def reject_message(
 
 @router.get("/knowledge-base")
 def get_knowledge_base(
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     entries = db.query(KnowledgeBase).filter(
@@ -440,7 +440,7 @@ def get_knowledge_base(
 @router.post("/knowledge-base", status_code=201)
 def add_knowledge_base(
     data: KnowledgeBaseCreate,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     extracted = extract_knowledge_from_document(
@@ -470,7 +470,7 @@ def add_knowledge_base(
 @router.delete("/knowledge-base/{entry_id}")
 def delete_knowledge_base(
     entry_id: int,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     entry = db.query(KnowledgeBase).filter(
@@ -489,7 +489,7 @@ def delete_knowledge_base(
 @router.post("/email/conectar")
 def connect_email(
     data: EmailConfigCreate,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     test = test_email_connection(
@@ -529,7 +529,7 @@ def connect_email(
 
 @router.post("/email/sync")
 def sync_emails(
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     new_messages = fetch_new_emails(db, current_user.company_id)
@@ -541,7 +541,7 @@ def sync_emails(
 
 @router.get("/email/config")
 def get_email_config(
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     config = db.query(EmailConfig).filter(
@@ -561,7 +561,7 @@ def get_email_config(
 
 @router.get("/analytics")
 def get_analytics(
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     return get_inbox_analytics(db, current_user.company_id)
@@ -569,7 +569,7 @@ def get_analytics(
 
 @router.get("/sentiment-report")
 def get_sentiment_report(
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     return get_latest_sentiment_report(db, current_user.company_id)
@@ -577,7 +577,7 @@ def get_sentiment_report(
 
 @router.post("/sentiment-report/generar")
 def generate_report(
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     return generate_sentiment_report(db, current_user.company_id)
@@ -587,7 +587,7 @@ def generate_report(
 
 @router.get("/auto-responses")
 def get_auto_responses(
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     responses = db.query(AutoResponse).filter(
@@ -611,7 +611,7 @@ def get_auto_responses(
 @router.post("/auto-responses", status_code=201)
 def create_auto_response(
     data: AutoResponseCreate,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     response = AutoResponse(

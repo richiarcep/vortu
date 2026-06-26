@@ -13,7 +13,7 @@ import json
 import time
 
 from core.database import get_db
-from core.security import get_current_user
+from core.security import get_current_user, get_tenant_db
 from models.user import User
 from vera.quota_manager import (
     get_company_plan, select_model_for_request, record_usage as quota_record_usage,
@@ -215,7 +215,7 @@ DATOS REALES DEL NEGOCIO
 
 
 @router.get("/status")
-def status(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def status(user: User = Depends(get_current_user), db: Session = Depends(get_tenant_db)):
     """Estado de Vera. Plan + cuota + modelos activos (todo lee de BD, nada hardcoded)."""
     company_id = getattr(user, "company_id", None)
     if company_id:
@@ -295,7 +295,7 @@ def status(user: User = Depends(get_current_user), db: Session = Depends(get_db)
 
 
 @router.get("/conversations")
-def list_conversations(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def list_conversations(user: User = Depends(get_current_user), db: Session = Depends(get_tenant_db)):
     plan = get_user_plan(user)
     limit = 50 if plan == "plus" else 10
     rows = db.execute(text("""
@@ -320,7 +320,7 @@ def list_conversations(user: User = Depends(get_current_user), db: Session = Dep
 @router.post("/conversations", status_code=201)
 def create_conversation(payload: ConversationCreate,
                         user: User = Depends(get_current_user),
-                        db: Session = Depends(get_db)):
+                        db: Session = Depends(get_tenant_db)):
     plan = get_user_plan(user)
     limit = 50 if plan == "plus" else 10
     active = db.execute(text("""
@@ -360,7 +360,7 @@ def create_conversation(payload: ConversationCreate,
 @router.patch("/conversations/{conv_id}")
 def update_conversation(conv_id: int, payload: ConversationUpdate,
                         user: User = Depends(get_current_user),
-                        db: Session = Depends(get_db)):
+                        db: Session = Depends(get_tenant_db)):
     owner = db.execute(text("SELECT user_id FROM vera_conversations WHERE id = :id"),
                        {"id": conv_id}).fetchone()
     if not owner or owner[0] != user.id:
@@ -382,7 +382,7 @@ def update_conversation(conv_id: int, payload: ConversationUpdate,
 @router.delete("/conversations/{conv_id}")
 def delete_conversation(conv_id: int,
                         user: User = Depends(get_current_user),
-                        db: Session = Depends(get_db)):
+                        db: Session = Depends(get_tenant_db)):
     owner = db.execute(text("SELECT user_id FROM vera_conversations WHERE id = :id"),
                        {"id": conv_id}).fetchone()
     if not owner or owner[0] != user.id:
@@ -396,7 +396,7 @@ def delete_conversation(conv_id: int,
 @router.get("/conversations/{conv_id}/messages")
 def get_messages(conv_id: int,
                  user: User = Depends(get_current_user),
-                 db: Session = Depends(get_db)):
+                 db: Session = Depends(get_tenant_db)):
     owner = db.execute(text("SELECT user_id FROM vera_conversations WHERE id = :id"),
                        {"id": conv_id}).fetchone()
     if not owner or owner[0] != user.id:
@@ -420,7 +420,7 @@ def get_messages(conv_id: int,
 @router.post("/chat", dependencies=[Depends(rate_limit(20, 60, "vera_v2_chat"))])
 def chat(payload: MessageCreate,
          user: User = Depends(get_current_user),
-         db: Session = Depends(get_db)):
+         db: Session = Depends(get_tenant_db)):
     """Chat sin streaming (compatibilidad)."""
     owner = db.execute(text("SELECT user_id, company_id FROM vera_conversations WHERE id = :id"),
                        {"id": payload.conversation_id}).fetchone()
@@ -515,7 +515,7 @@ def chat(payload: MessageCreate,
 @router.post("/chat/stream", dependencies=[Depends(rate_limit(20, 60, "vera_v2_stream"))])
 def chat_stream(payload: MessageCreate,
                 user: User = Depends(get_current_user),
-                db: Session = Depends(get_db)):
+                db: Session = Depends(get_tenant_db)):
     """Chat con streaming SSE — texto aparece token por token."""
     owner = db.execute(text("SELECT user_id, company_id FROM vera_conversations WHERE id = :id"),
                        {"id": payload.conversation_id}).fetchone()

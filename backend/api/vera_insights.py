@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 import json
 
 from core.database import get_db
-from core.security import get_current_user
+from core.security import get_current_user, get_tenant_db
 from models.user import User
 from vera.llm_router import VeraRouter
 
@@ -169,7 +169,7 @@ def get_insights(
     modulo: str,
     force: bool = Query(False, description="Solo plan plus: regenerar ignorando cache"),
     user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
 ):
     company_id = getattr(user, "company_id", None)
     if not company_id:

@@ -3,7 +3,7 @@ from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from core.database import get_db
-from core.security import get_current_user
+from core.security import get_current_user, get_tenant_db
 from core.rate_limit import rate_limit
 from core.audit import audit_event
 from core.pagination import LimitQuery, OffsetQuery
@@ -47,7 +47,7 @@ class ConfigFiscalBase(BaseModel):
     tiene_certificado: Optional[int] = None
 
 @router.get("/config")
-def get_config_fiscal(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def get_config_fiscal(db: Session = Depends(get_tenant_db), current_user: User = Depends(get_current_user)):
     row = db.execute(text("SELECT * FROM config_fiscal WHERE company_id=:cid"), {"cid": current_user.company_id}).fetchone()
     if not row:
         return {"configurado": False, "wizard_paso": 1, "wizard_completado": False}
@@ -63,7 +63,7 @@ def get_config_fiscal(db: Session = Depends(get_db), current_user: User = Depend
     return d
 
 @router.post("/config")
-def save_config_fiscal(data: ConfigFiscalBase, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def save_config_fiscal(data: ConfigFiscalBase, db: Session = Depends(get_tenant_db), current_user: User = Depends(get_current_user)):
     existing = db.execute(text("SELECT id FROM config_fiscal WHERE company_id=:cid"), {"cid": current_user.company_id}).fetchone()
     fields = {k: v for k, v in data.dict().items() if v is not None}
     # Encrypt tax-authority secrets before they hit the DB (decrypted only when used).
@@ -96,14 +96,14 @@ def save_config_fiscal(data: ConfigFiscalBase, db: Session = Depends(get_db), cu
     return {"ok": True}
 
 @router.get("/pais")
-def get_pais_fiscal(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def get_pais_fiscal(db: Session = Depends(get_tenant_db), current_user: User = Depends(get_current_user)):
     row = db.execute(text("SELECT pais, wizard_completado, activo FROM config_fiscal WHERE company_id=:cid"), {"cid": current_user.company_id}).fetchone()
     if not row:
         return {"pais": None, "configurado": False}
     return {"pais": row[0], "configurado": bool(row[2]), "wizard_completado": bool(row[1])}
 
 @router.post("/pais")
-def set_pais_fiscal(data: dict, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def set_pais_fiscal(data: dict, db: Session = Depends(get_tenant_db), current_user: User = Depends(get_current_user)):
     from country.registry import get_country_info
     cc = (current_user.company.country if current_user.company else None)
     pais = data.get("pais") or (cc.upper() if cc else "SV")
@@ -118,7 +118,7 @@ def set_pais_fiscal(data: dict, db: Session = Depends(get_db), current_user: Use
     return {"ok": True, "pais": pais}
 
 @router.post("/certificado")
-async def upload_certificado(file: UploadFile = File(...), password: str = Form(""), db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+async def upload_certificado(file: UploadFile = File(...), password: str = Form(""), db: Session = Depends(get_tenant_db), current_user: User = Depends(get_current_user)):
     """Upload the COMPANY's own qualified certificate (.p12) for its country's
     e-invoicing. The cert belongs to the client (obligado tributario), never to
     Vela. We validate it unlocks with the password and extract its expiry before
@@ -171,7 +171,7 @@ async def upload_certificado(file: UploadFile = File(...), password: str = Form(
     return {"ok": True, "mensaje": "Certificado validado y subido correctamente", "valid_until": valid_until}
 
 @router.post("/validar-nit")
-async def validar_nit(data: dict, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+async def validar_nit(data: dict, db: Session = Depends(get_tenant_db), current_user: User = Depends(get_current_user)):
     nit = data.get("nit", "").strip()
     nit_clean = nit.replace("-", "")
     if len(nit_clean) != 14 or not nit_clean.isdigit():
@@ -180,27 +180,27 @@ async def validar_nit(data: dict, db: Session = Depends(get_db), current_user: U
     return {"valido": True, "nit_formateado": formatted, "mensaje": "NIT válido"}
 
 @router.post("/validar-nrc")
-async def validar_nrc(data: dict, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+async def validar_nrc(data: dict, db: Session = Depends(get_tenant_db), current_user: User = Depends(get_current_user)):
     nrc = data.get("nrc", "").strip().replace("-", "")
     if not nrc.isdigit():
         return {"valido": False, "mensaje": "NRC inválido"}
     return {"valido": True, "nrc_formateado": nrc, "mensaje": "NRC válido"}
 
 @router.post("/test-conexion")
-async def test_conexion(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+async def test_conexion(db: Session = Depends(get_tenant_db), current_user: User = Depends(get_current_user)):
     cfg = db.execute(text("SELECT api_key, api_secret, ambiente FROM config_fiscal WHERE company_id=:cid"), {"cid": current_user.company_id}).fetchone()
     if not cfg or not cfg[0]:
         return {"ok": False, "mensaje": "No hay credenciales configuradas"}
     return {"ok": True, "ambiente": cfg[2], "mensaje": f"Conexión exitosa con API Hacienda ({cfg[2]})"}
 
 @router.post("/wizard/completar")
-def completar_wizard(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def completar_wizard(db: Session = Depends(get_tenant_db), current_user: User = Depends(get_current_user)):
     db.execute(text("UPDATE config_fiscal SET wizard_completado=1, activo=1, updated_at=:now WHERE company_id=:cid"), {"now": NOW(), "cid": current_user.company_id})
     db.commit()
     return {"ok": True}
 
 @router.get("/stats")
-def get_dte_stats(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def get_dte_stats(db: Session = Depends(get_tenant_db), current_user: User = Depends(get_current_user)):
     cid = current_user.company_id
     total = db.execute(text("SELECT COUNT(*) FROM dte_emitidos WHERE company_id=:cid"), {"cid": cid}).scalar()
     aceptados = db.execute(text("SELECT COUNT(*) FROM dte_emitidos WHERE company_id=:cid AND estado='aceptado'"), {"cid": cid}).scalar()
@@ -224,7 +224,7 @@ class DTERequest(BaseModel):
 @router.post("/dte/emitir")
 def emitir_dte(
     data: DTERequest,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     import uuid
@@ -332,7 +332,7 @@ def _company_country(current_user: User, db: Session) -> str:
 
 
 @router.get("/einvoicing")
-def get_einvoicing_config(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def get_einvoicing_config(db: Session = Depends(get_tenant_db), current_user: User = Depends(get_current_user)):
     """The e-invoicing system mandated for the company's country (the onboarding
     forces this — the country decides the system, there's no free choice)."""
     from country.einvoicing import get_einvoicing
@@ -354,7 +354,7 @@ class VerifactuModeRequest(BaseModel):
 
 
 @router.get("/verifactu/mode")
-def verifactu_get_mode(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def verifactu_get_mode(db: Session = Depends(get_tenant_db), current_user: User = Depends(get_current_user)):
     """Modo Veri*Factu de la empresa + si puede cambiar a NO_VERIFACTU (permanencia)."""
     _require_es(current_user, db)
     from modules.fiscal.verifactu.config import get_config, can_switch_to_no_verifactu
@@ -370,7 +370,7 @@ def verifactu_get_mode(db: Session = Depends(get_db), current_user: User = Depen
 
 @router.post("/verifactu/mode")
 def verifactu_set_mode(body: VerifactuModeRequest, request: Request,
-                       db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+                       db: Session = Depends(get_tenant_db), current_user: User = Depends(get_current_user)):
     """Fija/cambia el modo de operación (con la regla de permanencia §3.2 + auditoría)."""
     _require_es(current_user, db)
     from core.audit import client_ip
@@ -388,7 +388,7 @@ def verifactu_set_mode(body: VerifactuModeRequest, request: Request,
 
 @router.post("/verifactu/emitir", dependencies=[Depends(rate_limit(30, 60, "verifactu-emitir"))])
 def verifactu_emitir(body: VerifactuEmitirRequest, request: Request,
-                     db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+                     db: Session = Depends(get_tenant_db), current_user: User = Depends(get_current_user)):
     """Emite un registro de facturación de alta Veri*Factu para la empresa (ES)."""
     _require_es(current_user, db)
     from modules.fiscal.verifactu.service import emitir, VerifactuError
@@ -410,7 +410,7 @@ def verifactu_emitir(body: VerifactuEmitirRequest, request: Request,
 
 
 @router.get("/verifactu/registro")
-def verifactu_list(db: Session = Depends(get_db), current_user: User = Depends(get_current_user),
+def verifactu_list(db: Session = Depends(get_tenant_db), current_user: User = Depends(get_current_user),
                    limit: int = LimitQuery(50), offset: int = OffsetQuery()):
     """Lista el registro de facturación de la empresa (ES), más reciente primero."""
     rows = db.execute(text("""
@@ -423,7 +423,7 @@ def verifactu_list(db: Session = Depends(get_db), current_user: User = Depends(g
 
 
 @router.get("/verifactu/registro/{registro_id}/xml")
-def verifactu_xml(registro_id: int, request: Request, db: Session = Depends(get_db),
+def verifactu_xml(registro_id: int, request: Request, db: Session = Depends(get_tenant_db),
                   current_user: User = Depends(get_current_user)):
     """Exporta un registro como XML AEAT (Veri*Factu)."""
     row = db.execute(text("SELECT * FROM verifactu_registro WHERE id=:id AND company_id=:cid"),
@@ -438,7 +438,7 @@ def verifactu_xml(registro_id: int, request: Request, db: Session = Depends(get_
 
 
 @router.get("/verifactu/registro/{registro_id}/json")
-def verifactu_json(registro_id: int, db: Session = Depends(get_db),
+def verifactu_json(registro_id: int, db: Session = Depends(get_tenant_db),
                    current_user: User = Depends(get_current_user)):
     """Exporta un registro como JSON AEAT (Veri*Factu)."""
     row = db.execute(text("SELECT * FROM verifactu_registro WHERE id=:id AND company_id=:cid"),
@@ -451,7 +451,7 @@ def verifactu_json(registro_id: int, db: Session = Depends(get_db),
 
 @router.post("/verifactu/registro/{registro_id}/anular",
              dependencies=[Depends(rate_limit(30, 60, "verifactu-anular"))])
-def verifactu_anular(registro_id: int, request: Request, db: Session = Depends(get_db),
+def verifactu_anular(registro_id: int, request: Request, db: Session = Depends(get_tenant_db),
                      current_user: User = Depends(get_current_user)):
     """Anula un registro creando un registro de anulación enlazado (inmutabilidad)."""
     _require_es(current_user, db)
@@ -467,7 +467,7 @@ def verifactu_anular(registro_id: int, request: Request, db: Session = Depends(g
 
 
 @router.get("/verifactu/cadena/verificar")
-def verifactu_verify(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def verifactu_verify(db: Session = Depends(get_tenant_db), current_user: User = Depends(get_current_user)):
     """Verifica la integridad de la cadena de huellas (y la contigüidad de números)."""
     from modules.fiscal.verifactu.hashing import verify_chain
     return verify_chain(db, current_user.company_id)

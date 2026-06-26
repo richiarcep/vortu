@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from core.database import get_db
-from core.security import get_current_user
+from core.security import get_current_user, get_tenant_db
 from models.user import User
 from vera.quota_manager import get_quota_status
 
@@ -14,7 +14,7 @@ router = APIRouter(prefix="/api/vera/quota", tags=["Vera Quota"])
 
 @router.get("/status")
 def quota_status(
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     user: User = Depends(get_current_user),
 ):
     """

@@ -31,28 +31,29 @@ RLS enforcement is a point-of-no-return on prod data access, so each prerequisit
 below is **mandatory** — skipping any one causes a silent customer-facing outage
 (routers returning zero rows) rather than a security event.
 
-### 1. Swap every tenant router to `get_tenant_db`
-`Depends(get_db)` → `Depends(get_tenant_db)` on tenant-scoped endpoints. Leave
-`get_db` on auth/login/register, the Stripe webhook, and the superadmin backoffice
-(`api/admin.py`) — those are pre-tenant or legitimately cross-tenant. Routers to swap
-(from the review; verify with `grep -rl current_user.company_id api/`):
+### 1. Swap every tenant router to `get_tenant_db` — ✅ DONE
+`Depends(get_db)` → `Depends(get_tenant_db)` on tenant-scoped endpoints. Left on
+`get_db`: auth/login/register, the Stripe webhook, and the superadmin backoffice
+(`api/admin.py`, `vera_network.py`, `vera_routing_admin.py`) — pre-tenant or
+legitimately cross-tenant. Swapped (verified no-op on SQLite dev):
 
 ```
-sales, costes, costs (DISTINCT from costes), accounting, documentos, hr, customers,
-projects, marketing, fiscal, finance, profit_optimizer, analytics, privacy,
-vera_v2, vera_plus, vera_insights, agent, vera_route_api, vera_quota, upload
+sales, costes, costs, accounting, documentos, hr, customers, projects, marketing,
+fiscal, finance, profit_optimizer, analytics, privacy, vera_v2, vera_plus,
+vera_insights, agent, vera_route_api, vera_quota
 ```
 
-Until a router is swapped it will return **zero rows** under FORCE RLS. (Today only
-`sales` is swapped as the verified pilot.)
+`get_tenant_db` issues `set_config('app.current_company_id', …, true)` on Postgres
+and is a pass-through on SQLite, so this is already live in code and inert until the
+RLS policies (step 4) are applied.
 
-### 2. Fix the cross-tenant agent's Postgres portability FIRST
-`vera/network_engine.py` is Postgres-broken independently of RLS: `list_tables` uses
-`sqlite_master`, `describe_table` uses `PRAGMA table_info`, and pulse/drilldown use
-`date('now', ...)`. Make these dialect-portable, point the agent at `NETWORK_DB_URL`
-(the BYPASSRLS read-only role), and replace the SQLite-only `PRAGMA query_only` with
-`SET TRANSACTION READ ONLY` on Postgres. Re-point `api/admin.py` cross-tenant reads
-at the same connection.
+### 2. Cross-tenant agent Postgres portability — ✅ DONE (still wire NETWORK_DB_URL)
+`vera/network_engine.py` no longer uses `sqlite_master` / `PRAGMA table_info` (now the
+SQLAlchemy inspector) nor `date('now', …)` (now Python-computed bind params), so it
+runs on Postgres. **Remaining for activation:** point the agent at `NETWORK_DB_URL`
+(the BYPASSRLS read-only role) and replace the SQLite-only `PRAGMA query_only` with
+`SET TRANSACTION READ ONLY` on Postgres; re-point `api/admin.py` cross-tenant reads at
+the same connection.
 
 ### 3. Give background workers a tenant context
 `modules/projects/scheduler.py`, `modules/analytics/snapshot_worker.py`,

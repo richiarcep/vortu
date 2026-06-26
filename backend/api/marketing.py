@@ -30,7 +30,7 @@ from models.marketing import (
     CompanyAnalysis, MarketingCampaign, CampaignMetrics, PlatformCredential
 )
 from models.document import Document
-from core.security import get_current_user
+from core.security import get_current_user, get_tenant_db
 
 from modules.marketing.analyzer import analyze_company
 from modules.marketing.generator import generate_campaign_content
@@ -164,7 +164,7 @@ def _get_creds_dict(cred: PlatformCredential, platform: str) -> dict:
 @router.post("/analizar")
 async def analizar_empresa(
     body: AnalyzeRequest,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user),
 ):
     """Analyze company with AI using internal data + optional uploaded documents."""
@@ -239,7 +239,7 @@ async def analizar_empresa(
 
 @router.get("/analisis")
 def get_last_analysis(
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user),
 ):
     """Get the most recent company analysis."""
@@ -281,7 +281,7 @@ def get_last_analysis(
 @router.post("/campanas")
 async def create_campaign(
     body: CreateCampaignRequest,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user),
 ):
     """Create a campaign: AI generates all creative content."""
@@ -378,7 +378,7 @@ async def create_campaign(
 
 @router.get("/campanas")
 def list_campaigns(
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user),
 ):
     campaigns = db.query(MarketingCampaign).filter(
@@ -414,7 +414,7 @@ def list_campaigns(
 @router.get("/campanas/{campaign_id}")
 def get_campaign(
     campaign_id: int,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user),
 ):
     campaign = db.query(MarketingCampaign).filter(
@@ -453,7 +453,7 @@ def get_campaign(
 async def update_campaign_status(
     campaign_id: int,
     body: StatusUpdateRequest,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user),
 ):
     campaign = db.query(MarketingCampaign).filter(
@@ -501,7 +501,7 @@ async def update_campaign_status(
 async def publish_campaign(
     campaign_id: int,
     body: PublishRequest,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user),
 ):
     """Publish campaign to selected platforms via their APIs."""
@@ -580,7 +580,7 @@ async def publish_campaign(
 async def get_campaign_metrics(
     campaign_id: int,
     days: int = 14,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user),
 ):
     campaign = db.query(MarketingCampaign).filter(
@@ -655,7 +655,7 @@ async def get_campaign_metrics(
 @router.post("/plataformas/google/conectar")
 async def connect_google(
     body: GoogleCredentials,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user),
 ):
     cred = db.query(PlatformCredential).filter(
@@ -695,7 +695,7 @@ async def connect_google(
 @router.post("/plataformas/meta/conectar")
 async def connect_meta(
     body: MetaCredentials,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user),
 ):
     cred = db.query(PlatformCredential).filter(
@@ -727,7 +727,7 @@ async def connect_meta(
 
 @router.get("/plataformas")
 def get_platforms(
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user),
 ):
     creds = db.query(PlatformCredential).filter(
@@ -755,7 +755,7 @@ def get_platforms(
 @router.post("/plataformas/{platform}/verificar")
 async def verify_platform(
     platform: str,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user),
 ):
     cred = db.query(PlatformCredential).filter(

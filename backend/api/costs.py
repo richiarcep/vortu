@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime, timedelta
 from core.database import get_db
-from core.security import get_current_user
+from core.security import get_current_user, get_tenant_db
 from models.user import User
 from models.costs import CostCategory, CostDepartment, CostEntry
 
@@ -30,12 +30,12 @@ class CostCreate(BaseModel):
 # ── Categorías ────────────────────────────────────────────────────────────────
 
 @router.get("/categories")
-def get_categories(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def get_categories(db: Session = Depends(get_tenant_db), current_user: User = Depends(get_current_user)):
     cats = db.query(CostCategory).filter(CostCategory.company_id == current_user.company_id).all()
     return [{"id": c.id, "name": c.name, "color": c.color, "icon": c.icon} for c in cats]
 
 @router.post("/categories")
-def create_category(body: CategoryCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def create_category(body: CategoryCreate, db: Session = Depends(get_tenant_db), current_user: User = Depends(get_current_user)):
     cat = CostCategory(company_id=current_user.company_id, name=body.name, color=body.color, icon=body.icon)
     db.add(cat)
     db.commit()
@@ -45,12 +45,12 @@ def create_category(body: CategoryCreate, db: Session = Depends(get_db), current
 # ── Departamentos ─────────────────────────────────────────────────────────────
 
 @router.get("/departments")
-def get_departments(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def get_departments(db: Session = Depends(get_tenant_db), current_user: User = Depends(get_current_user)):
     deps = db.query(CostDepartment).filter(CostDepartment.company_id == current_user.company_id).all()
     return [{"id": d.id, "name": d.name} for d in deps]
 
 @router.post("/departments")
-def create_department(body: DepartmentCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def create_department(body: DepartmentCreate, db: Session = Depends(get_tenant_db), current_user: User = Depends(get_current_user)):
     dep = CostDepartment(company_id=current_user.company_id, name=body.name)
     db.add(dep)
     db.commit()
@@ -60,7 +60,7 @@ def create_department(body: DepartmentCreate, db: Session = Depends(get_db), cur
 # ── Gastos ────────────────────────────────────────────────────────────────────
 
 @router.get("/entries")
-def get_entries(month: Optional[int] = None, year: Optional[int] = None, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def get_entries(month: Optional[int] = None, year: Optional[int] = None, db: Session = Depends(get_tenant_db), current_user: User = Depends(get_current_user)):
     now = datetime.utcnow()
     month = month or now.month
     year = year or now.year
@@ -75,7 +75,7 @@ def get_entries(month: Optional[int] = None, year: Optional[int] = None, db: Ses
              "department": {"id": e.department.id, "name": e.department.name} if e.department else None} for e in entries]
 
 @router.post("/entries")
-def create_entry(body: CostCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def create_entry(body: CostCreate, db: Session = Depends(get_tenant_db), current_user: User = Depends(get_current_user)):
     entry = CostEntry(
         company_id=current_user.company_id,
         description=body.description,
@@ -91,7 +91,7 @@ def create_entry(body: CostCreate, db: Session = Depends(get_db), current_user: 
     return {"id": entry.id, "description": entry.description, "amount": entry.amount}
 
 @router.delete("/entries/{entry_id}")
-def delete_entry(entry_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def delete_entry(entry_id: int, db: Session = Depends(get_tenant_db), current_user: User = Depends(get_current_user)):
     entry = db.query(CostEntry).filter(CostEntry.id == entry_id, CostEntry.company_id == current_user.company_id).first()
     if not entry:
         raise HTTPException(status_code=404, detail="Gasto no encontrado")
@@ -102,7 +102,7 @@ def delete_entry(entry_id: int, db: Session = Depends(get_db), current_user: Use
 # ── Dashboard ─────────────────────────────────────────────────────────────────
 
 @router.get("/dashboard")
-def get_dashboard(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def get_dashboard(db: Session = Depends(get_tenant_db), current_user: User = Depends(get_current_user)):
     now = datetime.utcnow()
     
     # Mes actual

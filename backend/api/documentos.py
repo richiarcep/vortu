@@ -22,7 +22,7 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
 from core.database import get_db
-from core.security import get_current_user
+from core.security import get_current_user, get_tenant_db
 from models.user import User
 from models.document import Document
 from services.parsers import parse_file
@@ -646,7 +646,7 @@ def execute_sql_action(action: dict, db: Session, current_user: User, doc_id: in
 @router.post("/analyze")
 def analyze_document(
     file: UploadFile = File(...),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user),
 ):
     ext = Path(file.filename).suffix.lower()
@@ -751,7 +751,7 @@ def analyze_document(
 @router.post("/confirm")
 def confirm_document(
     body: ConfirmRequest,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user),
 ):
     pending = _pending_get(body.temp_id)
@@ -965,7 +965,7 @@ def confirm_document(
 def list_documents(
     module: Optional[str] = None,
     doc_type: Optional[str] = None,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user),
 ):
     query = db.query(Document).filter(Document.company_id == current_user.company_id)
@@ -998,7 +998,7 @@ def list_documents(
 
 
 @router.get("/types/stats")
-def stats(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def stats(db: Session = Depends(get_tenant_db), current_user: User = Depends(get_current_user)):
     docs = db.query(Document).filter(Document.company_id == current_user.company_id).all()
     by_type, by_module = {}, {}
     for d in docs:
@@ -1013,7 +1013,7 @@ def stats(db: Session = Depends(get_db), current_user: User = Depends(get_curren
 
 
 @router.get("/{doc_id}")
-def get_document(doc_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def get_document(doc_id: int, db: Session = Depends(get_tenant_db), current_user: User = Depends(get_current_user)):
     doc = db.query(Document).filter(Document.id == doc_id, Document.company_id == current_user.company_id).first()
     if not doc: raise HTTPException(404, "Documento no encontrado")
     parsed = {}
@@ -1037,7 +1037,7 @@ def get_document(doc_id: int, db: Session = Depends(get_db), current_user: User 
 
 
 @router.delete("/{doc_id}")
-def delete_document(doc_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def delete_document(doc_id: int, db: Session = Depends(get_tenant_db), current_user: User = Depends(get_current_user)):
     doc = db.query(Document).filter(Document.id == doc_id, Document.company_id == current_user.company_id).first()
     if not doc: raise HTTPException(404, "Documento no encontrado")
     try:

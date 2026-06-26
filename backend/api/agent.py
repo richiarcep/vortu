@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Optional
 from core.database import get_db
-from core.security import get_current_user
+from core.security import get_current_user, get_tenant_db
 from models.user import User
 from modules.agent.alerts import detect_anomalies, get_ai_alert_analysis
 from modules.agent.digest import generate_weekly_digest
@@ -21,7 +21,7 @@ class ChatMessage(BaseModel):
 
 @router.get("/alertas")
 def get_alertas(
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     alertas = detect_anomalies(db, current_user.company_id)
@@ -38,7 +38,7 @@ def get_alertas(
 
 @router.get("/digest")
 def get_digest(
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     try:
@@ -51,7 +51,7 @@ def get_digest(
 @router.post("/chat", dependencies=[Depends(rate_limit(20, 60, "agent_chat"))])
 def chat(
     data: ChatMessage,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     try:
@@ -69,7 +69,7 @@ def chat(
 @router.get("/resumen")
 def get_resumen(
     period: str = "30d",
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     from datetime import date, timedelta

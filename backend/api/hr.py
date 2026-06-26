@@ -5,7 +5,7 @@ from sqlalchemy import func
 from pydantic import BaseModel
 from typing import Optional
 from core.database import get_db
-from core.security import get_current_user
+from core.security import get_current_user, get_tenant_db
 from core.audit import audit_event
 from models.user import User
 from models.document import Document
@@ -123,7 +123,7 @@ class FeedbackBatchAnalyze(BaseModel):
 @router.post("/employees", status_code=201)
 def create_employee(
     data: EmployeeCreate,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     """Creates a new employee record."""
@@ -181,7 +181,7 @@ def _serialize_employee(e: Employee) -> dict:
 @router.get("/employees")
 def get_employees(
     type: Optional[str] = None,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     """Returns all employees for the company. Optional ?type= filter."""
@@ -213,7 +213,7 @@ def get_employees(
 @router.delete("/employees/{employee_id}")
 def deactivate_employee(
     employee_id: int,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     """Deactivates an employee (soft delete)."""
@@ -236,7 +236,7 @@ def deactivate_employee(
 @router.get("/payroll/{document_id}")
 def process_payroll_document(
     document_id: int,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     """
@@ -267,7 +267,7 @@ def process_payroll_document(
 def download_payslip(
     employee_name: str,
     request: Request,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     """Downloads a generated payslip PDF for an employee of the caller's company."""
@@ -322,7 +322,7 @@ def download_payslip(
 @router.post("/feedback", status_code=201)
 def add_feedback(
     data: FeedbackCreate,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     """Adds a feedback comment for an employee."""
@@ -362,7 +362,7 @@ def analyze_employee_feedback(
 
 @router.get("/summary")
 def get_hr_summary(
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     """Returns HR overview — headcount, payroll cost, departments."""
@@ -393,7 +393,7 @@ def get_hr_summary(
 def list_vacations(
     status: Optional[str] = None,
     employee_id: Optional[int] = None,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     """Lista todas las vacaciones de la empresa."""
@@ -436,7 +436,7 @@ def list_vacations(
 @router.post("/vacations", status_code=201)
 def create_vacation(
     data: VacationCreate,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     """Crea una nueva solicitud de vacaciones."""
@@ -473,7 +473,7 @@ def create_vacation(
 def update_vacation(
     vacation_id: int,
     data: VacationUpdate,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     """Aprueba o rechaza una solicitud."""
@@ -497,7 +497,7 @@ def update_vacation(
 # ─── CONTRATOS ─────────────────────────────────────────────────────────────
 @router.get("/contracts")
 def list_contracts(
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     """Lista contratos + alertas de vencimiento."""
@@ -557,7 +557,7 @@ class ContractCreate(BaseModel):
 @router.post("/contracts", status_code=201)
 def create_contract(
     data: ContractCreate,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     """Crea un contrato para un empleado de la empresa del usuario."""
@@ -596,7 +596,7 @@ def list_payslips(
     employee_id: Optional[int] = None,
     year: Optional[int] = None,
     month: Optional[int] = None,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     """Lista nóminas con filtros opcionales."""
@@ -646,7 +646,7 @@ def list_payslips(
 # ─── DASHBOARD HR ─────────────────────────────────────────────────────────
 @router.get("/dashboard")
 def hr_dashboard(
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     """KPIs clave de HR estilo Vela (dashboard simple)."""
@@ -744,7 +744,7 @@ def hr_dashboard(
 @router.post("/vera/analyze")
 def vera_analyze_hr(
     data: VeraHRRequest,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     """Pregunta abierta a Vera con contexto HR completo."""
@@ -882,7 +882,7 @@ def _get_group_or_404(group_id: int, db: Session, company_id: int) -> WorkGroup:
 @router.post("/workgroups", status_code=201)
 def create_workgroup(
     data: WorkGroupCreate,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     """Crea un grupo de trabajo."""
@@ -905,7 +905,7 @@ def create_workgroup(
 @router.get("/workgroups")
 def list_workgroups(
     include_archived: bool = False,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     """Lista los grupos de trabajo (con resumen de tareas/horas)."""
@@ -920,7 +920,7 @@ def list_workgroups(
 @router.get("/workgroups/{group_id}")
 def get_workgroup(
     group_id: int,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     """Detalle del grupo: miembros + tareas + horas."""
@@ -932,7 +932,7 @@ def get_workgroup(
 def update_workgroup(
     group_id: int,
     data: WorkGroupUpdate,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     """Actualiza un grupo de trabajo."""
@@ -952,7 +952,7 @@ def update_workgroup(
 @router.delete("/workgroups/{group_id}")
 def archive_workgroup(
     group_id: int,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     """Archiva un grupo (soft delete)."""
@@ -968,7 +968,7 @@ def archive_workgroup(
 def add_group_member(
     group_id: int,
     data: GroupMemberCreate,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     """Añade un empleado/voluntario al grupo."""
@@ -998,7 +998,7 @@ def add_group_member(
 def remove_group_member(
     group_id: int,
     member_id: int,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     """Quita un miembro del grupo."""
@@ -1020,7 +1020,7 @@ def remove_group_member(
 def create_group_task(
     group_id: int,
     data: GroupTaskCreate,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     """Crea una tarea dentro del grupo."""
@@ -1046,7 +1046,7 @@ def create_group_task(
 def update_group_task(
     task_id: int,
     data: GroupTaskUpdate,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     """Actualiza una tarea de grupo (estado, asignación, prioridad...)."""
@@ -1072,7 +1072,7 @@ def update_group_task(
 @router.delete("/tasks/{task_id}")
 def delete_group_task(
     task_id: int,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     """Elimina una tarea de grupo."""
@@ -1091,7 +1091,7 @@ def delete_group_task(
 def log_task_hours(
     task_id: int,
     data: GroupTaskTimeCreate,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     """Registra horas aportadas a una tarea y recalcula actual_hours."""

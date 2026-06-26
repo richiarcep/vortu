@@ -23,7 +23,7 @@ import json
 import unicodedata
 
 from core.database import get_db
-from core.security import get_current_user
+from core.security import get_current_user, get_tenant_db
 from core.pagination import LimitQuery, OffsetQuery
 from models.user import User
 from models.costs import CostCategory, CostDepartment, CostEntry, CostProvider
@@ -195,7 +195,7 @@ class ProveedorUpdate(BaseModel):
 # ============================================================================
 
 @router.get("/kpis")
-def get_kpis(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def get_kpis(db: Session = Depends(get_tenant_db), current_user: User = Depends(get_current_user)):
     company_id = current_user.company_id
     today = date.today()
     mes_inicio, mes_fin = _month_range(today.year, today.month)
@@ -253,7 +253,7 @@ def get_kpis(db: Session = Depends(get_db), current_user: User = Depends(get_cur
 
 @router.get("/list")
 def list_gastos(
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user),
     category_id: Optional[str] = None,   # PGC account code (matches agg/categorias)
     department_id: Optional[int] = None,
@@ -364,7 +364,7 @@ def _provider_stats(db, company_id):
 
 
 @router.get("/proveedores")
-def list_proveedores(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def list_proveedores(db: Session = Depends(get_tenant_db), current_user: User = Depends(get_current_user)):
     """Lista los proveedores (entidad) con sus estadísticas de gasto."""
     cid = current_user.company_id
     provs = db.query(CostProvider).filter(CostProvider.company_id == cid).order_by(CostProvider.name).all()
@@ -375,7 +375,7 @@ def list_proveedores(db: Session = Depends(get_db), current_user: User = Depends
 
 
 @router.post("/proveedores", status_code=201)
-def create_proveedor(payload: ProveedorCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def create_proveedor(payload: ProveedorCreate, db: Session = Depends(get_tenant_db), current_user: User = Depends(get_current_user)):
     cid = current_user.company_id
     if not payload.name or not payload.name.strip():
         raise HTTPException(400, "El nombre del proveedor es obligatorio")
@@ -392,7 +392,7 @@ def create_proveedor(payload: ProveedorCreate, db: Session = Depends(get_db), cu
 
 
 @router.patch("/proveedores/{provider_id}")
-def update_proveedor(provider_id: int, payload: ProveedorUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def update_proveedor(provider_id: int, payload: ProveedorUpdate, db: Session = Depends(get_tenant_db), current_user: User = Depends(get_current_user)):
     cid = current_user.company_id
     prov = db.query(CostProvider).filter(CostProvider.id == provider_id, CostProvider.company_id == cid).first()
     if not prov:
@@ -418,7 +418,7 @@ def update_proveedor(provider_id: int, payload: ProveedorUpdate, db: Session = D
 # ============================================================================
 
 @router.get("/{gasto_id}")
-def get_gasto(gasto_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def get_gasto(gasto_id: int, db: Session = Depends(get_tenant_db), current_user: User = Depends(get_current_user)):
     """Detalle de un gasto. El id es un journal_entry (la lista es journal-based).
     Devuelve el gasto, su asiento PGC completo (todas las líneas de la transacción),
     el documento origen y el histórico de proveedor (best-effort vía cost_entries)."""
@@ -525,7 +525,7 @@ def get_gasto(gasto_id: int, db: Session = Depends(get_db), current_user: User =
 # ============================================================================
 
 @router.get("/agg/categorias")
-def agg_categorias(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def agg_categorias(db: Session = Depends(get_tenant_db), current_user: User = Depends(get_current_user)):
     year_inicio = date(date.today().year, 1, 1)
     year_fin = date(date.today().year + 1, 1, 1)
     # LIVE desde contabilidad: agrupa por cuenta de gasto del PGC (= categoría).
@@ -550,7 +550,7 @@ def agg_categorias(db: Session = Depends(get_db), current_user: User = Depends(g
 
 
 @router.get("/agg/proveedores")
-def agg_proveedores(db: Session = Depends(get_db), current_user: User = Depends(get_current_user), limit: int = LimitQuery(50)):
+def agg_proveedores(db: Session = Depends(get_tenant_db), current_user: User = Depends(get_current_user), limit: int = LimitQuery(50)):
     """Agrega por proveedor parseando notes (en memoria, ya que es VARCHAR)."""
     year_inicio = date(date.today().year, 1, 1)
     entries = db.query(CostEntry).filter(
@@ -586,7 +586,7 @@ def agg_proveedores(db: Session = Depends(get_db), current_user: User = Depends(
 
 
 @router.get("/agg/evolucion")
-def agg_evolucion(db: Session = Depends(get_db), current_user: User = Depends(get_current_user), meses: int = 6):
+def agg_evolucion(db: Session = Depends(get_tenant_db), current_user: User = Depends(get_current_user), meses: int = 6):
     today = date.today()
     items = []
     for i in range(meses - 1, -1, -1):
@@ -609,14 +609,14 @@ def agg_evolucion(db: Session = Depends(get_db), current_user: User = Depends(ge
 # ============================================================================
 
 @router.get("/catalog/categorias")
-def get_categorias(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def get_categorias(db: Session = Depends(get_tenant_db), current_user: User = Depends(get_current_user)):
     rows = db.query(CostCategory).filter(CostCategory.company_id == current_user.company_id).order_by(CostCategory.name).all()
     return {"items": [{"id": c.id, "name": c.name, "color": c.color, "icon": c.icon,
                        "pgc_account_code": _pgc_for_category(c)} for c in rows]}
 
 
 @router.get("/catalog/departamentos")
-def get_departamentos(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def get_departamentos(db: Session = Depends(get_tenant_db), current_user: User = Depends(get_current_user)):
     rows = db.query(CostDepartment).filter(CostDepartment.company_id == current_user.company_id).order_by(CostDepartment.name).all()
     return {"items": [{"id": d.id, "name": d.name} for d in rows]}
 
@@ -626,7 +626,7 @@ def get_departamentos(db: Session = Depends(get_db), current_user: User = Depend
 # ============================================================================
 
 @router.post("/registrar")
-def registrar_gasto_manual(payload: GastoManual, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def registrar_gasto_manual(payload: GastoManual, db: Session = Depends(get_tenant_db), current_user: User = Depends(get_current_user)):
     company_id = current_user.company_id
 
     # Calcular base/IVA si no vienen
@@ -815,7 +815,7 @@ def _pgc_for_category(cat) -> Optional[str]:
 
 
 @router.post("/inicializar-categorias")
-def inicializar_categorias(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def inicializar_categorias(db: Session = Depends(get_tenant_db), current_user: User = Depends(get_current_user)):
     """Crea las 8 categorías típicas y autoclasifica los gastos existentes por palabras clave en notes/description."""
     company_id = current_user.company_id
 
@@ -889,7 +889,7 @@ def inicializar_categorias(db: Session = Depends(get_db), current_user: User = D
 @router.get("/p/detail")
 def proveedor_detail(
     nombre: str,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user),
 ):
     """Devuelve todas las compras de un proveedor + total YTD + evolución mensual."""

@@ -10,7 +10,7 @@ import json
 import logging
 
 from core.database import get_db
-from core.security import get_current_user
+from core.security import get_current_user, get_tenant_db
 from core.audit import audit_event
 from models.user import User
 from modules.accounting.journal import (
@@ -94,7 +94,7 @@ class AsientoManual(BaseModel):
 
 @router.post("/configurar", status_code=201)
 def configurar_contabilidad(
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     """
@@ -123,7 +123,7 @@ def get_categorias(
 @router.post("/ingresos", status_code=201)
 def crear_ingreso(
     data: IngresoCreate,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     """Registra un ingreso manualmente."""
@@ -146,7 +146,7 @@ def crear_ingreso(
 @router.post("/gastos", status_code=201)
 def crear_gasto(
     data: GastoCreate,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     """Registra un gasto manualmente."""
@@ -170,7 +170,7 @@ def crear_gasto(
 def get_registro(
     fecha_inicio: date,
     fecha_fin: date,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     """Retorna todos los registros de un período."""
@@ -188,7 +188,7 @@ def generar_plantilla(
     fecha: date,
     request: Request,
     tipo_negocio: str = "mixto",
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     """
@@ -233,7 +233,7 @@ def generar_plantilla(
 def leer_pdf_registro(
     file: UploadFile = File(...),
     auto_registrar: bool = Form(default=True),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     """
@@ -311,7 +311,7 @@ def subir_logo(
 def get_estados_financieros(
     fecha_inicio: date,
     fecha_fin: date,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     """
@@ -338,7 +338,7 @@ def get_estados_financieros(
 def get_balance_comprobacion(
     fecha_inicio: Optional[date] = None,
     fecha_fin: Optional[date] = None,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     """
@@ -359,7 +359,7 @@ def get_libro_mayor(
     fecha_inicio: Optional[date] = None,
     fecha_fin: Optional[date] = None,
     max_entries: int = 500,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     """
@@ -382,7 +382,7 @@ def get_libro_mayor(
 @router.get("/cuentas")
 def get_cuentas(
     q: Optional[str] = None,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user),
 ):
     """Lista el plan de cuentas de la empresa (para selectores de asiento manual)."""
@@ -405,7 +405,7 @@ def get_cuentas(
 @router.post("/asiento", status_code=201)
 def crear_asiento_manual(
     data: AsientoManual,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user),
 ):
     """Crea un asiento contable manual libre (N líneas). Valida partida doble
@@ -458,7 +458,7 @@ def crear_asiento_manual(
 def get_iva(
     fecha_inicio: date,
     fecha_fin: date,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user),
 ):
     """Resumen de IVA del periodo (libros de repercutido/soportado) y borrador del
@@ -522,7 +522,7 @@ def reporte_pl(
     fecha_inicio: date,
     fecha_fin: date,
     request: Request,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     """Genera el PDF del Estado de Resultados con análisis IA."""
@@ -552,7 +552,7 @@ def reporte_pl(
 def reporte_balance(
     fecha: date,
     request: Request,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     """Genera el PDF del Balance General con análisis IA."""
@@ -579,7 +579,7 @@ def reporte_flujo(
     fecha_inicio: date,
     fecha_fin: date,
     request: Request,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     """Genera el PDF del Flujo de Efectivo con análisis IA."""
@@ -610,7 +610,7 @@ from datetime import datetime as _dt
 @router.get("/snapshot")
 def get_snapshot(
     period: str = "month",
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     from sqlalchemy import text
@@ -693,7 +693,7 @@ def get_snapshot(
 @router.delete("/snapshot/{period}")
 def clear_snapshot(
     period: str,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     from sqlalchemy import text

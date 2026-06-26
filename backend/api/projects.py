@@ -5,7 +5,7 @@ from typing import Optional
 from datetime import date, datetime
 from core.database import get_db
 from services.graph.sync import sync_project
-from core.security import get_current_user
+from core.security import get_current_user, get_tenant_db
 from models.user import User
 from models.project import Project, Task, TimeEntry, ProjectExpense
 from modules.projects.health import calculate_health_score, update_project_health
@@ -154,7 +154,7 @@ def serialize_task(task):
 @router.post("/", status_code=201)
 def create_project(
     data: ProjectCreate,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     project = Project(
@@ -178,7 +178,7 @@ def create_project(
 @router.get("/")
 def list_projects(
     status: Optional[str] = None,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     query = db.query(Project).filter(
@@ -198,7 +198,7 @@ def list_projects(
 
 @router.get("/resumen")
 def get_projects_summary(
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     projects = db.query(Project).filter(
@@ -230,7 +230,7 @@ def get_projects_summary(
 @router.get("/{project_id}")
 def get_project(
     project_id: int,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     project = get_project_or_404(db, project_id, current_user.company_id)
@@ -242,7 +242,7 @@ def get_project(
 def update_project(
     project_id: int,
     data: ProjectUpdate,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     project = get_project_or_404(db, project_id, current_user.company_id)
@@ -266,7 +266,7 @@ def update_project(
 @router.delete("/{project_id}")
 def delete_project(
     project_id: int,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     project = get_project_or_404(db, project_id, current_user.company_id)
@@ -281,7 +281,7 @@ def delete_project(
 def create_task(
     project_id: int,
     data: TaskCreate,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     get_project_or_404(db, project_id, current_user.company_id)
@@ -308,7 +308,7 @@ def create_task(
 def update_task(
     task_id: int,
     data: TaskUpdate,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     task = db.query(Task).filter(
@@ -330,7 +330,7 @@ def update_task(
 @router.delete("/tareas/{task_id}")
 def delete_task(
     task_id: int,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     task = db.query(Task).filter(
@@ -352,7 +352,7 @@ def delete_task(
 def log_time(
     task_id: int,
     data: TimeEntryCreate,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     task = db.query(Task).filter(
@@ -401,7 +401,7 @@ def log_time(
 @router.get("/{project_id}/tiempo")
 def get_time_entries(
     project_id: int,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     get_project_or_404(db, project_id, current_user.company_id)
@@ -429,7 +429,7 @@ def get_time_entries(
 def add_expense(
     project_id: int,
     data: ExpenseCreate,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     get_project_or_404(db, project_id, current_user.company_id)
@@ -453,7 +453,7 @@ def add_expense(
 @router.get("/{project_id}/analisis")
 def get_ai_analysis(
     project_id: int,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     project = get_project_or_404(db, project_id, current_user.company_id)
@@ -469,7 +469,7 @@ def get_ai_analysis(
 @router.get("/{project_id}/reporte")
 def download_report(
     project_id: int,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     project = get_project_or_404(db, project_id, current_user.company_id)
