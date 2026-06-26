@@ -129,9 +129,13 @@ def get_tenant_db(db: Session = Depends(get_db), current_user=Depends(get_curren
     cross-tenant (superadmin backoffice) endpoints.
     """
     from core.database import RLS_ENABLED
+    cid = getattr(current_user, "company_id", None) or 0
+    # Stash on the session so the after_begin listener re-applies the GUC on every
+    # transaction (so it survives an in-request commit; set_config is txn-local).
+    db.info["tenant_company_id"] = cid
     if RLS_ENABLED:
         db.execute(text("SELECT set_config('app.current_company_id', :cid, true)"),
-                   {"cid": str(getattr(current_user, "company_id", None) or 0)})
+                   {"cid": str(cid)})
     return db
 
 
@@ -141,6 +145,7 @@ def set_tenant_context(db, company_id):
     per-company writes pass RLS WITH CHECK; no-op on SQLite. Pair with worker_session()
     for the cross-tenant enumeration."""
     from core.database import RLS_ENABLED
+    db.info["tenant_company_id"] = company_id or 0   # survive commits (see _reapply_tenant_guc)
     if RLS_ENABLED:
         db.execute(text("SELECT set_config('app.current_company_id', :cid, true)"),
                    {"cid": str(company_id or 0)})

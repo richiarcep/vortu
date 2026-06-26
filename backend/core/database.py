@@ -93,6 +93,24 @@ def get_db():
 RLS_ENABLED = (engine.dialect.name == "postgresql") and bool(getattr(settings, "RLS_ENABLED", True))
 
 
+@event.listens_for(SessionLocal, "after_begin")
+def _reapply_tenant_guc(session, transaction, connection):
+    """Re-apply the tenant GUC at the START of EVERY transaction on a tenant session.
+
+    set_config(..., is_local=true) is TRANSACTION-scoped, so after an in-request
+    db.commit() the next statement runs in a fresh transaction with no GUC — which
+    under RLS returns 0 rows / fails WITH CHECK (e.g. db.refresh() right after a
+    create). Re-applying here on every transaction begin makes the tenant binding
+    survive commits within a request. The company_id is stashed on session.info by
+    get_tenant_db / set_tenant_context; no-op for non-tenant sessions and on SQLite."""
+    if not RLS_ENABLED:
+        return
+    cid = session.info.get("tenant_company_id")
+    if cid is None:
+        return
+    connection.exec_driver_sql("SELECT set_config('app.current_company_id', %s, true)", (str(cid),))
+
+
 # Background jobs (scheduler, snapshot/memory workers) run OUTSIDE a request and
 # legitimately span tenants (enumerate companies, then write per-company data).
 # Under FORCE RLS the non-BYPASSRLS app role can't do that, so they use a separate
