@@ -22,7 +22,7 @@ const SvgParty = ({ size=48, sw=1.4 }) => (
 
 const PAISES = [
   { code:'SV', name:'El Salvador', flag:'🇸🇻', desc:'DTE — Ministerio de Hacienda', disponible:true },
-  { code:'ES', name:'España',       flag:'🇪🇸', desc:'FacturaE — AEAT VeriFactu',   disponible:false },
+  { code:'ES', name:'España',       flag:'🇪🇸', desc:'VERI*FACTU — AEAT',           disponible:true },
   { code:'MX', name:'México',       flag:'🇲🇽', desc:'CFDI — SAT',                  disponible:false },
   { code:'CO', name:'Colombia',     flag:'🇨🇴', desc:'DIAN — Factura Electrónica',  disponible:false },
   { code:'GT', name:'Guatemala',    flag:'🇬🇹', desc:'FEL — SAT Guatemala',         disponible:false },

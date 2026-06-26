@@ -335,3 +335,87 @@ def ensure_runtime_schema():
                     f"WHERE company_id IS NULL"
                 ))
             conn.execute(text(f"CREATE INDEX IF NOT EXISTS ix_{_mt}_company ON {_mt}(company_id)"))
+
+        # ── Veri*Factu (España, RD 1007/2023) ───────────────────────────────
+        # Registro de facturación de alta/anulación + registro de eventos, ambos
+        # encadenados por huella (huella = hash(canonical + huella_anterior)) e
+        # INMUTABLES (correcciones = nuevo registro enlazado, nunca UPDATE/DELETE).
+        # Append-only se refuerza con un trigger en Postgres (bloque aparte abajo);
+        # en SQLite la garantía es app-level (sin ruta de UPDATE/DELETE) + verify_chain.
+        _vf_pk = "id SERIAL PRIMARY KEY" if engine.dialect.name == "postgresql" else "id INTEGER PRIMARY KEY AUTOINCREMENT"
+        conn.execute(text(f"""
+            CREATE TABLE IF NOT EXISTS verifactu_registro (
+                {_vf_pk},
+                company_id INTEGER NOT NULL,
+                tipo TEXT NOT NULL DEFAULT 'alta',
+                serie TEXT,
+                numero INTEGER NOT NULL,
+                fecha_expedicion TEXT NOT NULL,
+                nif_emisor TEXT,
+                tipo_factura TEXT DEFAULT 'F1',
+                cuota_total REAL DEFAULT 0,
+                importe_total REAL DEFAULT 0,
+                cliente_nombre TEXT,
+                cliente_nif TEXT,
+                lineas_json TEXT,
+                huella TEXT NOT NULL,
+                huella_anterior TEXT,
+                prev_registro_id INTEGER,
+                registro_anulado_id INTEGER,
+                estado TEXT NOT NULL DEFAULT 'registrado',
+                ambiente TEXT DEFAULT 'pruebas',
+                qr_url TEXT,
+                xml TEXT,
+                firma TEXT,
+                sale_id INTEGER,
+                idempotency_key TEXT,
+                ts_generacion TEXT NOT NULL,
+                created_at TEXT
+            )
+        """))
+        # Uniqueness applies to ALTA records only — an anulación/rectificativa
+        # deliberately references the same serie+número as the invoice it corrects.
+        conn.execute(text("DROP INDEX IF EXISTS uq_verifactu_company_serie_num"))
+        conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_verifactu_company_serie_num ON verifactu_registro(company_id, serie, numero) WHERE tipo = 'alta'"))
+        conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_verifactu_company_idem ON verifactu_registro(company_id, idempotency_key) WHERE idempotency_key IS NOT NULL"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_verifactu_company_id ON verifactu_registro(company_id, id)"))
+        conn.execute(text(f"""
+            CREATE TABLE IF NOT EXISTS verifactu_eventos (
+                {_vf_pk},
+                company_id INTEGER NOT NULL,
+                evento TEXT NOT NULL,
+                registro_id INTEGER,
+                detalle TEXT,
+                huella TEXT NOT NULL,
+                huella_anterior TEXT,
+                ts TEXT NOT NULL
+            )
+        """))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_verifactu_eventos_company ON verifactu_eventos(company_id, id)"))
+
+    # ── Veri*Factu append-only enforcement (Postgres only) ──────────────────
+    # DB-level immutability for the fiscal registro/eventos: a BEFORE UPDATE/DELETE
+    # trigger that RAISEs. Runs in its OWN transaction with try/except so a trigger
+    # problem can NEVER wedge startup (the rest of the schema is already committed).
+    # Idempotent: CREATE OR REPLACE FUNCTION + DROP TRIGGER IF EXISTS + CREATE.
+    # (On SQLite immutability is app-level — there is no UPDATE/DELETE code path —
+    #  plus the huella chain detects tampering, so no trigger is needed there.)
+    if engine.dialect.name == "postgresql":
+        try:
+            with engine.begin() as conn:
+                conn.execute(text("""
+                    CREATE OR REPLACE FUNCTION verifactu_append_only() RETURNS trigger AS $$
+                    BEGIN
+                        RAISE EXCEPTION 'verifactu records are append-only (immutable)';
+                    END;
+                    $$ LANGUAGE plpgsql;
+                """))
+                for _t in ("verifactu_registro", "verifactu_eventos"):
+                    conn.execute(text(f"DROP TRIGGER IF EXISTS trg_{_t}_append_only ON {_t}"))
+                    conn.execute(text(
+                        f"CREATE TRIGGER trg_{_t}_append_only BEFORE UPDATE OR DELETE ON {_t} "
+                        f"FOR EACH ROW EXECUTE FUNCTION verifactu_append_only()"
+                    ))
+        except Exception as _e:
+            import logging as _logging
+            _logging.getLogger("vela").warning("Veri*Factu append-only trigger setup skipped: %s", _e)

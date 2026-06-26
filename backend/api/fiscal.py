@@ -1,12 +1,16 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Request
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from core.database import get_db
 from core.security import get_current_user
+from core.rate_limit import rate_limit
+from core.audit import audit_event
+from core.pagination import LimitQuery, OffsetQuery
 from models.user import User
 from datetime import datetime
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 import json, os
 
 router = APIRouter(prefix="/api/fiscal", tags=["fiscal"])
@@ -254,3 +258,113 @@ def emitir_dte(
         "total": total,
         "mensaje": "DTE generado correctamente" if ambiente == "pruebas" else "DTE enviado al Ministerio de Hacienda"
     }
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# Veri*Factu (España, RD 1007/2023) — additive; SV DTE path above is untouched.
+# Registro de facturación firmado, encadenado por huella, inmutable, con QR +
+# leyenda y exportable a AEAT XML/JSON. Selección por país de la empresa.
+# ════════════════════════════════════════════════════════════════════════════
+
+class VerifactuEmitirRequest(BaseModel):
+    fecha_expedicion: Optional[str] = None
+    tipo_factura: Optional[str] = "F1"
+    cuota_total: float = 0
+    importe_total: float = 0
+    cliente_nombre: Optional[str] = None
+    cliente_nif: Optional[str] = None
+    lineas: Optional[List[dict]] = None
+    sale_id: Optional[int] = None
+    idempotency_key: Optional[str] = None
+
+
+def _require_es(current_user: User, db: Session) -> str:
+    """Return the caller's NIF/serie context only if the company is ES."""
+    row = db.execute(text("SELECT pais FROM config_fiscal WHERE company_id=:cid"),
+                     {"cid": current_user.company_id}).fetchone()
+    pais = (row[0] if row else None) or (current_user.company.country if current_user.company else None)
+    if (pais or "").upper() != "ES":
+        raise HTTPException(status_code=400, detail="Veri*Factu solo aplica a empresas de España (ES).")
+    return pais
+
+
+@router.post("/verifactu/emitir", dependencies=[Depends(rate_limit(30, 60, "verifactu-emitir"))])
+def verifactu_emitir(body: VerifactuEmitirRequest, request: Request,
+                     db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """Emite un registro de facturación de alta Veri*Factu para la empresa (ES)."""
+    _require_es(current_user, db)
+    from modules.fiscal.verifactu.service import emitir, VerifactuError
+    try:
+        reg = emitir(db, current_user.company_id, body.model_dump(exclude={"idempotency_key"}),
+                     idempotency_key=body.idempotency_key)
+    except VerifactuError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    audit_event(db, "verifactu_emitir", actor_user_id=current_user.id, actor_email=current_user.email,
+                target=f"verifactu:{reg.get('id')}", company_id=current_user.company_id, request=request,
+                detail={"serie": reg.get("serie"), "numero": reg.get("numero"), "estado": reg.get("estado")})
+    return {k: reg.get(k) for k in ("id", "serie", "numero", "fecha_expedicion", "importe_total",
+                                    "cuota_total", "estado", "huella", "huella_anterior", "qr_url", "ambiente")}
+
+
+@router.get("/verifactu/registro")
+def verifactu_list(db: Session = Depends(get_db), current_user: User = Depends(get_current_user),
+                   limit: int = LimitQuery(50), offset: int = OffsetQuery()):
+    """Lista el registro de facturación de la empresa (ES), más reciente primero."""
+    rows = db.execute(text("""
+        SELECT id, tipo, serie, numero, fecha_expedicion, importe_total, cuota_total,
+               estado, huella, qr_url, ambiente, ts_generacion
+        FROM verifactu_registro WHERE company_id=:cid
+        ORDER BY id DESC LIMIT :lim OFFSET :off
+    """), {"cid": current_user.company_id, "lim": limit, "off": offset}).mappings().all()
+    return {"registros": [dict(r) for r in rows]}
+
+
+@router.get("/verifactu/registro/{registro_id}/xml")
+def verifactu_xml(registro_id: int, request: Request, db: Session = Depends(get_db),
+                  current_user: User = Depends(get_current_user)):
+    """Exporta un registro como XML AEAT (Veri*Factu)."""
+    row = db.execute(text("SELECT * FROM verifactu_registro WHERE id=:id AND company_id=:cid"),
+                     {"id": registro_id, "cid": current_user.company_id}).mappings().first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Registro no encontrado")
+    from modules.fiscal.verifactu.xml_export import export_xml
+    audit_event(db, "data_export", actor_user_id=current_user.id, actor_email=current_user.email,
+                target=f"verifactu:{registro_id}", company_id=current_user.company_id, request=request,
+                detail={"resource": "verifactu_xml"})
+    return Response(content=row.get("xml") or export_xml(dict(row)), media_type="application/xml")
+
+
+@router.get("/verifactu/registro/{registro_id}/json")
+def verifactu_json(registro_id: int, db: Session = Depends(get_db),
+                   current_user: User = Depends(get_current_user)):
+    """Exporta un registro como JSON AEAT (Veri*Factu)."""
+    row = db.execute(text("SELECT * FROM verifactu_registro WHERE id=:id AND company_id=:cid"),
+                     {"id": registro_id, "cid": current_user.company_id}).mappings().first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Registro no encontrado")
+    from modules.fiscal.verifactu.xml_export import export_json
+    return Response(content=export_json(dict(row)), media_type="application/json")
+
+
+@router.post("/verifactu/registro/{registro_id}/anular",
+             dependencies=[Depends(rate_limit(30, 60, "verifactu-anular"))])
+def verifactu_anular(registro_id: int, request: Request, db: Session = Depends(get_db),
+                     current_user: User = Depends(get_current_user)):
+    """Anula un registro creando un registro de anulación enlazado (inmutabilidad)."""
+    _require_es(current_user, db)
+    from modules.fiscal.verifactu.service import anular, VerifactuError
+    try:
+        reg = anular(db, current_user.company_id, registro_id)
+    except VerifactuError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    audit_event(db, "verifactu_anular", actor_user_id=current_user.id, actor_email=current_user.email,
+                target=f"verifactu:{reg.get('id')}", company_id=current_user.company_id, request=request,
+                detail={"anula": registro_id})
+    return {"id": reg.get("id"), "tipo": "anulacion", "registro_anulado_id": registro_id, "huella": reg.get("huella")}
+
+
+@router.get("/verifactu/cadena/verificar")
+def verifactu_verify(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """Verifica la integridad de la cadena de huellas (y la contigüidad de números)."""
+    from modules.fiscal.verifactu.hashing import verify_chain
+    return verify_chain(db, current_user.company_id)
