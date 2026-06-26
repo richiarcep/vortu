@@ -288,6 +288,31 @@ def _require_es(current_user: User, db: Session) -> str:
     return pais
 
 
+def _company_country(current_user: User, db: Session) -> str:
+    row = db.execute(text("SELECT pais FROM config_fiscal WHERE company_id=:c"),
+                     {"c": current_user.company_id}).fetchone()
+    pais = (row[0] if row else None) or (current_user.company.country if current_user.company else None)
+    return (pais or "").upper()
+
+
+@router.get("/einvoicing")
+def get_einvoicing_config(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """The e-invoicing system mandated for the company's country (the onboarding
+    forces this — the country decides the system, there's no free choice)."""
+    from country.einvoicing import get_einvoicing
+    country = _company_country(current_user, db)
+    info = get_einvoicing(country)
+    # Enrich ES with the current operating mode (VERIFACTU/NO_VERIFACTU).
+    if info.get("flow") == "verifactu":
+        from modules.fiscal.verifactu.config import get_config, can_switch_to_no_verifactu
+        cfg = get_config(db, current_user.company_id)
+        info["current_mode"] = cfg.get("verifactu_mode")
+        info["mode_chosen"] = cfg.get("mode_set_at") is not None
+        info["can_switch_to_no_verifactu"] = can_switch_to_no_verifactu(cfg)
+        info["environment"] = cfg.get("environment")
+    return info
+
+
 class VerifactuModeRequest(BaseModel):
     verifactu_mode: str  # 'VERIFACTU' | 'NO_VERIFACTU'
 

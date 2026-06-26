@@ -20,13 +20,17 @@ const SvgParty = ({ size=48, sw=1.4 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}><path d="M2 22l3-9 6 6-9 3z"/><path d="M11 13l9-9"/><path d="M16 3l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3z"/></svg>
 )
 
+// The 7 countries the ledger has settings for (chart of accounts + tax rules).
+// Accounting works for ALL of them; the e-invoicing system is country-decided
+// (ES + SV live today, the rest show "próximamente" but accounting is active).
 const PAISES = [
-  { code:'SV', name:'El Salvador', flag:'🇸🇻', desc:'DTE — Ministerio de Hacienda', disponible:true },
-  { code:'ES', name:'España',       flag:'🇪🇸', desc:'VERI*FACTU — AEAT',           disponible:true },
-  { code:'MX', name:'México',       flag:'🇲🇽', desc:'CFDI — SAT',                  disponible:false },
-  { code:'CO', name:'Colombia',     flag:'🇨🇴', desc:'DIAN — Factura Electrónica',  disponible:false },
-  { code:'GT', name:'Guatemala',    flag:'🇬🇹', desc:'FEL — SAT Guatemala',         disponible:false },
-  { code:'HN', name:'Honduras',     flag:'🇭🇳', desc:'SAR — Próximamente',          disponible:false },
+  { code:'ES', name:'España',       flag:'🇪🇸', desc:'VERI*FACTU — AEAT',               disponible:true },
+  { code:'MX', name:'México',       flag:'🇲🇽', desc:'CFDI 4.0 — SAT (próximamente)',    disponible:true },
+  { code:'SV', name:'El Salvador',  flag:'🇸🇻', desc:'DTE — Ministerio de Hacienda',     disponible:true },
+  { code:'CO', name:'Colombia',     flag:'🇨🇴', desc:'Factura Electrónica — DIAN (próx.)', disponible:true },
+  { code:'AR', name:'Argentina',    flag:'🇦🇷', desc:'Comprobante — AFIP (próximamente)', disponible:true },
+  { code:'CL', name:'Chile',        flag:'🇨🇱', desc:'DTE — SII (próximamente)',         disponible:true },
+  { code:'PE', name:'Perú',         flag:'🇵🇪', desc:'Factura Electrónica — SUNAT (próx.)', disponible:true },
 ]
 
 const DEPARTAMENTOS_SV = [
@@ -147,8 +151,18 @@ export default function FiscalConfig() {
   const [vfChain, setVfChain] = useState(null)
   const [vfBusy, setVfBusy] = useState(false)
   const [vfMode, setVfMode] = useState(null)
+  const [einv, setEinv] = useState(null)
 
   const getToken = () => localStorage.getItem('vela_token')
+
+  // E-invoicing system for the company's country (country decides the system).
+  async function loadEinvoicing() {
+    const t = getToken()
+    try {
+      const r = await fetch(`${API}/api/fiscal/einvoicing`,{headers:{Authorization:`Bearer ${t}`}})
+      if(r.ok) setEinv(await r.json())
+    } catch {}
+  }
 
   useEffect(()=>{
     const t = getToken()
@@ -180,7 +194,7 @@ export default function FiscalConfig() {
       const res = await fetch(`${API}/api/fiscal/verifactu/mode`,{method:'POST',
         headers:{'Content-Type':'application/json',Authorization:`Bearer ${t}`},
         body:JSON.stringify({verifactu_mode:mode})})
-      if(res.ok){ setMsg({type:'success',text:`Modo: ${mode==='VERIFACTU'?'VERI*FACTU':'NO VERI*FACTU'}`}); await loadVerifactu() }
+      if(res.ok){ setMsg({type:'success',text:`Modo: ${mode==='VERIFACTU'?'VERI*FACTU':'NO VERI*FACTU'}`}); await loadVerifactu(); await loadEinvoicing() }
       else { const d=await res.json().catch(()=>({})); setMsg({type:'error',text:d.detail||'No se pudo cambiar el modo'}) }
       setTimeout(()=>setMsg(null),3500)
     } finally { setVfBusy(false) }
@@ -296,7 +310,7 @@ export default function FiscalConfig() {
   const isConfigured = config?.wizard_completado
   const isES = (paisSeleccionado || '').toUpperCase() === 'ES'
 
-  useEffect(()=>{ if(isConfigured && isES && token) loadVerifactu() }, [isConfigured, isES, token])
+  useEffect(()=>{ if(isConfigured && token){ loadEinvoicing(); if(isES) loadVerifactu() } }, [isConfigured, isES, token])
 
   return (
     <div style={{minHeight:'100dvh',background:T.bg,display:'flex',fontFamily:FONT,WebkitFontSmoothing:'antialiased'}}>
@@ -342,6 +356,30 @@ export default function FiscalConfig() {
             </div>
           )}
 
+          {/* Facturación electrónica del país (no-ES): el país decide el sistema. */}
+          {isConfigured && !isES && einv && einv.system && (
+            <Card style={{marginBottom:24}}>
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap'}}>
+                <div>
+                  <div style={{fontSize:16,fontWeight:600,color:T.text,letterSpacing:-0.2}}>Facturación electrónica — {einv.system}</div>
+                  <div style={{fontSize:12,color:T.text4}}>{einv.authority}{einv.note?` · ${einv.note}`:''}</div>
+                </div>
+                <div style={{padding:'4px 11px',borderRadius:999,fontSize:11,fontWeight:600,
+                  background:einv.status==='available'?T.greenSoft:T.sidebar,
+                  color:einv.status==='available'?T.green:T.text4}}>
+                  {einv.status==='available'?'Activo':'Próximamente'}
+                </div>
+              </div>
+              {einv.status!=='available' && (
+                <div style={{marginTop:12,padding:'10px 14px',background:T.sidebar,borderRadius:10,fontSize:12.5,color:T.text3}}>
+                  Tu <strong>contabilidad ya está activa</strong> para {PAISES.find(p=>p.code===paisSeleccionado)?.name||paisSeleccionado}.
+                  La emisión de {einv.system} ante {einv.authority} se activará próximamente
+                  {einv.requires_cert?' (necesitarás el certificado de tu empresa)':''}.
+                </div>
+              )}
+            </Card>
+          )}
+
           {/* Veri*Factu (España) — registro de facturación */}
           {isConfigured && isES && (
             <Card style={{marginBottom:24}}>
@@ -357,6 +395,13 @@ export default function FiscalConfig() {
                   </div>
                 )}
               </div>
+
+              {/* Onboarding: forzar la elección consciente del modo antes de emitir. */}
+              {einv && einv.mode_chosen === false && (
+                <div style={{marginBottom:12,padding:'11px 14px',background:'rgba(61,43,255,.06)',border:`.5px solid ${T.blue}`,borderRadius:10,fontSize:12.5,color:T.text,lineHeight:1.5}}>
+                  <strong>Elige cómo operar antes de emitir tu primera factura.</strong> Por defecto: <strong>VERI*FACTU</strong> (recomendado — se remite a la AEAT automáticamente). Una vez empiezas a remitir, permaneces en ese modo hasta el 31 de diciembre.
+                </div>
+              )}
 
               {/* Modo de operación (§1) — VERI*FACTU (remite a AEAT) vs NO VERI*FACTU (firma local) */}
               {vfMode && (
