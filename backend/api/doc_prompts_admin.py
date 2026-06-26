@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 
 from core.database import get_db
-from core.security import get_current_user
+from core.security import get_current_user, get_admin_db
 from models.user import User
 
 router = APIRouter(prefix="/api/admin/doc-prompts", tags=["Doc Prompts Admin"])
@@ -70,7 +70,7 @@ def templates_with_counts(
 @router.get("/by-template/{template_id}")
 def list_prompts_by_template(
     template_id: int,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_admin_db),
     user: User = Depends(get_current_user),
 ):
     _check_admin(user)
@@ -108,7 +108,7 @@ def list_prompts_by_template(
 @router.get("/{prompt_id}")
 def get_prompt(
     prompt_id: int,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_admin_db),
     user: User = Depends(get_current_user),
 ):
     _check_admin(user)

@@ -11,7 +11,7 @@ from typing import Optional, List
 import json
 
 from core.database import get_db
-from core.security import get_current_user
+from core.security import get_current_user, get_admin_db
 from core.pagination import LimitQuery
 from models.user import User
 
@@ -229,7 +229,7 @@ def update_model(
 # ──────────────────────────────────────────────────────────────
 @router.get("/logs")
 def list_logs(
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_admin_db),
     admin: User = Depends(require_admin),
     limit: int = LimitQuery(50),
 ):
@@ -255,7 +255,7 @@ def list_logs(
 
 @router.get("/stats")
 def stats(
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_admin_db),
     admin: User = Depends(require_admin),
 ):
     summary = db.execute(text("""
@@ -432,7 +432,7 @@ def _save_test_result(db, provider, status, error, latency_ms):
 @router.get("/clients")
 def list_clients_usage(
     days: int = 30,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_admin_db),
     admin: User = Depends(require_admin),
 ):
     """Uso de Vera por empresa: requests, tokens, coste, modelo más usado."""
@@ -548,7 +548,7 @@ class PlanUpdate(BaseModel):
 
 @router.get("/plans")
 def list_plans(
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_admin_db),
     admin: User = Depends(require_admin),
 ):
     """Lista los 2 planes de Vera (Vela + Plus) con sus capacidades."""

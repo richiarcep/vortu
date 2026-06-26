@@ -9,7 +9,7 @@ from typing import Optional, List
 import json
 
 from core.database import get_db
-from core.security import get_current_user
+from core.security import get_current_user, get_admin_db
 from core.pagination import LimitQuery
 from core.rate_limit import rate_limit
 from models.user import User
@@ -183,7 +183,7 @@ def delete_conversation(
 # ──────────────────────────────────────────────────────────────────
 @router.get("/empresas")
 def list_companies(
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_admin_db),
     admin: User = Depends(require_superadmin),
 ):
     """Lista todas las empresas con métricas resumen."""
