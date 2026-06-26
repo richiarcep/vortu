@@ -191,6 +191,8 @@ def handle_webhook(db, payload, sig_header):
             _handle_payment_failed(db, obj)
         elif event["type"] == "invoice.payment_succeeded":
             _handle_payment_succeeded(db, obj)
+        elif event["type"] == "account.updated":
+            _handle_connect_account_updated(db, obj)
         billing_event.processed = True
     except Exception as e:
         import traceback
@@ -198,6 +200,20 @@ def handle_webhook(db, payload, sig_header):
         traceback.print_exc()
     db.commit()
     return {"status": "processed"}
+
+def _handle_connect_account_updated(db, account):
+    """A connected account changed (e.g. finished onboarding) — cache the
+    charges/details flags on the company so the POS knows it can charge cards."""
+    from models.user import Company
+    acct_id = account.get("id")
+    if not acct_id:
+        return
+    company = db.query(Company).filter(Company.stripe_connect_id == acct_id).first()
+    if not company:
+        return
+    company.connect_charges_enabled = 1 if account.get("charges_enabled") else 0
+    company.connect_details_submitted = 1 if account.get("details_submitted") else 0
+
 
 def _stripe_to_dict(obj):
     if isinstance(obj, dict):

@@ -10,6 +10,11 @@ class Company(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     country = Column(String, nullable=True)
+    # Stripe Connect — the company's OWN merchant account (collect card/Apple Pay
+    # from their customers; funds go to the company, not Vela).
+    stripe_connect_id = Column(String, nullable=True)
+    connect_charges_enabled = Column(Integer, default=0)
+    connect_details_submitted = Column(Integer, default=0)
     users = relationship("User", back_populates="company")
 
 class User(Base):

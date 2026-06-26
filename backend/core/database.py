@@ -266,6 +266,14 @@ def ensure_runtime_schema():
         # can map a deleted subscription back to the company and deactivate it.
         if company_cols is not None and "vera_plus_subscription_id" not in company_cols:
             conn.execute(text("ALTER TABLE companies ADD COLUMN vera_plus_subscription_id TEXT"))
+        # Stripe Connect: the company's OWN connected account (to collect card/Apple
+        # Pay payments from their customers — funds go to the company, not Vela).
+        if company_cols is not None and "stripe_connect_id" not in company_cols:
+            conn.execute(text("ALTER TABLE companies ADD COLUMN stripe_connect_id TEXT"))
+        if company_cols is not None and "connect_charges_enabled" not in company_cols:
+            conn.execute(text("ALTER TABLE companies ADD COLUMN connect_charges_enabled INTEGER DEFAULT 0"))
+        if company_cols is not None and "connect_details_submitted" not in company_cols:
+            conn.execute(text("ALTER TABLE companies ADD COLUMN connect_details_submitted INTEGER DEFAULT 0"))
 
         # Ventas: columnas de devoluciones e idempotencia (create_all() no altera
         # tablas existentes; en una BD nueva ya las crea el modelo y esto es no-op).

@@ -231,6 +231,8 @@ export default function Ventas() {
   const [cart, setCart] = useState([])
   const [search, setSearch] = useState('')
   const [payment, setPayment] = useState('card')
+  const [connectEnabled, setConnectEnabled] = useState(false)
+  const [charging, setCharging] = useState(false)
   const [showPaymentModal, setShowPaymentModal] = useState(false)
   const [facturaElectronica, setFacturaElectronica] = useState(false)
   const [clienteQuery, setClienteQuery] = useState('')
@@ -279,6 +281,31 @@ export default function Ventas() {
     loadStockAlerts()
     loadVeraInsight()
     loadDevoluciones()
+    loadConnect()
+  }
+
+  async function loadConnect() {
+    try {
+      const res = await fetch(`${API}/api/connect/status`, { headers: { Authorization: `Bearer ${getToken()}` } })
+      if (res.ok) { const d = await res.json(); setConnectEnabled(!!d.charges_enabled) }
+    } catch {}
+  }
+
+  // Cobro online: genera un pago Stripe (tarjeta/Apple Pay/Google Pay) en la cuenta
+  // de la empresa por el total del carrito y lo abre para que el cliente pague.
+  async function cobrarOnline() {
+    if (cartTotal <= 0) return
+    setCharging(true)
+    try {
+      const res = await fetch(`${API}/api/connect/sale-payment`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+        body: JSON.stringify({ amount: cartTotal, description: `Venta · ${cart.length} artículo(s)`, currency: 'eur' }),
+      })
+      const d = await res.json().catch(() => ({}))
+      if (res.ok && d.url) { window.open(d.url, '_blank') }
+      else { setMsg({ type: 'error', text: d.detail || 'No se pudo iniciar el cobro online.' }) }
+    } catch { setMsg({ type: 'error', text: 'Error de conexión' }) }
+    finally { setCharging(false) }
   }
 
   async function loadDevoluciones() {
@@ -770,13 +797,25 @@ export default function Ventas() {
 
               <Toast msg={msg} />
 
+              {/* Cobro online real (Stripe Connect) — tarjeta / Apple Pay / Google Pay
+                  cobrado en la cuenta de la empresa. Solo si los cobros están activos
+                  y el método elegido es de tarjeta. */}
+              {connectEnabled && ['card','apple_pay','google_pay'].includes(payment) && (
+                <button onClick={cobrarOnline} disabled={charging || cartTotal<=0} style={{
+                  width:'100%', marginBottom:8, padding:'11px', borderRadius:10, border:`1px solid ${T.blue}`,
+                  background:'rgba(61,43,255,.06)', color:T.blue, fontSize:13.5, fontWeight:600,
+                  cursor:charging?'default':'pointer', fontFamily:'inherit', opacity:charging?.6:1}}>
+                  {charging ? 'Abriendo cobro…' : ` Cobrar con tarjeta / Apple Pay · €${cartTotal.toFixed(2)}`}
+                </button>
+              )}
+
               <div style={{ display: 'flex', gap: 8 }}>
                 <BtnSec onClick={() => setShowPaymentModal(false)} style={{ flex: 1, justifyContent: 'center' }}>
                   Cancelar
                 </BtnSec>
                 <Btn onClick={submitSale} disabled={loading || (facturaElectronica && !clienteSelected)} color={T.green}
                   style={{ flex: 2, justifyContent: 'center', padding: '11px', borderRadius: 10, fontSize: 14, fontWeight: 600 }}>
-                  {loading ? 'Procesando…' : `Confirmar pago · €${cartTotal.toFixed(2)}`}
+                  {loading ? 'Procesando…' : `Confirmar venta · €${cartTotal.toFixed(2)}`}
                 </Btn>
               </div>
             </div>

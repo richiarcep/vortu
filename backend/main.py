@@ -49,6 +49,7 @@ from api.costs import router as costs_router
 from api.costes import router as costes_router
 from api.two_factor import router as two_factor_router
 from api.privacy import router as privacy_router
+from api.connect import router as connect_router
 from vera.router import router as vera_router
 from api.profit_optimizer import router as profit_optimizer_router
 from api.vera_route_api import router as vera_route_api_router
@@ -203,6 +204,7 @@ app.add_middleware(
 # ── Routers ───────────────────────────────────────────────────────────────────
 app.include_router(auth_router)
 app.include_router(privacy_router)  # GDPR export/erasure (Art.15/17/20)
+app.include_router(connect_router)  # Stripe Connect (company merchant accounts)
 app.include_router(upload_router)
 # ── Per-plan module gating (server-side entitlement; UX-only in the frontend) ──
 # Beta/superadmin get the full module set, so nothing is blocked until the billing

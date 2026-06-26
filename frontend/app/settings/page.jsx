@@ -679,6 +679,8 @@ function SettingsInner(){
   const [inviteRole,setInviteRole]=useState('member')
   const [inviting,setInviting]=useState(false)
   const [billingStatus,setBillingStatus]=useState(null)
+  const [connectStatus,setConnectStatus]=useState(null)
+  const [connectLoading,setConnectLoading]=useState(false)
   const [upgradeLoading,setUpgradeLoading]=useState(null)
   const [portalLoading,setPortalLoading]=useState(false)
   const [cancelLoading,setCancelLoading]=useState(false)
@@ -701,7 +703,26 @@ function SettingsInner(){
 
   useEffect(()=>{
     if(token&&(tab==='subscription'||tab==='team')){loadBillingStatus();loadTeam()}
+    if(token&&tab==='cobros'){loadConnect()}
   },[token,tab])
+
+  async function loadConnect(){
+    try{
+      const r=await fetch(`${API}/api/connect/status`,{headers:{Authorization:`Bearer ${token}`}})
+      if(r.ok)setConnectStatus(await r.json())
+    }catch{}
+  }
+
+  async function startConnectOnboarding(){
+    setConnectLoading(true)
+    try{
+      const r=await fetch(`${API}/api/connect/onboard`,{method:'POST',headers:{Authorization:`Bearer ${token}`}})
+      const d=await r.json().catch(()=>({}))
+      if(r.ok&&d.onboarding_url){window.location.href=d.onboarding_url}
+      else{alert(d.detail||'No se pudo iniciar la configuración de cobros.')}
+    }catch{alert('Error de conexión')}
+    finally{setConnectLoading(false)}
+  }
 
   async function loadBillingStatus(){
     try{
@@ -796,6 +817,7 @@ function SettingsInner(){
   const TABS=[
     {id:'company',      label:'Empresa'},
     {id:'subscription', label:'Suscripcion'},
+    {id:'cobros',       label:'Cobros'},
     {id:'team',         label:'Equipo'},
     {id:'notifications',label:'Notificaciones'},
     {id:'apariencia',   label:'Apariencia'},
@@ -1110,6 +1132,50 @@ function SettingsInner(){
                     </div>
                   </div>
                 )}
+              </div>
+            )}
+            {/* COBROS — Stripe Connect (cobrar a TUS clientes con tarjeta/Apple Pay) */}
+            {tab==='cobros'&&(
+              <div style={{display:'flex',flexDirection:'column',gap:14,maxWidth:640}}>
+                <div style={{background:T.card,borderRadius:16,border:`.5px solid ${T.hairline}`,padding:24}}>
+                  <div style={{fontSize:16,fontWeight:600,color:T.text,letterSpacing:-0.2,marginBottom:4}}>Cobros con tarjeta y Apple Pay</div>
+                  <div style={{fontSize:13,color:T.text3,marginBottom:18,lineHeight:1.5}}>
+                    Conecta tu cuenta para cobrar a tus clientes con tarjeta, Apple Pay y Google Pay.
+                    El dinero va directamente a <strong>tu cuenta bancaria</strong> (no a Vela). La verificación
+                    de identidad y los pagos los gestiona Stripe de forma segura.
+                  </div>
+
+                  {connectStatus===null ? (
+                    <div style={{fontSize:13,color:T.text4}}>Cargando…</div>
+                  ) : connectStatus.available===false ? (
+                    <div style={{padding:'12px 14px',background:T.sidebar,borderRadius:10,fontSize:12.5,color:T.text3}}>
+                      Los cobros con tarjeta aún no están habilitados en esta instalación.
+                    </div>
+                  ) : connectStatus.charges_enabled ? (
+                    <div style={{display:'flex',alignItems:'center',gap:10,padding:'12px 16px',background:'#f0fdf4',borderRadius:12,border:'1px solid #bbf7d0'}}>
+                      <div style={{width:34,height:34,borderRadius:9,background:'#059669',display:'grid',placeItems:'center'}}>
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+                      </div>
+                      <div>
+                        <div style={{fontSize:13,fontWeight:600,color:'#166534'}}>Cobros activos</div>
+                        <div style={{fontSize:11.5,color:'#059669'}}>Puedes cobrar con tarjeta y Apple Pay desde Ventas.</div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      {connectStatus.connected && !connectStatus.details_submitted && (
+                        <div style={{padding:'10px 14px',background:T.amberSoft||T.sidebar,borderRadius:10,fontSize:12.5,color:T.text3,marginBottom:12}}>
+                          Configuración a medias — completa la verificación con Stripe para empezar a cobrar.
+                        </div>
+                      )}
+                      <button onClick={startConnectOnboarding} disabled={connectLoading} style={{
+                        padding:'11px 20px',borderRadius:10,border:'none',background:T.blue,color:'#fff',
+                        fontSize:14,fontWeight:600,cursor:connectLoading?'default':'pointer',fontFamily:'inherit',opacity:connectLoading?.6:1}}>
+                        {connectLoading?'Abriendo…':(connectStatus.connected?'Completar configuración →':'Conectar cuenta de cobros →')}
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
             {/* EQUIPO */}
