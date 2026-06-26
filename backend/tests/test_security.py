@@ -247,5 +247,38 @@ class TestVerifactuMode(unittest.TestCase):
         db.close()
 
 
+class TestTenantIsolation(unittest.TestCase):
+    """The single most important property: two companies cannot see each other's
+    data. Exercises real create + list + get-by-id across modules."""
+
+    def test_two_companies_are_isolated(self):
+        ea, pa = _register(); ta = _login(ea, pa).json()["access_token"]; ha = {"Authorization": f"Bearer {ta}"}
+        eb, pb = _register(); tb = _login(eb, pb).json()["access_token"]; hb = {"Authorization": f"Bearer {tb}"}
+
+        # Each company creates a project + a contact.
+        pa_id = client.post("/api/proyectos/", headers=ha, json={"name": "Proyecto A"}).json()["id"]
+        pb_id = client.post("/api/proyectos/", headers=hb, json={"name": "Proyecto B"}).json()["id"]
+        ca_id = client.post("/api/clientes/contactos", headers=ha, json={"name": "Contacto A"}).json()["id"]
+        cb_id = client.post("/api/clientes/contactos", headers=hb, json={"name": "Contacto B"}).json()["id"]
+
+        # A's project list contains A's, never B's.
+        la = client.get("/api/proyectos/", headers=ha).json()
+        projects_a = la.get("projects", la) if isinstance(la, dict) else la
+        ids_a = {p["id"] for p in projects_a}
+        self.assertIn(pa_id, ids_a)
+        self.assertNotIn(pb_id, ids_a, "Company A can see Company B's project!")
+
+        # A cannot fetch B's records by id (and vice-versa).
+        self.assertEqual(client.get(f"/api/proyectos/{pb_id}", headers=ha).status_code, 404)
+        self.assertEqual(client.get(f"/api/proyectos/{pa_id}", headers=hb).status_code, 404)
+        self.assertIn(client.get(f"/api/clientes/contactos/{cb_id}", headers=ha).status_code, (403, 404))
+        self.assertIn(client.get(f"/api/clientes/contactos/{ca_id}", headers=hb).status_code, (403, 404))
+
+        # GDPR export returns ONLY the caller's own identity.
+        exp_a = client.get("/api/me/export", headers=ha).json()
+        self.assertEqual(exp_a["user"]["email"], ea)
+        self.assertNotEqual(exp_a["user"]["email"], eb)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
