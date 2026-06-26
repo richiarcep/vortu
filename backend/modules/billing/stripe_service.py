@@ -251,6 +251,76 @@ def handle_webhook(db, payload, sig_header):
     db.commit()
     return {"status": "processed"}
 
+
+def handle_connect_webhook(db, payload, sig_header):
+    """Webhook de Stripe CONNECT (scope connected accounts). Verifica la firma con el
+    secreto SEPARADO STRIPE_CONNECT_WEBHOOK_SECRET. NO toca handle_webhook (la ruta de
+    plataforma). Los eventos de connected account traen un `account` top-level (el id
+    de la cuenta conectada): usamos su PRESENCIA como discriminante primario (no solo
+    metadata). Maneja account.updated y checkout.session.completed."""
+    secret = settings.STRIPE_CONNECT_WEBHOOK_SECRET
+    if not secret:
+        return {"error": "STRIPE_CONNECT_WEBHOOK_SECRET not configured"}
+    try:
+        stripe.Webhook.construct_event(payload, sig_header, secret)
+    except Exception as e:
+        return {"error": str(e)}
+    # Firma verificada — re-parseamos el payload CRUDO a dict plano (StripeObject→dict
+    # no es fiable en stripe-python 15.x; igual que handle_webhook).
+    try:
+        event = json.loads(payload)
+    except Exception as e:
+        return {"error": f"invalid payload: {e}"}
+
+    # DISCRIMINANTE PRIMARIO: un evento de connected account trae `account` top-level.
+    connected_account = event.get("account")
+    if not connected_account:
+        # No es de connected account (un evento de plataforma llegó a esta ruta). Ack
+        # para que Stripe no reintente; no hacemos nada.
+        return {"status": "ignored", "reason": "no connected account on event"}
+
+    # Idempotencia (billing_events va por stripe_event_id, NO es tenant-scoped → sin RLS).
+    if db.query(BillingEvent).filter(BillingEvent.stripe_event_id == event["id"]).first():
+        return {"status": "already_processed"}
+    db.add(BillingEvent(
+        stripe_event_id=event["id"],
+        event_type=event["type"],
+        data=json.dumps(event["data"]["object"], default=str),
+    ))
+    db.commit()
+
+    etype = event["type"]
+    obj = _stripe_to_dict(event["data"]["object"])
+    try:
+        if etype == "account.updated":
+            # No conocemos el tenant de antemano (companies está RLS'd por id; una query
+            # sin GUC vería 0 filas) → sesión worker (BYPASSRLS) para resolver la empresa
+            # por su connected-account id y actualizar SOLO esa fila.
+            from core.database import worker_session
+            wdb = worker_session()
+            try:
+                _handle_connect_account_updated(wdb, obj)
+                wdb.commit()
+            finally:
+                wdb.close()
+        elif etype == "checkout.session.completed":
+            # Cobro POS (tarjeta/Apple Pay) en la cuenta conectada. El carrito retenido
+            # se identifica por metadata.vela_pos_temp_id; _finalize_pos_sale corre en
+            # su PROPIA sesión worker (BYPASSRLS), así que pasarle `db` es inocuo.
+            _meta = obj.get("metadata") or {}
+            if not isinstance(_meta, dict):
+                _meta = {}
+            temp_id = _meta.get("vela_pos_temp_id")
+            if temp_id:
+                _finalize_pos_sale(db, temp_id, payment_intent=obj.get("payment_intent"))
+    except Exception as e:
+        import traceback
+        print(f"Connect webhook error [{etype}]: {e}")
+        traceback.print_exc()
+
+    return {"status": "processed", "connected_account": connected_account, "type": etype}
+
+
 def _finalize_pos_sale(db, temp_id, payment_intent=None):
     """A POS card/Apple Pay payment succeeded → record the real sale from the held
     cart and mark the pending row paid. Idempotent (safe on duplicate webhooks).

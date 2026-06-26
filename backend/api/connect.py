@@ -1,7 +1,7 @@
 """Stripe Connect endpoints — onboard the company's own merchant account and
 charge their customers (card / Apple Pay / Google Pay) into THAT account.
 """
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Header
 from pydantic import BaseModel
 from typing import Optional
 from sqlalchemy.orm import Session
@@ -169,3 +169,19 @@ def connect_sale_status(temp_id: str, db: Session = Depends(get_tenant_db), curr
     if not row:
         raise HTTPException(status_code=404, detail="No encontrado")
     return {"status": row["status"], "sale_id": row["sale_id"], "paid": row["status"] == "paid"}
+
+
+@router.post("/webhook")
+async def connect_webhook(
+    request: Request,
+    stripe_signature: str = Header(None, alias="stripe-signature"),
+    db: Session = Depends(get_db),
+):
+    """Webhook de Stripe CONNECT (scope connected accounts) — secreto SEPARADO del de
+    plataforma. Pre-tenant: lo autentica la firma de Stripe, no un usuario."""
+    from modules.billing.stripe_service import handle_connect_webhook
+    payload = await request.body()
+    result = handle_connect_webhook(db, payload, stripe_signature)
+    if "error" in result:
+        raise HTTPException(status_code=400, detail=result["error"])
+    return {"status": "ok"}
