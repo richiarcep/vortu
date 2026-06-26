@@ -127,6 +127,44 @@ NETWORK_TOOLS = [
 # ──────────────────────────────────────────────────────────────────────
 # EJECUTORES DE TOOLS
 # ──────────────────────────────────────────────────────────────────────
+_NETWORK_RO_ENGINE = None
+
+
+def network_ro_sessionmaker():
+    """Sessionmaker bound to NETWORK_DB_URL (a read-only, BYPASSRLS Postgres role
+    for the cross-tenant agent) when configured, else None. Lets the super-admin
+    agent legitimately read every tenant even after RLS is FORCEd on the app role.
+    No-op (None) on SQLite/dev where there's no RLS to bypass."""
+    global _NETWORK_RO_ENGINE
+    url = getattr(settings, "NETWORK_DB_URL", "") or ""
+    if not url:
+        return None
+    if _NETWORK_RO_ENGINE is None:
+        from sqlalchemy import create_engine
+        from sqlalchemy.orm import sessionmaker
+        _NETWORK_RO_ENGINE = create_engine(url, pool_pre_ping=True)
+        _NETWORK_RO_ENGINE._vela_sm = sessionmaker(bind=_NETWORK_RO_ENGINE)
+    return _NETWORK_RO_ENGINE._vela_sm
+
+
+from contextlib import contextmanager
+
+
+@contextmanager
+def network_read_session(db: Session):
+    """Yield a read session for cross-tenant analytics: the BYPASSRLS read-only
+    session (NETWORK_DB_URL) when configured, else the passed request session."""
+    sm = network_ro_sessionmaker()
+    if sm is not None:
+        s = sm()
+        try:
+            yield s
+        finally:
+            s.close()
+    else:
+        yield db
+
+
 def execute_tool(db: Session, tool_name: str, tool_input: dict) -> dict:
     """Ejecuta una herramienta y devuelve el resultado serializable."""
     try:
@@ -134,16 +172,25 @@ def execute_tool(db: Session, tool_name: str, tool_input: dict) -> dict:
             sql = tool_input.get("sql", "").strip()
             if not is_safe_select(sql):
                 return {"error": "Solo se permiten consultas SELECT. Detectada operación no permitida."}
-            # Defense-in-depth: run the LLM-generated SQL on a read-only connection so
-            # a regex bypass still cannot write. (SQLite PRAGMA; restore after.)
-            _dialect = db.bind.dialect.name if db.bind is not None else "sqlite"
+            # Defense-in-depth: run the LLM-generated SQL on a READ-ONLY connection
+            # (a regex bypass still cannot write). Prefer the dedicated read-only
+            # BYPASSRLS connection (NETWORK_DB_URL) when configured so it works under
+            # FORCE RLS; else fall back to the request session.
+            _sm = network_ro_sessionmaker()
+            qdb = _sm() if _sm is not None else db
+            _own = _sm is not None
+            _dialect = qdb.bind.dialect.name if qdb.bind is not None else "sqlite"
             if _dialect == "sqlite":
-                db.execute(text("PRAGMA query_only=ON"))
+                qdb.execute(text("PRAGMA query_only=ON"))
+            elif _dialect == "postgresql":
+                qdb.execute(text("SET TRANSACTION READ ONLY"))
             try:
-                rows = db.execute(text(sql)).fetchall()
+                rows = qdb.execute(text(sql)).fetchall()
             finally:
-                if _dialect == "sqlite":
-                    db.execute(text("PRAGMA query_only=OFF"))
+                if _dialect == "sqlite" and not _own:
+                    qdb.execute(text("PRAGMA query_only=OFF"))
+                if _own:
+                    qdb.close()
             columns = list(rows[0]._mapping.keys()) if rows else []
             data = [dict(r._mapping) for r in rows[:200]]
             # Serializar tipos no-JSON
@@ -274,13 +321,14 @@ def network_chat(
             "Inténtalo de nuevo mañana."
         )
 
-    # Contexto adicional si se especifica una empresa
+    # Contexto adicional si se especifica una empresa (lectura cross-tenant → RO).
     extra_context = ""
     if context_company_id:
         try:
-            row = db.execute(text(
-                "SELECT id, name, country, plan FROM companies WHERE id = :cid"
-            ), {"cid": context_company_id}).fetchone()
+            with network_read_session(db) as _rdb:
+                row = _rdb.execute(text(
+                    "SELECT id, name, country, plan FROM companies WHERE id = :cid"
+                ), {"cid": context_company_id}).fetchone()
             if row:
                 extra_context = (
                     f"\n\nCONTEXTO ACTIVO: el usuario está analizando la empresa "

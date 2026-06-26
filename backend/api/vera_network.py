@@ -57,7 +57,9 @@ def pulso(
     admin: User = Depends(require_superadmin),
 ):
     """Métricas agregadas de toda la red Vela en tiempo real."""
-    return get_pulso(db)
+    from vera.network_engine import network_read_session
+    with network_read_session(db) as rdb:
+        return get_pulso(rdb)
 
 
 # ──────────────────────────────────────────────────────────────────
@@ -213,7 +215,9 @@ def empresa_drilldown(
     db: Session = Depends(get_db),
     admin: User = Depends(require_superadmin),
 ):
-    data = get_company_drilldown(db, company_id)
+    from vera.network_engine import network_read_session
+    with network_read_session(db) as rdb:
+        data = get_company_drilldown(rdb, company_id)
     if not data:
         raise HTTPException(404, "Empresa no encontrada")
     return data
