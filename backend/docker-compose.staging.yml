@@ -1,0 +1,84 @@
+# Vela backend — STAGING stack for a single Hetzner box (backend only; the
+# frontend stays on Vercel). Everything talks over compose's internal network;
+# only Caddy publishes 80/443. Postgres + Redis are NOT exposed to the host.
+#
+#   Browser ──HTTPS──► caddy ──► app:8000 (FastAPI: /api/*, /health)
+#   app ──► postgres:5432   (internal only)
+#   app ──► redis:6379      (internal only)
+#
+# Bring up:  docker compose -f docker-compose.staging.yml up -d --build
+# Values come from ./.env (you create it on the server from .env.example).
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    # No host port mapping → reachable only as "postgres" on the compose network.
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-vela}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-vela}
+      # Passed through to the role-init script (deploy/postgres-init).
+      VELA_APP_PASSWORD: ${VELA_APP_PASSWORD:?set VELA_APP_PASSWORD in .env}
+      VELA_NETWORK_RO_PASSWORD: ${VELA_NETWORK_RO_PASSWORD:?set VELA_NETWORK_RO_PASSWORD in .env}
+      VELA_WORKER_PASSWORD: ${VELA_WORKER_PASSWORD:?set VELA_WORKER_PASSWORD in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # Runs ONCE on first init: creates the RLS roles (vela_app / _network_ro / _worker).
+      - ./deploy/postgres-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-vela} -d ${POSTGRES_DB:-vela}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    # No host port mapping → reachable only as "redis" on the compose network.
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  app:
+    build: .
+    env_file: [.env]
+    environment:
+      # Single web worker so the in-process scheduler runs exactly once.
+      ENABLE_SCHEDULER: "true"
+      WEB_CONCURRENCY: "1"
+    expose: ["8000"]
+    volumes:
+      - app_uploads:/app/uploads
+      - app_payslips:/app/payslips
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data       # persists the Let's Encrypt cert across restarts
+      - caddy_config:/config
+    depends_on: [app]
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  redisdata:
+  app_uploads:
+  app_payslips:
+  caddy_data:
+  caddy_config:

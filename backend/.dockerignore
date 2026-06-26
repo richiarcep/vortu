@@ -31,6 +31,12 @@ fix_*.py
 configure_*.py
 setup_db.py
 
+# Deploy artifacts — not needed inside the app image (used by compose / on host)
+docker-compose*.yml
+Caddyfile
+deploy.sh
+deploy/
+
 # Misc
 .DS_Store
 .pytest_cache/

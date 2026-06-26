@@ -49,6 +49,10 @@ sentry-sdk[fastapi]==2.40.0
 # ── Auth / 2FA ──────────────────────────────────────────────────────────────
 pyotp==2.9.0
 qrcode==8.2
+# Required by pydantic EmailStr (RegisterRequest etc.) — was implicitly present in
+# the dev venv but never pinned, so a clean install (Docker) crashed without it.
+email-validator==2.3.0
+dnspython==2.8.0
 
 # ── Scheduler ───────────────────────────────────────────────────────────────
 APScheduler==3.11.2

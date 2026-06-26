@@ -1,0 +1,9 @@
+# Vela backend staging reverse proxy.
+# Caddy auto-provisions + renews a real Let's Encrypt cert for this hostname via
+# HTTP-01 (needs ports 80 + 443 open, which ufw allows). sslip.io resolves the
+# hostname to the server IP. Swap the hostname for your own domain later.
+
+167-233-199-102.sslip.io {
+	encode gzip zstd
+	reverse_proxy app:8000
+}
