@@ -5,6 +5,7 @@ import bcrypt as _bcrypt
 from jose import JWTError, jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 from core.config import get_settings
 from core.database import get_db
@@ -115,6 +116,24 @@ def get_current_user(
     if payload.get("tv", 0) != (getattr(user, "token_version", 0) or 0):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has been revoked")
     return user
+
+def get_tenant_db(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    """Tenant-scoped DB session: binds the caller's company_id to the Postgres
+    session so RLS policies enforce isolation below the app layer.
+
+    Issues ``SELECT set_config('app.current_company_id', cid, true)`` — ``true``
+    = transaction-local (SET LOCAL semantics under autocommit=False), so it never
+    leaks across pooled connections. NO-OP on SQLite/dev (RLS doesn't exist there;
+    app-layer company_id filters remain the isolation mechanism). Use on tenant
+    routers; keep get_db for pre-tenant (login/register/webhook) and legitimately
+    cross-tenant (superadmin backoffice) endpoints.
+    """
+    from core.database import RLS_ENABLED
+    if RLS_ENABLED:
+        db.execute(text("SELECT set_config('app.current_company_id', :cid, true)"),
+                   {"cid": str(getattr(current_user, "company_id", None) or 0)})
+    return db
+
 
 def get_admin_user(
     token: str = Depends(oauth2_scheme),

@@ -9,7 +9,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from core.database import get_db
 from services.graph.sync import sync_sale, sync_product
-from core.security import get_current_user
+from core.security import get_current_user, get_tenant_db
 from core.pagination import LimitQuery, OffsetQuery
 from models.user import User
 from models.sales import Product, Sale, SaleItem, SaleRefund, SaleRefundItem
@@ -722,7 +722,7 @@ def refund_sale(
 def list_refunds(
     limit: int = LimitQuery(50),
     offset: int = OffsetQuery(),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user),
 ):
     q = db.query(SaleRefund).filter(
@@ -738,7 +738,7 @@ def list_refunds(
 def get_sales_history(
     limit: int = LimitQuery(50),
     offset: int = OffsetQuery(),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_tenant_db),
     current_user: User = Depends(get_current_user)
 ):
     sales = db.query(Sale).filter(

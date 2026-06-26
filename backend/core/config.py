@@ -52,6 +52,9 @@ class Settings(BaseSettings):
     TRUSTED_PROXY: bool = True                 # honour X-Forwarded-For (true behind Caddy/our proxy)
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30        # rotating refresh-token lifetime
     REFRESH_COOKIE_NAME: str = "vela_refresh"  # HttpOnly refresh-token cookie name
+    RLS_ENABLED: bool = True                    # Postgres RLS kill-switch (ignored on SQLite)
+    APP_DB_ROLE: str = ""                       # optional non-BYPASSRLS role to SET ROLE into
+    NETWORK_DB_URL: str = ""                    # read-only BYPASSRLS DSN for the cross-tenant agent
     model_config = {"env_file": ".env", "extra": "ignore"}
 
     @field_validator("SECRET_KEY")

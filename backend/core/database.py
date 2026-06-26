@@ -80,6 +80,13 @@ def get_db():
         db.close()
 
 
+# Row-Level Security toggle. RLS is a Postgres feature; on SQLite (dev) it is a
+# pure pass-through, so the tenant-scoped session (core.security.get_tenant_db)
+# behaves exactly like get_db there. Flip RLS_ENABLED=false to disable the GUC
+# wiring in an emergency without dropping the DB policies.
+RLS_ENABLED = (engine.dialect.name == "postgresql") and bool(getattr(settings, "RLS_ENABLED", True))
+
+
 def create_tables():
     """Creates all tables in the database. Called once at startup."""
     Base.metadata.create_all(bind=engine)
