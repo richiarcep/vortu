@@ -61,6 +61,16 @@ class Settings(BaseSettings):
     AEAT_VERIFACTU_ENDPOINT: str = ""           # AEAT remittance endpoint; empty → SANDBOX (no real submit)
     CONNECT_APPLICATION_FEE_BPS: int = 0        # platform fee on company sales (bps; 0 = none)
     STRIPE_USE_CONFIGURED_PRICES: bool = False  # use STRIPE_PRICE_* ids; default → inline price_data
+    # ── Vera connector (external AI routing service) ─────────────────────────────
+    # Document extraction can route through the external Vera API (/v1/extract) as
+    # the PRIMARY engine, falling back to Vela's own in-app extraction pipeline when
+    # Vera is unreachable/fails. OFF by default (mode=internal) — nothing changes
+    # until VERA_API_URL is set and the mode is switched to "vera".
+    VERA_API_URL: str = ""                       # e.g. http://localhost:8787 (no trailing slash)
+    VERA_API_KEY: str = ""                       # sent as the X-Vera-Key header (master or per-project key)
+    VERA_EXTRACTION_MODE: str = "internal"       # "internal" (current behaviour) | "vera" (API primary + internal fallback)
+    VERA_TRAIN_ENABLED: bool = False             # POST human corrections to Vera /v1/train (the learning flywheel)
+    VERA_API_TIMEOUT_S: float = 30.0             # per-call timeout for the Vera API
     model_config = {"env_file": ".env", "extra": "ignore"}
 
     @field_validator("SECRET_KEY")

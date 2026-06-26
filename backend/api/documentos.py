@@ -654,6 +654,14 @@ def execute_sql_action(action: dict, db: Session, current_user: User, doc_id: in
 # synchronous SQLAlchemy calls, file parsing, and LLM requests — so running it
 # on the event loop would stall every other request. FastAPI runs sync routes in
 # a worker thread, keeping the server responsive under concurrent uploads.
+@router.get("/vera-status")
+def vera_connector_status(current_user: User = Depends(get_current_user)):
+    """Estado del conector Vera EXTERNO (configurado, modo, salud de la API) — para
+    el indicador de conexión en la UI de documentos."""
+    from modules.vera_connector import service as vera_connector
+    return vera_connector.connector_status()
+
+
 @router.post("/analyze")
 def analyze_document(
     file: UploadFile = File(...),
@@ -690,17 +698,27 @@ def analyze_document(
     except Exception as e:
         text_content = f"[No se pudo parsear el archivo: {e}]"
 
-    # Evidence pipeline (schema-driven, VLM-capable, validated) with legacy fallback.
-    if USE_EVIDENCE_PIPELINE:
-        try:
-            from vera.extraction import extract as evidence_extract
-            analysis = evidence_extract(str(temp_path), file.filename, db,
+    # Extraction engine: the EXTERNAL Vera API (when VERA_EXTRACTION_MODE=vera) is the
+    # PRIMARY; Vela's own pipeline (evidence → legacy) is the fallback, and is used
+    # directly when Vera is disabled or unreachable. The fallback runs the exact same
+    # chain as before, so internal-mode behaviour is unchanged.
+    def _internal_extract():
+        if USE_EVIDENCE_PIPELINE:
+            try:
+                from vera.extraction import extract as evidence_extract
+                return evidence_extract(str(temp_path), file.filename, db,
                                         current_user.company_id, temp_id=temp_id)
-        except Exception as e:
-            logger.warning("Evidence pipeline failed, falling back to legacy: %s", e)
-            analysis = analyze_with_vera(text_content, file.filename, db)
-    else:
-        analysis = analyze_with_vera(text_content, file.filename, db)
+            except Exception as e:
+                logger.warning("Evidence pipeline failed, falling back to legacy: %s", e)
+                return analyze_with_vera(text_content, file.filename, db)
+        return analyze_with_vera(text_content, file.filename, db)
+
+    from modules.vera_connector import service as vera_connector
+    analysis = vera_connector.run_extraction(
+        text_content=text_content,
+        filename=file.filename,
+        internal_extractor=_internal_extract,
+    )
 
     # Duplicados
     warnings = analysis.get('warnings', [])
@@ -752,6 +770,8 @@ def analyze_document(
         "needs_review": analysis.get('needs_review', False),
         "run_id": analysis.get('run_id'),
         "evidence_pipeline": analysis.get('_evidence_pipeline', False),
+        # Which engine produced this: "vera" (external API) or "internal" (Vela pipeline).
+        "engine": analysis.get('_engine', 'internal'),
     }
 
 

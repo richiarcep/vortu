@@ -89,6 +89,39 @@ def resolve(queue_id: int, data: dict, db: Session = Depends(get_tenant_db),
     ), {"uid": admin.id, "now": now, "id": queue_id})
     db.commit()
 
+    # Feed the human correction back to the external Vera training flywheel
+    # (/v1/train). Best-effort and OFF unless VERA_TRAIN_ENABLED — never blocks resolve.
+    try:
+        from core.config import get_settings
+        _s = get_settings()
+        if _s.VERA_TRAIN_ENABLED and _s.VERA_API_URL and corrections:
+            from modules.vera_connector import service as _vera, mapping as _vmap
+            _text, _raw = "", {}
+            if document_id:
+                drow = db.execute(text("SELECT file_path, ai_result FROM documents WHERE id=:d"),
+                                  {"d": document_id}).fetchone()
+                if drow:
+                    try:
+                        _raw = (json.loads(drow[1]) or {}).get("extracted_data") or {} if drow[1] else {}
+                    except Exception:
+                        _raw = {}
+                    try:  # re-derive the document text from the stored file
+                        from pathlib import Path as _P
+                        from api.documentos import parse_file as _parse
+                        _p = _parse(drow[0], _P(drow[0]).suffix.lstrip("."))
+                        _text = _p if isinstance(_p, str) else json.dumps(_p, ensure_ascii=False, default=str)
+                    except Exception:
+                        _text = ""
+            _vera.submit_correction(
+                text=_text or json.dumps(_raw, ensure_ascii=False),
+                output=_vmap.corrections_to_train_output(corrections, _raw),
+                doc_type=(slug or "factura"),
+                source_ref=str(document_id) if document_id else None,
+                notes=(data or {}).get("notes"),
+            )
+    except Exception as e:
+        logger.warning("Vera /v1/train hook skipped: %s", e)
+
     return {"ok": True, "resolved": queue_id, "corrections_saved": len(corrections),
             "provider_cif": provider_cif,
             "note": "Las correcciones se aplicarán a futuros documentos de este proveedor."}

@@ -192,7 +192,19 @@ function ApprovalModal({ analysis, onApprove, onReject, onClose }) {
             </div>
             <div>
               <div style={{ fontSize: 16, fontWeight: 600, color: T.text, lineHeight: 1.2 }}>Análisis de Vera</div>
-              <div style={{ fontSize: 11.5, color: T.text4, marginTop: 3 }}>Revisa antes de añadir a memoria semántica</div>
+              <div style={{ fontSize: 11.5, color: T.text4, marginTop: 3, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span>Revisa antes de añadir a memoria semántica</span>
+                {analysis.engine && (
+                  <span title={analysis.engine === 'vera' ? 'Extraído por la API externa de Vera' : 'Extraído por el motor de Vela'} style={{
+                    fontSize: 9.5, fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase',
+                    padding: '1px 6px', borderRadius: 999,
+                    background: analysis.engine === 'vera' ? 'rgba(61,43,255,.10)' : T.sidebar,
+                    color: analysis.engine === 'vera' ? '#3D2BFF' : T.text4,
+                  }}>
+                    {analysis.engine === 'vera' ? 'Vera API' : 'Motor local'}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
           <button onClick={onClose} aria-label="Cerrar" style={{
@@ -848,6 +860,7 @@ export default function DocumentosPage() {
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [veraStatus, setVeraStatus] = useState(null)
 
   // Upload flow
   const [analyzing, setAnalyzing] = useState(false)
@@ -878,6 +891,11 @@ export default function DocumentosPage() {
         setDocs(d.documents || [])
       }
       if (sR.ok) setStats(await sR.json())
+      // Vera connector status (best-effort) — powers the connection pill.
+      try {
+        const vR = await fetch(`${API}/api/documentos/vera-status`, { headers: { Authorization: `Bearer ${t}` } })
+        if (vR.ok) setVeraStatus(await vR.json())
+      } catch {}
     } catch {}
     setLoading(false)
   }
@@ -999,9 +1017,22 @@ export default function DocumentosPage() {
         <PageHeader
           title="Documentos"
           subtitle={
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-              <FlagES size={11} />
-              España · {stats.total} documentos · Vera revisa cada uno antes de guardar
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <FlagES size={11} />
+                España · {stats.total} documentos · Vera revisa cada uno antes de guardar
+              </span>
+              {veraStatus?.enabled && (
+                <span title={`Extracción vía Vera API · modo: ${veraStatus.mode}${veraStatus.url ? ' · ' + veraStatus.url : ''}`} style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 5,
+                  fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 999,
+                  background: veraStatus.healthy ? 'rgba(16,185,129,.12)' : 'rgba(239,68,68,.12)',
+                  color: veraStatus.healthy ? '#10B981' : '#EF4444',
+                }}>
+                  <span style={{ width: 6, height: 6, borderRadius: 999, background: 'currentColor' }} />
+                  {veraStatus.healthy ? 'Vera API conectada' : 'Vera API sin conexión'}
+                </span>
+              )}
             </span>
           }
           tabs={docTabs}
