@@ -159,22 +159,28 @@ def execute_tool(db: Session, tool_name: str, tool_input: dict) -> dict:
             }
 
         elif tool_name == "list_tables":
-            rows = db.execute(text(
-                "SELECT name FROM sqlite_master WHERE type='table' "
-                "AND name NOT LIKE 'sqlite_%' ORDER BY name"
-            )).fetchall()
-            return {"tables": [r[0] for r in rows]}
+            # Portable across SQLite + Postgres (no sqlite_master).
+            from sqlalchemy import inspect as _sa_inspect
+            insp = _sa_inspect(db.get_bind())
+            tables = [t for t in insp.get_table_names() if not t.startswith("sqlite_")]
+            return {"tables": sorted(tables)}
 
         elif tool_name == "describe_table":
             t = tool_input.get("table_name", "").strip()
             if not re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', t):
                 return {"error": "Nombre de tabla inválido"}
-            rows = db.execute(text(f"PRAGMA table_info({t})")).fetchall()
+            # Portable column introspection (no PRAGMA).
+            from sqlalchemy import inspect as _sa_inspect
+            insp = _sa_inspect(db.get_bind())
+            if not insp.has_table(t):
+                return {"error": "Tabla no encontrada"}
+            pk = set((insp.get_pk_constraint(t) or {}).get("constrained_columns") or [])
             return {
                 "table": t,
                 "columns": [
-                    {"name": r[1], "type": r[2], "nullable": not r[3], "default": r[4], "pk": bool(r[5])}
-                    for r in rows
+                    {"name": c["name"], "type": str(c["type"]), "nullable": c.get("nullable", True),
+                     "default": c.get("default"), "pk": c["name"] in pk}
+                    for c in insp.get_columns(t)
                 ],
             }
 
@@ -407,6 +413,21 @@ def network_chat(
 # ──────────────────────────────────────────────────────────────────────
 # PULSO — métricas agregadas en tiempo real
 # ──────────────────────────────────────────────────────────────────────
+def _date_bounds() -> dict:
+    """Date boundaries computed in Python (portable) — replaces SQLite-only
+    date('now', ...) / datetime('now', ...) so the analytics queries also run on
+    Postgres. Comparing a timestamp column >= an ISO date string works on both."""
+    from datetime import timedelta
+    today = date.today()
+    return {
+        "b_today": today.isoformat(),
+        "b_month_start": today.replace(day=1).isoformat(),
+        "b_year_start": date(today.year, 1, 1).isoformat(),
+        "b_7d": (today - timedelta(days=7)).isoformat(),
+        "b_30d": (today - timedelta(days=30)).isoformat(),
+    }
+
+
 def get_pulso(db: Session) -> dict:
     """Métricas agregadas de TODA la red Vela."""
     today = date.today().isoformat()
@@ -416,25 +437,26 @@ def get_pulso(db: Session) -> dict:
         "SELECT plan, COUNT(*) FROM companies GROUP BY plan"
     )).fetchall()
 
+    B = _date_bounds()
     sales_today = float(db.execute(text(
-        "SELECT COALESCE(SUM(total), 0) FROM sales WHERE DATE(sale_date) = :d"
-    ), {"d": today}).scalar() or 0)
+        "SELECT COALESCE(SUM(total), 0) FROM sales WHERE DATE(sale_date) = :b_today"
+    ), B).scalar() or 0)
     sales_month = float(db.execute(text(
-        "SELECT COALESCE(SUM(total), 0) FROM sales WHERE DATE(sale_date) >= date('now', 'start of month')"
-    )).scalar() or 0)
+        "SELECT COALESCE(SUM(total), 0) FROM sales WHERE DATE(sale_date) >= :b_month_start"
+    ), B).scalar() or 0)
     sales_year = float(db.execute(text(
-        "SELECT COALESCE(SUM(total), 0) FROM sales WHERE DATE(sale_date) >= date('now', 'start of year')"
-    )).scalar() or 0)
+        "SELECT COALESCE(SUM(total), 0) FROM sales WHERE DATE(sale_date) >= :b_year_start"
+    ), B).scalar() or 0)
 
     top_companies = db.execute(text("""
         SELECT c.id, c.name, c.plan, c.sector, COALESCE(SUM(s.total), 0) as total
         FROM companies c
         LEFT JOIN sales s ON s.company_id = c.id
-          AND DATE(s.sale_date) >= date('now', 'start of year')
+          AND DATE(s.sale_date) >= :b_year_start
         GROUP BY c.id
         ORDER BY total DESC
         LIMIT 5
-    """)).fetchall()
+    """), B).fetchall()
 
     vera_stats = db.execute(text("""
         SELECT
@@ -443,40 +465,40 @@ def get_pulso(db: Session) -> dict:
           COALESCE(SUM(cost_estimated), 0) as cost,
           COUNT(DISTINCT company_id) as active_companies
         FROM vera_routing_logs
-        WHERE created_at >= datetime('now', '-7 days')
-    """)).fetchone()
+        WHERE created_at >= :b_7d
+    """), B).fetchone()
 
     active_companies = db.execute(text("""
         SELECT COUNT(DISTINCT company_id) FROM sales
-        WHERE DATE(sale_date) >= date('now', '-7 days')
-    """)).scalar() or 0
+        WHERE DATE(sale_date) >= :b_7d
+    """), B).scalar() or 0
 
     # NUEVO: Ventas por sector (YTD)
     by_sector = db.execute(text("""
         SELECT c.sector, COUNT(DISTINCT c.id) as companies, COALESCE(SUM(s.total), 0) as sales
         FROM companies c
         LEFT JOIN sales s ON s.company_id = c.id
-          AND DATE(s.sale_date) >= date('now', 'start of year')
+          AND DATE(s.sale_date) >= :b_year_start
         GROUP BY c.sector
         ORDER BY sales DESC
-    """)).fetchall()
+    """), B).fetchall()
 
     # NUEVO: Ventas por región (YTD)
     by_region = db.execute(text("""
         SELECT COALESCE(c.region, 'Sin asignar') as region, COUNT(DISTINCT c.id) as companies, COALESCE(SUM(s.total), 0) as sales
         FROM companies c
         LEFT JOIN sales s ON s.company_id = c.id
-          AND DATE(s.sale_date) >= date('now', 'start of year')
+          AND DATE(s.sale_date) >= :b_year_start
         GROUP BY c.region
         ORDER BY sales DESC
-    """)).fetchall()
+    """), B).fetchall()
 
     # NUEVO: Top proveedores cross-red (parsear de cost_entries.notes)
     cost_rows = db.execute(text("""
         SELECT notes, amount FROM cost_entries
         WHERE notes IS NOT NULL AND notes != ''
-          AND date >= date('now', 'start of year')
-    """)).fetchall()
+          AND date >= :b_year_start
+    """), B).fetchall()
     import re
     providers = {}
     for notes, amount in cost_rows:
@@ -535,14 +557,17 @@ def get_company_drilldown(db: Session, company_id: int) -> dict:
     if not company:
         return None
 
+    B = _date_bounds()
+    P = {**B, "cid": company_id}
+
     # Stats financieros YTD
     fin = db.execute(text("""
         SELECT
           COALESCE(SUM(CASE WHEN a.account_type='income' THEN je.credit-je.debit ELSE 0 END), 0) as ingresos,
           COALESCE(SUM(CASE WHEN a.account_type='expense' THEN je.debit-je.credit ELSE 0 END), 0) as gastos
         FROM journal_entries je JOIN accounts a ON a.id = je.account_id
-        WHERE je.company_id = :cid AND je.date >= date('now', 'start of year')
-    """), {"cid": company_id}).fetchone()
+        WHERE je.company_id = :cid AND je.date >= :b_year_start
+    """), P).fetchone()
 
     ingresos = float(fin[0] or 0)
     gastos = float(fin[1] or 0)
@@ -554,8 +579,8 @@ def get_company_drilldown(db: Session, company_id: int) -> dict:
           COALESCE(SUM(CASE WHEN a.account_type='income' THEN je.credit-je.debit ELSE 0 END), 0) as ingresos,
           COALESCE(SUM(CASE WHEN a.account_type='expense' THEN je.debit-je.credit ELSE 0 END), 0) as gastos
         FROM journal_entries je JOIN accounts a ON a.id = je.account_id
-        WHERE je.company_id = :cid AND je.date >= date('now', 'start of month')
-    """), {"cid": company_id}).fetchone()
+        WHERE je.company_id = :cid AND je.date >= :b_month_start
+    """), P).fetchone()
     ing_mes = float(fin_mes[0] or 0)
     gas_mes = float(fin_mes[1] or 0)
     margen_mes = round((ing_mes - gas_mes) / ing_mes * 100, 1) if ing_mes > 0 else 0
@@ -568,13 +593,13 @@ def get_company_drilldown(db: Session, company_id: int) -> dict:
           COALESCE(SUM(cost_estimated), 0) as cost,
           MAX(created_at) as last
         FROM vera_routing_logs
-        WHERE company_id = :cid AND created_at >= datetime('now', '-30 days')
-    """), {"cid": company_id}).fetchone()
+        WHERE company_id = :cid AND created_at >= :b_30d
+    """), P).fetchone()
 
     vera_7d = db.execute(text("""
         SELECT COUNT(*) FROM vera_routing_logs
-        WHERE company_id = :cid AND created_at >= datetime('now', '-7 days')
-    """), {"cid": company_id}).scalar() or 0
+        WHERE company_id = :cid AND created_at >= :b_7d
+    """), P).scalar() or 0
 
     users = db.execute(text("""
         SELECT id, email, full_name, is_admin, is_superadmin
@@ -588,9 +613,9 @@ def get_company_drilldown(db: Session, company_id: int) -> dict:
     recent_topics = db.execute(text("""
         SELECT module, COUNT(*) as n
         FROM vera_routing_logs
-        WHERE company_id = :cid AND created_at >= datetime('now', '-30 days')
+        WHERE company_id = :cid AND created_at >= :b_30d
         GROUP BY module ORDER BY n DESC LIMIT 5
-    """), {"cid": company_id}).fetchall()
+    """), P).fetchall()
 
     # NUEVO: Conversaciones recientes con su Vera (últimas 5)
     recent_chats = db.execute(text("""
