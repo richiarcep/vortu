@@ -50,6 +50,8 @@ class Settings(BaseSettings):
     NETWORK_PER_SESSION_USD_CAP: float = 5.0   # network-agent per-request ceiling
     REDIS_URL: str = ""                        # shared rate-limit store; in-memory fallback when empty
     TRUSTED_PROXY: bool = True                 # honour X-Forwarded-For (true behind Caddy/our proxy)
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 30        # rotating refresh-token lifetime
+    REFRESH_COOKIE_NAME: str = "vela_refresh"  # HttpOnly refresh-token cookie name
     model_config = {"env_file": ".env", "extra": "ignore"}
 
     @field_validator("SECRET_KEY")

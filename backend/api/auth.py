@@ -1,13 +1,16 @@
 import logging
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Response
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 from pydantic import BaseModel, EmailStr
 from typing import Optional
 from core.database import get_db
 from core.security import hash_password, verify_password, create_access_token
 from core.rate_limit import rate_limit, account_throttle
 from core.audit import audit_event
+from core import refresh as refresh_service
+from core.cookies import set_refresh_cookie, clear_refresh_cookie, REFRESH_COOKIE_NAME
 from models.user import User, Company
 
 logger = logging.getLogger("vera.auth")
@@ -104,6 +107,7 @@ def register(data: RegisterRequest, db: Session = Depends(get_db)):
 )
 def login(
     request: Request,
+    response: Response,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db)
 ):
@@ -171,18 +175,80 @@ def login(
     plan_id = sub.plan_id if sub else "starter"
     token = create_access_token(data={"sub": str(user.id), "is_admin": user.is_admin, "plan_id": plan_id,
                                        "tv": getattr(user, "token_version", 0) or 0})
+    # Issue a rotating refresh token in an HttpOnly cookie (prod) ALONGSIDE the
+    # body access token (which the bearer/localStorage dev flow keeps using).
+    _rt = refresh_service.issue(db, user, request=request)
+    set_refresh_cookie(response, _rt, request=request)
     audit_event(db, "login_success", actor_user_id=user.id, actor_email=user.email,
                 company_id=user.company_id, request=request, detail={"twofa": False})
     return {"access_token": token, "token_type": "bearer", "requires_2fa": False}
 
 
+@router.post(
+    "/refresh",
+    response_model=TokenResponse,
+    dependencies=[Depends(rate_limit(30, 60, "refresh"))],
+)
+def refresh(request: Request, response: Response, db: Session = Depends(get_db)):
+    """Exchange the HttpOnly refresh cookie for a fresh short access token,
+    rotating the refresh token. Detects reuse of a revoked token (theft) and
+    kills the whole token family + every access token for that user."""
+    presented = request.cookies.get(REFRESH_COOKIE_NAME)
+    if not presented:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="No refresh token")
+
+    # Resolve the owning user from the (still-valid) token row before validating,
+    # so we can compare token_version and bump it on reuse.
+    import hashlib
+    row = db.execute(text(
+        "SELECT user_id FROM refresh_tokens WHERE token_hash = :h"
+    ), {"h": hashlib.sha256(presented.encode()).hexdigest()}).first()
+    if not row:
+        clear_refresh_cookie(response)
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
+    user = db.query(User).filter(User.id == row[0]).first()
+    if not user or not user.is_active:
+        clear_refresh_cookie(response)
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
+
+    try:
+        new_rt = refresh_service.consume(db, presented, user, request=request)
+    except refresh_service.RefreshReuseError:
+        # Theft: family already revoked inside consume(); also bump token_version
+        # to invalidate every access token, and force a clean re-login.
+        user.token_version = (getattr(user, "token_version", 0) or 0) + 1
+        db.commit()
+        clear_refresh_cookie(response)
+        audit_event(db, "refresh_reuse_detected", actor_user_id=user.id, actor_email=user.email,
+                    company_id=user.company_id, request=request)
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session revoked, please log in again")
+    except refresh_service.RefreshInvalidError:
+        clear_refresh_cookie(response)
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token expired or invalid")
+
+    if new_rt is not None:
+        set_refresh_cookie(response, new_rt, request=request)  # rotated
+    # (new_rt is None on a benign concurrent-refresh race → keep the existing cookie)
+
+    from models.billing import Subscription
+    sub = db.query(Subscription).filter(Subscription.user_id == user.id).first()
+    plan_id = sub.plan_id if sub else "starter"
+    token = create_access_token(data={"sub": str(user.id), "is_admin": user.is_admin, "plan_id": plan_id,
+                                       "tv": getattr(user, "token_version", 0) or 0})
+    audit_event(db, "refresh_success", actor_user_id=user.id, actor_email=user.email,
+                company_id=user.company_id, request=request)
+    return {"access_token": token, "token_type": "bearer", "requires_2fa": False}
+
+
 @router.post("/logout")
-def logout(request: Request, db: Session = Depends(get_db),
+def logout(request: Request, response: Response, db: Session = Depends(get_db),
            current_user: User = Depends(__import__('core.security', fromlist=['get_current_user']).get_current_user)):
-    """Server-side logout: bump token_version so EVERY outstanding token for this
-    user stops validating (real revocation, not just clearing client storage)."""
+    """Server-side logout: bump token_version so EVERY outstanding access token
+    stops validating, revoke all refresh tokens, and clear the cookie."""
     current_user.token_version = (getattr(current_user, "token_version", 0) or 0) + 1
     db.commit()
+    refresh_service.revoke_all_for_user(db, current_user.id, reason="logout")
+    clear_refresh_cookie(response)
     audit_event(db, "logout", actor_user_id=current_user.id, actor_email=current_user.email,
                 company_id=current_user.company_id, request=request)
     return {"ok": True}

@@ -178,6 +178,32 @@ def ensure_runtime_schema():
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_audit_actor ON security_audit_log (actor_email)"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_audit_ts ON security_audit_log (ts)"))
 
+        # Rotating, revocable refresh tokens (core/refresh.py). Stored as a sha256
+        # hash; family_id groups a rotation chain for reuse-detection; token_version
+        # ties a token to the user's revocation counter. Portable SQLite/Postgres.
+        _rt_pk = "id SERIAL PRIMARY KEY" if engine.dialect.name == "postgresql" else "id INTEGER PRIMARY KEY AUTOINCREMENT"
+        conn.execute(text(f"""
+            CREATE TABLE IF NOT EXISTS refresh_tokens (
+                {_rt_pk},
+                jti TEXT UNIQUE NOT NULL,
+                family_id TEXT NOT NULL,
+                user_id INTEGER NOT NULL,
+                token_hash TEXT NOT NULL,
+                token_version INTEGER NOT NULL DEFAULT 0,
+                issued_at TEXT,
+                expires_at TEXT,
+                revoked INTEGER NOT NULL DEFAULT 0,
+                revoked_at TEXT,
+                revoked_reason TEXT,
+                replaced_by_jti TEXT,
+                ip TEXT,
+                user_agent TEXT
+            )
+        """))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_refresh_user ON refresh_tokens (user_id)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_refresh_family ON refresh_tokens (family_id)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_refresh_hash ON refresh_tokens (token_hash)"))
+
         # Estado temporal del flujo documentos analyze→confirm. Antes vivía en un
         # dict global en memoria (se rompía con >1 worker: /confirm caía en otro
         # proceso → "documento caducado"). Persistido aquí (portable SQLite/PG).

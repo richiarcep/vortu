@@ -5,7 +5,7 @@ import pyotp
 import qrcode
 import io
 import base64
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from datetime import datetime
@@ -110,14 +110,22 @@ def disable_2fa(
 def verify_login_2fa(
     body: VerifyRequest,
     request: Request,
+    response: Response,
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db),
 ):
-    """Verify 2FA during login. Exchanges temp token for full token."""
+    """Verify 2FA during login. Exchanges the short-lived TEMP token for a full
+    session (body access token + refresh cookie)."""
     from core.security import decode_token, create_access_token
-    from fastapi.security import OAuth2PasswordBearer
+    from core import refresh as refresh_service
+    from core.cookies import set_refresh_cookie
 
     payload = decode_token(token)
+    # Positively assert this is a 2FA temp token: it must carry requires_2fa=True
+    # and must NOT be a full-session token (which carries plan_id/tv). This closes
+    # the cosmetic-scoping hole where any valid token was accepted at the exchange.
+    if payload.get("requires_2fa") is not True or "tv" in payload or "plan_id" in payload:
+        raise HTTPException(status_code=401, detail="Token de 2FA inválido")
     user_id = payload.get("sub")
 
     if str(user_id).isdigit():
@@ -127,6 +135,8 @@ def verify_login_2fa(
 
     if not user or not user.totp_secret:
         raise HTTPException(status_code=400, detail="Usuario no encontrado")
+    if not getattr(user, "is_active", True):
+        raise HTTPException(status_code=403, detail="Account is disabled")
 
     import pyotp
     totp = pyotp.TOTP(user.totp_secret)
@@ -140,6 +150,8 @@ def verify_login_2fa(
         plan_id = sub.plan_id if sub else "starter"
         full_token = create_access_token(data={"sub": str(user.id), "is_admin": user.is_admin, "plan_id": plan_id,
                                                 "tv": getattr(user, "token_version", 0) or 0})
+        _rt = refresh_service.issue(db, user, request=request)
+        set_refresh_cookie(response, _rt, request=request)
         audit_event(db, "login_success", actor_user_id=user.id, actor_email=user.email,
                     company_id=user.company_id, request=request, detail={"twofa": True})
         return {"access_token": full_token, "token_type": "bearer", "verified": True}
