@@ -48,6 +48,8 @@ class Settings(BaseSettings):
     DB_STATEMENT_TIMEOUT_S: int = 30           # hard per-statement execution timeout
     NETWORK_DAILY_USD_CAP: float = 25.0        # network-agent per-super-admin daily ceiling
     NETWORK_PER_SESSION_USD_CAP: float = 5.0   # network-agent per-request ceiling
+    REDIS_URL: str = ""                        # shared rate-limit store; in-memory fallback when empty
+    TRUSTED_PROXY: bool = True                 # honour X-Forwarded-For (true behind Caddy/our proxy)
     model_config = {"env_file": ".env", "extra": "ignore"}
 
     @field_validator("SECRET_KEY")

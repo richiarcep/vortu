@@ -6,7 +6,7 @@ from pydantic import BaseModel, EmailStr
 from typing import Optional
 from core.database import get_db
 from core.security import hash_password, verify_password, create_access_token
-from core.rate_limit import rate_limit
+from core.rate_limit import rate_limit, account_throttle
 from core.audit import audit_event
 from models.user import User, Company
 
@@ -108,6 +108,11 @@ def login(
     db: Session = Depends(get_db)
 ):
     """Login with email and password, returns a JWT token."""
+
+    # Per-account throttle (IP-independent): blunts credential stuffing that
+    # rotates source IPs against one account. The IP-keyed rate_limit dependency
+    # above handles the per-source dimension.
+    account_throttle(form_data.username, max_calls=10, window_seconds=300, scope="login-acct")
 
     user = db.query(User).filter(User.email == form_data.username).first()
 

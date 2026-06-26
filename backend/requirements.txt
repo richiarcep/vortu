@@ -53,6 +53,9 @@ qrcode==8.2
 # ── Scheduler ───────────────────────────────────────────────────────────────
 APScheduler==3.11.2
 
+# ── Rate limiting (shared store across workers; in-memory fallback if unset) ──
+redis==5.2.1
+
 # ── Memory stores (vector / graph) ──────────────────────────────────────────
 chromadb==1.5.9
 neo4j==6.2.0
