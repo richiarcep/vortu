@@ -47,6 +47,18 @@ sync_code() {
     --exclude '*.db' --exclude '*.db-wal' --exclude '*.db-shm' --exclude '*.sqlite' \
     --exclude 'uploads/' --exclude 'payslips/' --exclude 'reports/' \
     "$HERE/" "$SERVER:$REMOTE_DIR/"
+
+  # Frontend → sibling dir on the server. The compose 'frontend' build context is
+  # ../vela-frontend (relative to /opt/vela-backend). node_modules/.next are rebuilt
+  # inside Docker, so they're excluded (package-lock.json IS synced for `npm ci`).
+  local FE_REMOTE="${REMOTE_DIR%/*}/vela-frontend"
+  say "Syncing frontend → $SERVER:$FE_REMOTE …"
+  "${SSH[@]}" "mkdir -p $FE_REMOTE"
+  rsync -az --delete \
+    -e 'ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new' \
+    --exclude '.env' --exclude '.env.*' \
+    --exclude '.git/' --exclude 'node_modules/' --exclude '.next/' --exclude '*.log' \
+    "$HERE/../frontend/" "$SERVER:$FE_REMOTE/"
 }
 
 ensure_env() {

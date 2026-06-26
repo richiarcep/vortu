@@ -63,6 +63,19 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  # Frontend (Next.js 16 standalone). Built from the synced ../vela-frontend tree
+  # (deploy.sh syncs it next to the backend). NEXT_PUBLIC_* are inlined at BUILD time
+  # → same-origin behind Caddy so the HttpOnly refresh cookie works. Change
+  # PUBLIC_BASE_URL in .env when you add a real domain, then redeploy (rebuilds it).
+  frontend:
+    build:
+      context: ../vela-frontend
+      args:
+        NEXT_PUBLIC_API_URL: ${PUBLIC_BASE_URL:-https://167-233-199-102.sslip.io}
+        NEXT_PUBLIC_DEMO_MODE: ${DEMO_MODE:-1}
+    expose: ["3000"]
+    restart: unless-stopped
+
   caddy:
     image: caddy:2-alpine
     ports:
@@ -72,7 +85,7 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data       # persists the Let's Encrypt cert across restarts
       - caddy_config:/config
-    depends_on: [app]
+    depends_on: [app, frontend]
     restart: unless-stopped
 
 volumes:

@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import JurisdictionGuard from "@/components/JurisdictionGuard";
 import TokenRefresher from "@/components/TokenRefresher";
+import DemoBadge from "@/components/DemoBadge";
 import { ThemeProvider } from "@/components/ui/tokens";
 
 export const metadata: Metadata = {
@@ -36,6 +37,7 @@ export default function RootLayout({
           <JurisdictionGuard>
             {children}
           </JurisdictionGuard>
+          <DemoBadge />
         </ThemeProvider>
       </body>
     </html>
