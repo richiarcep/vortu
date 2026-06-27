@@ -253,12 +253,18 @@ def handle_webhook(db, payload, sig_header):
             finally:
                 wdb.close()
         billing_event.processed = True
+        db.commit()
+        return {"status": "processed"}
     except Exception as e:
+        # NO confirmamos la idempotencia (rollback) y devolvemos error → Stripe REINTENTA.
+        # Tragar el error + 200 dejaría un pago/suscripción sin efecto y SIN recuperación
+        # (la fila de idempotencia bloquearía todo reintento). Los handlers son idempotentes
+        # (upsert por user_id / checks de estado), así que reintentar es seguro.
+        db.rollback()
         import traceback
         print(f"Webhook error [{event['type']}]: {e}")
         traceback.print_exc()
-    db.commit()
-    return {"status": "processed"}
+        return {"error": f"webhook handler failed: {e}"}
 
 
 def handle_connect_webhook(db, payload, sig_header):
