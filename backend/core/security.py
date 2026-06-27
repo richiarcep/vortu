@@ -211,7 +211,14 @@ def get_admin_user(
         user = db.query(User).filter(User.id == int(user_id)).first()
     else:
         user = db.query(User).filter(User.email == str(user_id)).first()
-    if user is None or not getattr(user, "is_superadmin", False):
+    # Super-admin = columna is_superadmin O email en la allowlist por env
+    # (SUPERADMIN_EMAILS, separados por coma): concede acceso de operador de
+    # plataforma sin escribir en la DB. Esta es la ÚNICA puerta al back-office.
+    import os as _os
+    _allow = {e.strip().lower() for e in _os.getenv("SUPERADMIN_EMAILS", "").split(",") if e.strip()}
+    _is_super = user is not None and (
+        bool(getattr(user, "is_superadmin", False)) or (user.email or "").lower() in _allow)
+    if not _is_super:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acceso solo para administradores de plataforma de Vela")
     return user
 

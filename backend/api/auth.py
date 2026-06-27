@@ -68,6 +68,7 @@ class UserResponse(BaseModel):
     email: str
     full_name: str
     is_admin: bool
+    is_superadmin: bool = False   # operador de plataforma (col is_superadmin o allowlist por env)
     country: Optional[str] = None
     # Moneda derivada del país de la empresa (get_country_info) — para que el
     # frontend formatee el dinero del negocio en la moneda de cada país.
@@ -164,7 +165,7 @@ def login(
     # Per-account throttle (IP-independent): blunts credential stuffing that
     # rotates source IPs against one account. The IP-keyed rate_limit dependency
     # above handles the per-source dimension.
-    account_throttle(form_data.username, max_calls=10, window_seconds=300, scope="login-acct")
+    account_throttle(form_data.username, max_calls=10, window_seconds=300, scope="login-acct", request=request)
 
     user = db.query(User).filter(User.email == form_data.username).first()
 
@@ -312,13 +313,17 @@ def get_me(db: Session = Depends(get_db),
     # otherwise user.company is None and country comes back null.
     set_tenant_context(db, user.company_id)
     from country.registry import get_country_info
+    import os as _os
     country = user.company.country if user.company else None
     info = get_country_info(country) if country else None
+    _allow = {e.strip().lower() for e in _os.getenv("SUPERADMIN_EMAILS", "").split(",") if e.strip()}
+    _is_super = bool(getattr(user, "is_superadmin", False)) or (user.email or "").lower() in _allow
     return {
         "id": user.id,
         "email": user.email,
         "full_name": user.full_name,
         "is_admin": user.is_admin,
+        "is_superadmin": _is_super,
         "country": country,
         "currency": (info or {}).get("currency"),
         "symbol": (info or {}).get("symbol"),

@@ -40,6 +40,62 @@ def _pick_client(db, quality: str, need_vision: bool):
     return factory.get("claude") or factory.get("claude-haiku")
 
 
+import os as _os
+
+# Topes de coste de IA (env). 0 = sin tope.
+_AI_DAILY_TOKEN_CAP = int(_os.getenv("AI_DAILY_TOKEN_CAP", "0") or "0")   # presupuesto diario global de tokens
+_AI_MAX_TOKENS = int(_os.getenv("AI_MAX_TOKENS_PER_CALL", "0") or "0")    # tope de max_tokens por llamada
+
+_redis_client = None
+_redis_init = False
+
+
+def _get_redis():
+    global _redis_client, _redis_init
+    if _redis_init:
+        return _redis_client
+    _redis_init = True
+    url = _os.getenv("REDIS_URL", "")
+    if url:
+        try:
+            import redis
+            _redis_client = redis.Redis.from_url(url, socket_timeout=0.25, socket_connect_timeout=0.25)
+            _redis_client.ping()
+        except Exception:
+            _redis_client = None
+    return _redis_client
+
+
+def _budget_exceeded() -> bool:
+    """True si ya se superó el tope DIARIO de tokens de IA (coste acotado, vía Redis)."""
+    if _AI_DAILY_TOKEN_CAP <= 0:
+        return False
+    r = _get_redis()
+    if r is None:
+        return False
+    try:
+        from datetime import date
+        used = int(r.get(f"ai:tokens:{date.today().isoformat()}") or 0)
+        return used >= _AI_DAILY_TOKEN_CAP
+    except Exception:
+        return False
+
+
+def _budget_add(tokens: int) -> None:
+    if _AI_DAILY_TOKEN_CAP <= 0 or not tokens:
+        return
+    r = _get_redis()
+    if r is None:
+        return
+    try:
+        from datetime import date
+        k = f"ai:tokens:{date.today().isoformat()}"
+        r.incrby(k, int(tokens))
+        r.expire(k, 172800)
+    except Exception:
+        pass
+
+
 def ask(db, company_id, *, module: str = "general", system: str = "",
         user: str = "", max_tokens: int = 512, quality: str = "balanced",
         images: list = None, temperature: float = 0.4, fallback: str = "") -> str:
@@ -61,9 +117,18 @@ def ask(db, company_id, *, module: str = "general", system: str = "",
             logger.warning("vera.ask [%s]: sin cliente LLM disponible", module)
             return fallback
 
+        # Tope de gasto: si se superó el presupuesto DIARIO de tokens, degradar a
+        # `fallback` en vez de seguir gastando (límite de coste de la key).
+        if _budget_exceeded():
+            logger.warning("vera.ask [%s]: tope diario de tokens IA alcanzado → fallback", module)
+            return fallback
+        if _AI_MAX_TOKENS > 0:
+            max_tokens = min(max_tokens, _AI_MAX_TOKENS)
+
         req = LLMRequest(system_prompt=system, user_message=user, max_tokens=max_tokens,
                          temperature=temperature, images=images)
         resp = client.generate(req)
+        _budget_add((getattr(resp, "tokens_input", 0) or 0) + (getattr(resp, "tokens_output", 0) or 0))
 
         if company_id is not None:
             try:
