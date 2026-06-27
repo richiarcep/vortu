@@ -242,7 +242,16 @@ def handle_webhook(db, payload, sig_header):
         elif event["type"] == "invoice.payment_succeeded":
             _handle_payment_succeeded(db, obj)
         elif event["type"] == "account.updated":
-            _handle_connect_account_updated(db, obj)
+            # companies RLS'd por id y aquí no hay tenant en contexto → worker (BYPASSRLS),
+            # igual que handle_connect_webhook. (Lo normal es que account.updated llegue por
+            # /api/connect/webhook; esto cubre el caso de que también se enrute aquí.)
+            from core.database import worker_session
+            wdb = worker_session()
+            try:
+                _handle_connect_account_updated(wdb, obj)
+                wdb.commit()
+            finally:
+                wdb.close()
         billing_event.processed = True
     except Exception as e:
         import traceback
@@ -282,12 +291,6 @@ def handle_connect_webhook(db, payload, sig_header):
     # Idempotencia (billing_events va por stripe_event_id, NO es tenant-scoped → sin RLS).
     if db.query(BillingEvent).filter(BillingEvent.stripe_event_id == event["id"]).first():
         return {"status": "already_processed"}
-    db.add(BillingEvent(
-        stripe_event_id=event["id"],
-        event_type=event["type"],
-        data=json.dumps(event["data"]["object"], default=str),
-    ))
-    db.commit()
 
     etype = event["type"]
     obj = _stripe_to_dict(event["data"]["object"])
@@ -314,10 +317,22 @@ def handle_connect_webhook(db, payload, sig_header):
             if temp_id:
                 _finalize_pos_sale(db, temp_id, payment_intent=obj.get("payment_intent"))
     except Exception as e:
+        # NO marcamos idempotencia → devolvemos error para que Stripe REINTENTE. Si
+        # tragáramos el error + 200, un cobro real quedaría SIN venta y sin recuperación
+        # (la fila de idempotencia bloquearía todo reintento). El efecto es idempotente
+        # (pending_pos_sales.status='paid' + idempotency_key en persist_sale).
         import traceback
         print(f"Connect webhook error [{etype}]: {e}")
         traceback.print_exc()
+        return {"error": f"connect handler failed: {e}"}
 
+    # Efecto OK → AHORA sí registramos el evento como procesado (idempotencia).
+    db.add(BillingEvent(
+        stripe_event_id=event["id"],
+        event_type=event["type"],
+        data=json.dumps(event["data"]["object"], default=str),
+    ))
+    db.commit()
     return {"status": "processed", "connected_account": connected_account, "type": etype}
 
 
@@ -542,9 +557,16 @@ def _handle_subscription_deleted(db, stripe_sub):
     if meta.get("product") == "vera_plus" and meta.get("vela_company_id"):
         company_id = int(meta["vela_company_id"])
     elif sub_id:
-        row = db.execute(text(
-            "SELECT id FROM companies WHERE vera_plus_subscription_id = :sub"
-        ), {"sub": sub_id}).fetchone()
+        # Lookup cross-tenant por subscription id (no conocemos company_id) → BYPASSRLS,
+        # si no, bajo RLS la SELECT sobre companies vería 0 filas.
+        from core.database import worker_session
+        wdb = worker_session()
+        try:
+            row = wdb.execute(text(
+                "SELECT id FROM companies WHERE vera_plus_subscription_id = :sub"
+            ), {"sub": sub_id}).fetchone()
+        finally:
+            wdb.close()
         if row:
             company_id = row[0]
     if company_id:
@@ -717,6 +739,10 @@ def create_vera_plus_checkout(db, user_id, email, name, company_id):
 def activate_vera_plus(db, company_id, stripe_subscription_id):
     """Activa Vera Plus para una empresa (companies.plan = 'plus')."""
     from sqlalchemy import text
+    from core.security import set_tenant_context
+    # companies está RLS'd por id; el webhook es pre-tenant (sin GUC) → sin esto el
+    # UPDATE afectaría 0 filas en silencio (cliente paga y nunca recibe Vera Plus).
+    set_tenant_context(db, company_id)
     db.execute(text(
         "UPDATE companies SET plan = 'plus', vera_plus_subscription_id = :sub WHERE id = :cid"
     ), {"cid": company_id, "sub": stripe_subscription_id})
@@ -744,6 +770,10 @@ def activate_vera_plus(db, company_id, stripe_subscription_id):
 def deactivate_vera_plus(db, company_id):
     """Desactiva Vera Plus (cuando cancela suscripción)."""
     from sqlalchemy import text
+    from core.security import set_tenant_context
+    # companies RLS'd por id; sin GUC el UPDATE afecta 0 filas → la empresa conservaría
+    # plan='plus' tras cancelar (fuga de entitlement).
+    set_tenant_context(db, company_id)
     db.execute(text(
         "UPDATE companies SET plan = 'base', vera_plus_subscription_id = NULL WHERE id = :cid"
     ), {"cid": company_id})

@@ -9,6 +9,7 @@ Document for reference. Unmapped docs still fall through to the user's review.
 """
 from __future__ import annotations
 
+import re
 from typing import Any, Optional
 
 # Vera tag (doc type slug) → Vela document_type.
@@ -78,6 +79,32 @@ def _flatten_scalars(obj: Any, out: Optional[dict] = None) -> dict:
     return out
 
 
+def _parse_amount(v):
+    """Parse a possibly locale/currency-formatted amount → float, or None.
+    Handles '1.234,56' (es-ES), '$1,234.56' (en-US), '1234,56', and plain numbers.
+    Downstream accounting (float() in build_asiento_proposal, _num in execute_sql_action)
+    only does a single comma→dot swap, so grouped/currency forms would record 0 — we
+    normalize here so the expense + asiento get the real amount."""
+    if v is None or v == "":
+        return None
+    if isinstance(v, (int, float)):
+        return float(v)
+    s = re.sub(r"[^0-9.,\-]", "", str(v))   # drop currency symbols, letters, spaces
+    if not s or s in ("-", ".", ","):
+        return None
+    if "." in s and "," in s:
+        # the LAST separator is the decimal point; the other is grouping
+        s = (s.replace(".", "").replace(",", ".") if s.rfind(",") > s.rfind(".")
+             else s.replace(",", ""))
+    elif "," in s:
+        # only comma → decimal if 1-2 trailing digits, else thousands grouping
+        s = s.replace(",", ".") if len(s.rsplit(",", 1)[1]) in (1, 2) else s.replace(",", "")
+    try:
+        return float(s)
+    except ValueError:
+        return None
+
+
 def vera_to_analysis(vera_resp: dict, *, filename: str = "", fallback_text: str = "") -> dict:
     """Map a Vera /v1/extract response into Vela's `analysis` dict."""
     output = vera_resp.get("output") or {}
@@ -92,6 +119,14 @@ def vera_to_analysis(vera_resp: dict, *, filename: str = "", fallback_text: str 
             if a in flat and flat[a] not in (None, ""):
                 extracted[canonical] = flat[a]
                 break
+
+    # Normaliza los importes (Vera puede devolver '1.234,56' / '$1,234.56') a número,
+    # para que el asiento (float()) y el gasto (_num) no los registren como 0.
+    for _k in ("importe", "total_impuestos"):
+        if _k in extracted:
+            _n = _parse_amount(extracted[_k])
+            if _n is not None:
+                extracted[_k] = _n
 
     tag = (vera_resp.get("tag") or "").lower()
     importe = extracted.get("importe")

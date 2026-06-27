@@ -150,6 +150,18 @@ def _rls_preflight():
         return
     privileged = is_super in ("on", "true", "t", "1", "yes") or bool(bypass)
     if settings.MANAGE_SCHEMA:
+        # Owner/build mode — a privileged role is expected. But if the operator left
+        # RLS_ENABLED=true here (the .env.example default) and never switched to vela_app,
+        # the app serves traffic ADVERTISING isolation while RLS is inert (superuser/owner
+        # bypasses it; policies may not even be applied yet). Make that loud — silence here
+        # was how a "RLS on" deploy could ship with zero DB-level isolation.
+        if privileged:
+            log.warning(
+                "RLS_ENABLED=true but MANAGE_SCHEMA=true and the DB role is privileged "
+                "(superuser/bypassrls) → RLS is NOT enforced; app-layer company_id filters "
+                "are the ONLY tenant isolation. To enforce it, switch DATABASE_URL to "
+                "vela_app + MANAGE_SCHEMA=false and apply the policies. See docs/RLS.md."
+            )
         return  # owner/build mode — a privileged role is expected here
     if privileged:
         raise RuntimeError(
