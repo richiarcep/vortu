@@ -183,11 +183,15 @@ def get_insights(
         force = False
 
     if not force:
-        cache_row = db.execute(text("""
-            SELECT content_json, generated_at, tokens_used
-            FROM vera_insights_cache
-            WHERE company_id = :cid AND modulo = :m
-        """), {"cid": company_id, "m": modulo}).fetchone()
+        try:
+            cache_row = db.execute(text("""
+                SELECT content_json, generated_at, tokens_used
+                FROM vera_insights_cache
+                WHERE company_id = :cid AND modulo = :m
+            """), {"cid": company_id, "m": modulo}).fetchone()
+        except Exception:
+            db.rollback()   # vera_insights_cache puede no existir en staging → no envenenar la transacción RLS
+            cache_row = None
 
         if cache_row:
             try:
@@ -247,6 +251,7 @@ def get_insights(
         })
         db.commit()
     except Exception as e:
+        db.rollback()   # cache no disponible (tabla ausente / datetime('now') no portable) → no bloquear la respuesta
         print("[insights cache] error guardando:", e)
 
     payload["generated_at"] = datetime.now().isoformat()
