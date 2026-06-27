@@ -3,10 +3,10 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request, Response
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from sqlalchemy import text
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, field_validator
 from typing import Optional
 from core.database import get_db
-from core.security import hash_password, verify_password, create_access_token, get_tenant_db, set_tenant_context
+from core.security import hash_password, verify_password, create_access_token, get_tenant_db, set_tenant_context, get_current_user
 from core.rate_limit import rate_limit, account_throttle
 from core.audit import audit_event
 from core import refresh as refresh_service
@@ -17,6 +17,29 @@ logger = logging.getLogger("vera.auth")
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
+# Contraseñas obviamente débiles que nunca deben permitirse (lista mínima; el
+# mínimo de longitud cubre el resto). Ampliable con una comprobación HIBP.
+_COMMON_PASSWORDS = {
+    "password", "password1", "12345678", "123456789", "1234567890",
+    "qwerty123", "11111111", "00000000", "contraseña", "iloveyou",
+    "admin123", "welcome1", "velademo",
+}
+
+
+def check_password_policy(pw: str) -> None:
+    """Server-side password strength gate (raises ValueError → 422 vía Pydantic).
+    Mínimo 8 caracteres, no una contraseña trivialmente común, algo de variedad.
+    Antes NO había validación en el servidor: el >=8 vivía solo en el navegador y
+    se saltaba con un POST directo (se podía registrar la contraseña "1")."""
+    if not pw or len(pw) < 8:
+        raise ValueError("La contraseña debe tener al menos 8 caracteres")
+    if len(pw) > 200:
+        raise ValueError("La contraseña es demasiado larga (máx. 200)")
+    if pw.lower() in _COMMON_PASSWORDS:
+        raise ValueError("Esa contraseña es demasiado común, elige otra")
+    if len(set(pw)) < 4:
+        raise ValueError("La contraseña es demasiado simple")
+
 
 # ── Request / Response schemas ────────────────────────────────────────────────
 
@@ -26,6 +49,12 @@ class RegisterRequest(BaseModel):
     password: str
     company_name: str
     country: Optional[str] = None
+
+    @field_validator("password")
+    @classmethod
+    def _password_policy(cls, v):
+        check_password_policy(v)
+        return v
 
 
 class TokenResponse(BaseModel):
@@ -40,6 +69,11 @@ class UserResponse(BaseModel):
     full_name: str
     is_admin: bool
     country: Optional[str] = None
+    # Moneda derivada del país de la empresa (get_country_info) — para que el
+    # frontend formatee el dinero del negocio en la moneda de cada país.
+    currency: Optional[str] = None      # EUR | MXN | USD | …
+    symbol: Optional[str] = None        # € | $ | S/
+    locale: Optional[str] = None        # es-ES | es-MX | es-SV …
 
     class Config:
         from_attributes = True
@@ -47,7 +81,8 @@ class UserResponse(BaseModel):
 
 # ── Routes ────────────────────────────────────────────────────────────────────
 
-@router.post("/register", response_model=UserResponse, status_code=201)
+@router.post("/register", response_model=UserResponse, status_code=201,
+             dependencies=[Depends(rate_limit(5, 300, "register"))])
 def register(data: RegisterRequest, db: Session = Depends(get_db)):
     """Register a new company and its first admin user."""
 
@@ -276,12 +311,18 @@ def get_me(db: Session = Depends(get_db),
     # Bind the tenant so the RLS'd companies row (user.company) loads under RLS;
     # otherwise user.company is None and country comes back null.
     set_tenant_context(db, user.company_id)
+    from country.registry import get_country_info
+    country = user.company.country if user.company else None
+    info = get_country_info(country) if country else None
     return {
         "id": user.id,
         "email": user.email,
         "full_name": user.full_name,
         "is_admin": user.is_admin,
-        "country": user.company.country if user.company else None,
+        "country": country,
+        "currency": (info or {}).get("currency"),
+        "symbol": (info or {}).get("symbol"),
+        "locale": (info or {}).get("language"),
     }
 
 @router.post("/set-country")
@@ -315,3 +356,44 @@ def set_country(
         "country": company.country,
         "company_id": company.id,
     }
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def _password_policy(cls, v):
+        check_password_policy(v)
+        return v
+
+
+@router.post("/change-password", dependencies=[Depends(rate_limit(5, 300, "change-password"))])
+def change_password(
+    data: ChangePasswordRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Cambia la contraseña del usuario autenticado: verifica la actual, valida la
+    nueva (misma política), re-hashea, y bumpea token_version + revoca los refresh
+    tokens para cerrar todas las sesiones existentes. Antes este flujo NO existía
+    (el botón de ajustes solo mostraba un toast)."""
+    if not verify_password(data.current_password, current_user.hashed_password):
+        audit_event(db, "password_change_failed", actor_user_id=current_user.id,
+                    actor_email=current_user.email, company_id=current_user.company_id, request=request)
+        raise HTTPException(status_code=400, detail="La contraseña actual no es correcta")
+    if data.new_password == data.current_password:
+        raise HTTPException(status_code=400, detail="La nueva contraseña debe ser distinta de la actual")
+    current_user.hashed_password = hash_password(data.new_password)
+    # Invalida todos los access tokens vivos (tv) y revoca los refresh tokens.
+    current_user.token_version = (getattr(current_user, "token_version", 0) or 0) + 1
+    db.commit()
+    try:
+        refresh_service.revoke_all_for_user(db, current_user.id, reason="password_change")
+    except Exception as e:
+        logger.warning("revoke refresh tokens on password change failed: %s", e)
+    audit_event(db, "password_changed", actor_user_id=current_user.id,
+                actor_email=current_user.email, company_id=current_user.company_id, request=request)
+    return {"ok": True, "mensaje": "Contraseña actualizada. Vuelve a iniciar sesión."}

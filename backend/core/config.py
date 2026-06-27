@@ -23,7 +23,10 @@ class Settings(BaseSettings):
     NEO4J_PASSWORD: str = ""
 
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
+    # Short access-token lifetime: bounds the replay window of a stolen/leaked token.
+    # The HttpOnly rotating refresh cookie keeps the session alive past this (same-origin
+    # prod). Was 1440 (24h) — too wide a window for a bearer credential.
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 120
     ANTHROPIC_API_KEY: str = ""
     STRIPE_SECRET_KEY: str = ""
     STRIPE_PUBLISHABLE_KEY: str = ""

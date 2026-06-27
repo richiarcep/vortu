@@ -41,7 +41,13 @@ _TRUSTED_PROXY = str(getattr(settings, "TRUSTED_PROXY", True)).lower() in ("1", 
 def _client_ip(request: Request) -> str:
     forwarded = request.headers.get("x-forwarded-for")
     if _TRUSTED_PROXY and forwarded:
-        return forwarded.split(",")[0].strip()
+        # Take the RIGHTMOST hop — the address our own reverse proxy (Caddy) appended,
+        # i.e. the real peer Caddy actually saw. The LEFTMOST value is client-supplied:
+        # an attacker sends `X-Forwarded-For: <fake>` and Caddy appends the real IP, so
+        # keying the limiter on the leftmost let attackers rotate fake IPs to evade it
+        # entirely (the documented brute-force bypass). With a single trusted proxy the
+        # rightmost entry is the genuine client and is not client-spoofable.
+        return forwarded.split(",")[-1].strip()
     return request.client.host if request.client else "unknown"
 
 

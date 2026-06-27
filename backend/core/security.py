@@ -92,6 +92,16 @@ def get_current_user(
     """Dependency — extracts and validates the current logged in user."""
     from models.user import User
     payload = decode_token(token)
+    # A 2FA *challenge* token (minted pre-TOTP at login with requires_2fa=True, no
+    # tv/plan_id) must NOT authorize any protected route — it is only valid at POST
+    # /api/2fa/verify-login (which decodes it directly). Rejecting it here closes the
+    # bypass where the 5-min temp token was accepted as a full session on every router.
+    if payload.get("requires_2fa") is True:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Second factor required",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     user_id: int = payload.get("sub")
     if user_id is None:
         raise HTTPException(
@@ -184,6 +194,16 @@ def get_admin_user(
     """
     from models.user import User
     payload = decode_token(token)
+    # A 2FA *challenge* token (minted pre-TOTP at login with requires_2fa=True, no
+    # tv/plan_id) must NOT authorize any protected route — it is only valid at POST
+    # /api/2fa/verify-login (which decodes it directly). Rejecting it here closes the
+    # bypass where the 5-min temp token was accepted as a full session on every router.
+    if payload.get("requires_2fa") is True:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Second factor required",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     user_id: int = payload.get("sub")
     if user_id is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate credentials")
