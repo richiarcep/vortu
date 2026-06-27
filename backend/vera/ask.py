@@ -75,6 +75,11 @@ def ask(db, company_id, *, module: str = "general", system: str = "",
             logger.warning("vera.ask [%s] error con %s: %s", module, getattr(resp, "provider", "?"), resp.error)
             return fallback
         return resp.text
+    except Exception as e:
+        # ask() debe devolver texto o `fallback`, nunca propagar: un fallo de IA
+        # (cliente, red, config) no debe tumbar el endpoint que la invoca.
+        logger.warning("vera.ask [%s] excepción: %s", module, e)
+        return fallback
     finally:
         if own_session:
             db.close()

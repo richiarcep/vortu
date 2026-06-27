@@ -5,6 +5,7 @@ Lee la configuración de vera_models_config y aplica vera_routing_rules.
 import os
 import json
 import time
+import logging
 from typing import List, Dict, Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from sqlalchemy.orm import Session
@@ -12,6 +13,8 @@ from sqlalchemy import text
 
 from .llm_base import BaseLLMClient, LLMRequest, LLMResponse
 from .quota_manager import select_model_for_request, record_usage, get_company_plan
+
+logger = logging.getLogger("vera.llm_router")
 
 
 # ──────────────────────────────────────────────────────────────
@@ -29,11 +32,21 @@ class LLMFactory:
         if provider in self._cache:
             return self._cache[provider]
 
-        row = self.db.execute(text("""
-            SELECT model_id, api_key_env, base_url, is_active,
-                   cost_per_1k_input, cost_per_1k_output, timeout_seconds
-            FROM vera_models_config WHERE provider = :p
-        """), {"p": provider}).fetchone()
+        # Leer la config dentro de un SAVEPOINT: si vera_models_config falta (p.ej. no
+        # migrada) o la query falla, degradamos a None SIN abortar la transacción del
+        # request. En Postgres un error de sentencia deja la transacción inutilizable,
+        # y haría 500 a CUALQUIER endpoint que use IA (p.ej. el narrativo del P&L en
+        # estados-financieros/snapshot), no solo a esta llamada.
+        try:
+            with self.db.begin_nested():
+                row = self.db.execute(text("""
+                    SELECT model_id, api_key_env, base_url, is_active,
+                           cost_per_1k_input, cost_per_1k_output, timeout_seconds
+                    FROM vera_models_config WHERE provider = :p
+                """), {"p": provider}).fetchone()
+        except Exception as e:
+            logger.warning("vera_models_config no disponible (%s): %s", provider, e)
+            return None
 
         if not row or not row[3]:  # no existe o inactivo
             return None
