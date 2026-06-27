@@ -34,81 +34,99 @@ def get_plus_info(
     """
     company_id = getattr(user, "company_id", None)
 
-    # Cargar ambos planes desde BD
-    rows = db.execute(text("""
-        SELECT plan_key, display_name, price_eur_monthly, description,
-               tokens_daily_limit, primary_model, fallback_model,
-               memory_days, features_json
-        FROM vera_plans
-        WHERE is_active = 1
-        ORDER BY display_order
-    """)).fetchall()
+    # Las lecturas crudas vera_* van dentro de try/except: si alguna tabla
+    # vera_* no existe o falla, hacemos rollback y degradamos a un payload base
+    # (sin plan) en vez de propagar un 500 opaco.
+    try:
+        # Cargar ambos planes desde BD
+        rows = db.execute(text("""
+            SELECT plan_key, display_name, price_eur_monthly, description,
+                   tokens_daily_limit, primary_model, fallback_model,
+                   memory_days, features_json
+            FROM vera_plans
+            WHERE is_active = 1
+            ORDER BY display_order
+        """)).fetchall()
 
-    plans = []
-    for r in rows:
-        features = {}
-        if r[8]:
-            try:
-                features = json.loads(r[8])
-            except Exception:
-                pass
+        plans = []
+        for r in rows:
+            features = {}
+            if r[8]:
+                try:
+                    features = json.loads(r[8])
+                except Exception:
+                    pass
 
-        plans.append({
-            "plan_key": r[0],
-            "display_name": r[1],
-            "price_eur_monthly": float(r[2] or 0),
-            "description": r[3] or "",
-            "tokens_daily_limit": r[4],
-            "primary_model": r[5],
-            "fallback_model": r[6],
-            "memory_days": r[7] or 7,
-            "features": features,
-        })
+            plans.append({
+                "plan_key": r[0],
+                "display_name": r[1],
+                "price_eur_monthly": float(r[2] or 0),
+                "description": r[3] or "",
+                "tokens_daily_limit": r[4],
+                "primary_model": r[5],
+                "fallback_model": r[6],
+                "memory_days": r[7] or 7,
+                "features": features,
+            })
 
-    # Display names de los modelos (desde vera_models_config)
-    model_names = {}
-    for plan in plans:
-        for key in (plan["primary_model"], plan["fallback_model"]):
-            if key and key not in model_names:
-                row = db.execute(text(
-                    "SELECT display_name FROM vera_models_config WHERE provider = :p"
-                ), {"p": key}).fetchone()
-                if row:
-                    model_names[key] = row[0] or key
+        # Display names de los modelos (desde vera_models_config)
+        model_names = {}
+        for plan in plans:
+            for key in (plan["primary_model"], plan["fallback_model"]):
+                if key and key not in model_names:
+                    row = db.execute(text(
+                        "SELECT display_name FROM vera_models_config WHERE provider = :p"
+                    ), {"p": key}).fetchone()
+                    if row:
+                        model_names[key] = row[0] or key
 
-    # Estado actual de la empresa
-    current_plan = "base"
-    if company_id:
-        row = db.execute(text(
-            "SELECT plan FROM companies WHERE id = :cid"
-        ), {"cid": company_id}).fetchone()
-        if row and row[0]:
-            current_plan = row[0]
+        # Estado actual de la empresa
+        current_plan = "base"
+        if company_id:
+            row = db.execute(text(
+                "SELECT plan FROM companies WHERE id = :cid"
+            ), {"cid": company_id}).fetchone()
+            if row and row[0]:
+                current_plan = row[0]
 
-    # ¿Hay solicitud pendiente?
-    pending_request = None
-    if company_id:
-        row = db.execute(text("""
-            SELECT id, status, requested_at, notes
-            FROM vera_plus_requests
-            WHERE company_id = :cid AND status = 'pending'
-            ORDER BY requested_at DESC LIMIT 1
-        """), {"cid": company_id}).fetchone()
-        if row:
-            pending_request = {
-                "id": row[0],
-                "status": row[1],
-                "requested_at": row[2],
-                "notes": row[3],
-            }
+        # ¿Hay solicitud pendiente?
+        pending_request = None
+        if company_id:
+            row = db.execute(text("""
+                SELECT id, status, requested_at, notes
+                FROM vera_plus_requests
+                WHERE company_id = :cid AND status = 'pending'
+                ORDER BY requested_at DESC LIMIT 1
+            """), {"cid": company_id}).fetchone()
+            if row:
+                pending_request = {
+                    "id": row[0],
+                    "status": row[1],
+                    "requested_at": row[2],
+                    "notes": row[3],
+                }
 
-    return {
-        "plans": plans,
-        "model_names": model_names,
-        "current_plan": current_plan,
-        "is_plus_active": current_plan == "plus",
-        "pending_request": pending_request,
-    }
+        return {
+            "plans": plans,
+            "model_names": model_names,
+            "current_plan": current_plan,
+            "is_plus_active": current_plan == "plus",
+            "pending_request": pending_request,
+        }
+    except Exception:
+        import logging
+        db.rollback()
+        logging.getLogger("vela.vera_plus").warning(
+            "plus/info degradado: lectura vera_* falló", exc_info=True
+        )
+        return {
+            "plans": [],
+            "model_names": {},
+            "current_plan": "base",
+            "is_plus_active": False,
+            "pending_request": None,
+            "degraded": True,
+        }
 
 
 # ─────────────────────────────────────────────────────────────

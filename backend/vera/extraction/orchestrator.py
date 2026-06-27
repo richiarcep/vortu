@@ -108,7 +108,11 @@ def extract(file_path: str, filename: str, db, company_id: int, temp_id: str = N
         return analysis
 
     # 3) Evidence pipeline
-    quota = select_model_for_request(db, company_id)   # used for the 'degraded' signal
+    try:
+        quota = select_model_for_request(db, company_id)   # used for the 'degraded' signal
+    except Exception:
+        db.rollback()
+        quota = {"degraded": True}
     # Capability-aware, cost-driven routing: cheapest text model for text steps
     # (DeepSeek if configured), cheapest vision-capable model for vision steps.
     text_provider = routing.pick_text(db)

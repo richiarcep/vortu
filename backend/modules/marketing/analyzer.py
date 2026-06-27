@@ -113,6 +113,9 @@ Responde SOLO con este JSON (sin markdown):
     )
 
     raw = response.content[0].text.strip()
+    # No key → vera.ask returns "" → don't json.loads("")
+    if not raw:
+        raise RuntimeError("IA no disponible")
     # Strip any accidental markdown fences
     if raw.startswith("```"):
         raw = raw.split("```")[1]

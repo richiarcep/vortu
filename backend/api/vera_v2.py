@@ -174,13 +174,15 @@ def build_business_context(db: Session, company_id) -> str:
 
     # Resultado YTD
     try:
+        from datetime import date as _date
+        _yr_start = _date(_date.today().year, 1, 1)
         row = db.execute(text("""
             SELECT
               COALESCE(SUM(CASE WHEN a.account_type='income' THEN je.credit-je.debit ELSE 0 END), 0),
               COALESCE(SUM(CASE WHEN a.account_type='expense' THEN je.debit-je.credit ELSE 0 END), 0)
             FROM journal_entries je JOIN accounts a ON a.id = je.account_id
-            WHERE je.company_id = :cid AND je.date >= date('now', 'start of year')
-        """), {"cid": company_id}).fetchone()
+            WHERE je.company_id = :cid AND je.date >= :yr_start
+        """), {"cid": company_id, "yr_start": _yr_start}).fetchone()
         if row:
             ing, gas = float(row[0] or 0), float(row[1] or 0)
             margen = round((ing - gas) / ing * 100, 1) if ing > 0 else 0
@@ -226,53 +228,64 @@ DATOS REALES DEL NEGOCIO
 def status(user: User = Depends(get_current_user), db: Session = Depends(get_tenant_db)):
     """Estado de Vera. Plan + cuota + modelos activos (todo lee de BD, nada hardcoded)."""
     company_id = getattr(user, "company_id", None)
-    if company_id:
-        qs = get_quota_status(db, company_id)
-        plan = qs.get("plan_key", "base")
-        pct_used = qs.get("pct_used", 0)
-        is_blocked = qs.get("degraded", False)
-        is_unlimited = qs.get("unlimited", False)
-        tokens_used = qs.get("tokens_used", 0)
-        tokens_limit = qs.get("tokens_limit", 0)
-    else:
-        plan = "base"
-        pct_used = 0
-        is_blocked = False
-        is_unlimited = False
-        tokens_used = 0
-        tokens_limit = 80000
+    try:
+        if company_id:
+            qs = get_quota_status(db, company_id)
+            plan = qs.get("plan_key", "base")
+            pct_used = qs.get("pct_used", 0)
+            is_blocked = qs.get("degraded", False)
+            is_unlimited = qs.get("unlimited", False)
+            tokens_used = qs.get("tokens_used", 0)
+            tokens_limit = qs.get("tokens_limit", 0)
+        else:
+            plan = "base"
+            pct_used = 0
+            is_blocked = False
+            is_unlimited = False
+            tokens_used = 0
+            tokens_limit = 80000
 
-    # Cargar info del plan + nombres bonitos de los modelos desde BD
-    plan_row = db.execute(text("""
-        SELECT plan_key, display_name, primary_model, fallback_model, tokens_daily_limit, memory_days
-        FROM vera_plans WHERE plan_key = :pk
-    """), {"pk": plan}).fetchone()
+        # Cargar info del plan + nombres bonitos de los modelos desde BD
+        plan_row = db.execute(text("""
+            SELECT plan_key, display_name, primary_model, fallback_model, tokens_daily_limit, memory_days
+            FROM vera_plans WHERE plan_key = :pk
+        """), {"pk": plan}).fetchone()
 
-    plan_label = plan_row[1] if plan_row else ("Vera Plus" if plan == "plus" else "Vera")
-    primary_provider = plan_row[2] if plan_row else "claude"
-    fallback_provider = plan_row[3] if plan_row else "claude-haiku"
+        plan_label = plan_row[1] if plan_row else ("Vera Plus" if plan == "plus" else "Vera")
+        primary_provider = plan_row[2] if plan_row else "claude"
+        fallback_provider = plan_row[3] if plan_row else "claude-haiku"
 
-    # display_name de cada modelo
-    def _model_info(provider_key):
-        row = db.execute(text("""
-            SELECT provider, display_name FROM vera_models_config
-            WHERE provider = :p
-        """), {"p": provider_key}).fetchone()
-        if row:
-            return {"provider": row[0], "display_name": row[1] or row[0]}
-        return {"provider": provider_key, "display_name": provider_key}
+        # display_name de cada modelo
+        def _model_info(provider_key):
+            row = db.execute(text("""
+                SELECT provider, display_name FROM vera_models_config
+                WHERE provider = :p
+            """), {"p": provider_key}).fetchone()
+            if row:
+                return {"provider": row[0], "display_name": row[1] or row[0]}
+            return {"provider": provider_key, "display_name": provider_key}
 
-    model_primary = _model_info(primary_provider)
-    model_fallback = _model_info(fallback_provider)
+        model_primary = _model_info(primary_provider)
+        model_fallback = _model_info(fallback_provider)
 
-    # Modelo que se usaría AHORA si el usuario manda un mensaje
-    # (si está degradado, fallback; si no, primary)
-    model_active_now = model_fallback if is_blocked else model_primary
+        # Modelo que se usaría AHORA si el usuario manda un mensaje
+        # (si está degradado, fallback; si no, primary)
+        model_active_now = model_fallback if is_blocked else model_primary
 
-    conv_count = db.execute(text("""
-        SELECT COUNT(*) FROM vera_conversations
-        WHERE user_id = :uid AND is_archived = 0
-    """), {"uid": user.id}).fetchone()[0]
+        conv_count = db.execute(text("""
+            SELECT COUNT(*) FROM vera_conversations
+            WHERE user_id = :uid AND is_archived = 0
+        """), {"uid": user.id}).fetchone()[0]
+    except Exception:
+        # Tabla vera_* ausente o BD no disponible → degradar en vez de 500
+        db.rollback()
+        return {
+            "available": False,
+            "plan": "base",
+            "plan_label": "Vera",
+            "degraded": True,
+            "message": "Vera no disponible: configura ANTHROPIC_API_KEY o migra las tablas vera_*",
+        }
 
     conv_limit = 50 if plan == "plus" else 10
 
@@ -306,13 +319,18 @@ def status(user: User = Depends(get_current_user), db: Session = Depends(get_ten
 def list_conversations(user: User = Depends(get_current_user), db: Session = Depends(get_tenant_db)):
     plan = get_user_plan(user)
     limit = 50 if plan == "plus" else 10
-    rows = db.execute(text("""
-        SELECT id, title, module, is_pinned, message_count, last_message_at, created_at
-        FROM vera_conversations
-        WHERE user_id = :uid AND is_archived = 0
-        ORDER BY is_pinned DESC, COALESCE(last_message_at, created_at) DESC
-        LIMIT :lim
-    """), {"uid": user.id, "lim": limit}).fetchall()
+    try:
+        rows = db.execute(text("""
+            SELECT id, title, module, is_pinned, message_count, last_message_at, created_at
+            FROM vera_conversations
+            WHERE user_id = :uid AND is_archived = 0
+            ORDER BY is_pinned DESC, COALESCE(last_message_at, created_at) DESC
+            LIMIT :lim
+        """), {"uid": user.id, "lim": limit}).fetchall()
+    except Exception:
+        # Tabla vera_conversations ausente → degradar a lista vacía en vez de 500
+        db.rollback()
+        return {"conversations": []}
     return {
         "conversations": [{
             "id": r[0], "title": r[1], "module": r[2],
@@ -331,36 +349,44 @@ def create_conversation(payload: ConversationCreate,
                         db: Session = Depends(get_tenant_db)):
     plan = get_user_plan(user)
     limit = 50 if plan == "plus" else 10
-    active = db.execute(text("""
-        SELECT COUNT(*) FROM vera_conversations
-        WHERE user_id = :uid AND is_archived = 0
-    """), {"uid": user.id}).fetchone()[0]
+    try:
+        active = db.execute(text("""
+            SELECT COUNT(*) FROM vera_conversations
+            WHERE user_id = :uid AND is_archived = 0
+        """), {"uid": user.id}).fetchone()[0]
 
-    if active >= limit:
-        oldest = db.execute(text("""
+        if active >= limit:
+            oldest = db.execute(text("""
+                SELECT id FROM vera_conversations
+                WHERE user_id = :uid AND is_archived = 0 AND is_pinned = 0
+                ORDER BY COALESCE(last_message_at, created_at) ASC LIMIT 1
+            """), {"uid": user.id}).fetchone()
+            if oldest:
+                db.execute(text("UPDATE vera_conversations SET is_archived = 1 WHERE id = :id"),
+                           {"id": oldest[0]})
+
+        db.execute(text("""
+            INSERT INTO vera_conversations (user_id, company_id, title, module)
+            VALUES (:uid, :cid, :title, :module)
+        """), {
+            "uid": user.id,
+            "cid": getattr(user, "company_id", None),
+            "title": payload.title or "Nuevo chat",
+            "module": payload.module,
+        })
+        db.commit()
+        # last_insert_rowid puede devolver 0 si SQLAlchemy reusa conexión; tomamos el último por user
+        new_id_row = db.execute(text("""
             SELECT id FROM vera_conversations
-            WHERE user_id = :uid AND is_archived = 0 AND is_pinned = 0
-            ORDER BY COALESCE(last_message_at, created_at) ASC LIMIT 1
+            WHERE user_id = :uid ORDER BY id DESC LIMIT 1
         """), {"uid": user.id}).fetchone()
-        if oldest:
-            db.execute(text("UPDATE vera_conversations SET is_archived = 1 WHERE id = :id"),
-                       {"id": oldest[0]})
-
-    db.execute(text("""
-        INSERT INTO vera_conversations (user_id, company_id, title, module)
-        VALUES (:uid, :cid, :title, :module)
-    """), {
-        "uid": user.id,
-        "cid": getattr(user, "company_id", None),
-        "title": payload.title or "Nuevo chat",
-        "module": payload.module,
-    })
-    db.commit()
-    # last_insert_rowid puede devolver 0 si SQLAlchemy reusa conexión; tomamos el último por user
-    new_id_row = db.execute(text("""
-        SELECT id FROM vera_conversations
-        WHERE user_id = :uid ORDER BY id DESC LIMIT 1
-    """), {"uid": user.id}).fetchone()
+    except Exception:
+        # Tabla vera_conversations ausente → degradar con 503 claro en vez de 500 opaco
+        db.rollback()
+        raise HTTPException(
+            status_code=503,
+            detail="Vera no disponible: migra las tablas vera_* o configura ANTHROPIC_API_KEY",
+        )
     new_id = new_id_row[0] if new_id_row else 0
     return {"id": new_id, "title": payload.title or "Nuevo chat"}
 

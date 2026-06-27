@@ -145,6 +145,12 @@ function EstrategiaTab({ token, onCreateCampaign }) {
       })
       if (r.ok) {
         const d = await r.json()
+        // IA degradada (sin API key): mostrar el mensaje en vez de romper el análisis
+        if (d.degraded || (d.message && !d.sector)) {
+          alert(d.message || 'Análisis de IA no disponible')
+          setRegenerating(false)
+          return
+        }
         const a = d.analisis || d.analysis || d
         setAnalysis(a)
         localStorage.setItem(ANALYSIS_CACHE_KEY, JSON.stringify(a))

@@ -422,11 +422,16 @@ export default function CentroCostes() {
   const reload = async (tk = token) => {
     if (!tk) return
     try {
-      const [k, ac, ap, gs] = await Promise.all([
+      const [k, ac, ap, gs] = await Promise.allSettled([
         call('/api/costes/kpis', tk), call('/api/costes/agg/categorias', tk),
         call('/api/costes/agg/proveedores?limit=20', tk), call('/api/costes/list?limit=200', tk),
       ])
-      setKpis(k); setAggCats(ac); setAggProvs(ap); setGastos(gs); setLoadErr(false)
+      if (k.status === 'fulfilled') setKpis(k.value); else console.error(k.reason)
+      if (ac.status === 'fulfilled') setAggCats(ac.value); else console.error(ac.reason)
+      if (ap.status === 'fulfilled') setAggProvs(ap.value); else console.error(ap.reason)
+      if (gs.status === 'fulfilled') setGastos(gs.value); else console.error(gs.reason)
+      const allFailed = [k, ac, ap, gs].every(r => r.status === 'rejected')
+      setLoadErr(allFailed)
     } catch (err) { console.error(err); setLoadErr(true) }
   }
   useEffect(() => { if (token) reload(token) }, [token])

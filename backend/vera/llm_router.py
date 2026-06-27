@@ -18,6 +18,23 @@ logger = logging.getLogger("vera.llm_router")
 
 
 # ──────────────────────────────────────────────────────────────
+# DEFAULTS — modelos por defecto cuando vera_models_config no está
+# (p.ej. tabla ausente en staging). provider → (model_id, api_key_env,
+# base_url, cost_per_1k_input, cost_per_1k_output, timeout_seconds)
+# Hace que la IA NATIVA funcione solo con la API key del .env, sin
+# depender de la BD.
+# ──────────────────────────────────────────────────────────────
+_DEFAULT_MODELS = {
+    "claude": ("claude-sonnet-4-6", "ANTHROPIC_API_KEY", "https://api.anthropic.com", 3.0, 15.0, 30),
+    "claude-haiku": ("claude-haiku-4-5-20251001", "ANTHROPIC_API_KEY", "https://api.anthropic.com", 1.0, 5.0, 30),
+    "claude-opus": ("claude-opus-4-8", "ANTHROPIC_API_KEY", "https://api.anthropic.com", 15.0, 75.0, 60),
+    "openai": ("gpt-4o", "OPENAI_API_KEY", "https://api.openai.com/v1", 2.5, 10.0, 30),
+    "gemini": ("gemini-1.5-pro", "GEMINI_API_KEY", "https://generativelanguage.googleapis.com/v1beta", 1.25, 5.0, 30),
+    "perplexity": ("sonar", "PERPLEXITY_API_KEY", "https://api.perplexity.ai", 1.0, 1.0, 30),
+}
+
+
+# ──────────────────────────────────────────────────────────────
 # FACTORY — construye clientes desde la BD
 # ──────────────────────────────────────────────────────────────
 class LLMFactory:
@@ -46,12 +63,17 @@ class LLMFactory:
                 """), {"p": provider}).fetchone()
         except Exception as e:
             logger.warning("vera_models_config no disponible (%s): %s", provider, e)
-            return None
+            row = None
 
-        if not row or not row[3]:  # no existe o inactivo
-            return None
+        if row and row[3]:  # existe y está activo → usa la fila de la BD (comportamiento previo)
+            model_id, api_key_env, base_url, _, cost_in, cost_out, timeout = row
+        else:
+            # Sin fila / tabla ausente / inactivo → defaults del .env, sin setup de BD.
+            defaults = _DEFAULT_MODELS.get(provider)
+            if not defaults:
+                return None
+            model_id, api_key_env, base_url, cost_in, cost_out, timeout = defaults
 
-        model_id, api_key_env, base_url, _, cost_in, cost_out, timeout = row
         api_key = os.getenv(api_key_env)
         if not api_key:
             return None  # No hay API key configurada

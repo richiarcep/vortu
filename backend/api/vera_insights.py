@@ -212,7 +212,13 @@ def get_insights(
     except Exception as e:
         import traceback
         traceback.print_exc()
-        raise HTTPException(500, "Error generando insights: " + str(e))
+        result = {
+            "insights": [{
+                "label": "IA no disponible",
+                "text": "Configura ANTHROPIC_API_KEY",
+                "tone": "neutral",
+            }],
+        }
 
     payload = {
         "insights": result["insights"],

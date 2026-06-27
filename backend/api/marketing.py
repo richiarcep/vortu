@@ -190,6 +190,13 @@ async def analizar_empresa(
             internal_data=internal_data,
             document_texts=document_texts or None,
         )
+    except RuntimeError:
+        # IA no disponible (sin API key) → degradar a 200 en vez de un 500 opaco
+        logging.getLogger("vela.marketing").warning("Análisis IA degradado: sin API key")
+        return {
+            "degraded": True,
+            "message": "Análisis de IA no disponible: configura ANTHROPIC_API_KEY",
+        }
     except Exception:
         logging.getLogger("vela.marketing").exception("Error en análisis IA")
         raise HTTPException(status_code=500, detail="Error en el análisis de IA")
@@ -318,7 +325,10 @@ async def create_campaign(
             "key_messages": ["calidad", "confianza", "resultados"],
         }
 
-    # Generate all creative content
+    # Generate all creative content.
+    # Si la IA falla (sin API key, red, JSON inválido…) NO perdemos la campaña:
+    # la creamos igualmente con contenido vacío y marcamos degraded=True.
+    content_degraded = False
     try:
         content = await generate_campaign_content(
             analysis=analysis_dict,
@@ -328,9 +338,13 @@ async def create_campaign(
             platforms=body.platforms,
             extra_context=body.extra_context or "",
         )
+        if not isinstance(content, dict):
+            content, content_degraded = {}, True
     except Exception:
-        logging.getLogger("vela.marketing").exception("Error generando contenido")
-        raise HTTPException(status_code=500, detail="Error generando el contenido")
+        logging.getLogger("vela.marketing").warning(
+            "Contenido IA degradado: se crea la campaña con contenido vacío", exc_info=True
+        )
+        content, content_degraded = {}, True
 
     # Persist campaign
     campaign = MarketingCampaign(
@@ -373,6 +387,12 @@ async def create_campaign(
         "ab_testing_plan": content.get("ab_testing_plan"),
         "launch_checklist": content.get("launch_checklist"),
         "created_at": campaign.created_at.isoformat(),
+        "degraded": content_degraded,
+        "message": (
+            "Campaña creada sin contenido de IA: configura ANTHROPIC_API_KEY y "
+            "regenera el contenido creativo."
+            if content_degraded else None
+        ),
     }
 
 

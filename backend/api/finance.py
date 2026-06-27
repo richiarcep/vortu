@@ -260,15 +260,33 @@ def get_ratios_financieros(
         "punto_equilibrio": punto_equilibrio,
     }
 
-    # ── Ask Claude to interpret each ratio ────────────────────────────────────
-    client = vera_client(db, company_id, module="finanzas", quality="cheap")
+    # ── Degraded payload: ratios calculados sin interpretación IA ─────────────
+    # Se devuelve íntegro (200) si la IA no está disponible o falla, de modo que
+    # /api/finance/ratios nunca devuelva un 500 opaco por culpa de la capa de IA.
+    def _degraded_ratios(detalle: str):
+        return {
+            "ratios": [],
+            "datos_calculados": ratios_calculados,
+            "conclusion": "IA no disponible: configura ANTHROPIC_API_KEY",
+            "accion_prioritaria": "IA no disponible: configura ANTHROPIC_API_KEY",
+            "interpretacion": "IA no disponible: configura ANTHROPIC_API_KEY",
+            "degraded": True,
+            "periodo": {"inicio": str(year_start), "fin": str(today)},
+            "detalle": detalle,
+        }
 
-    message = client.messages.create(
-        model="claude-opus-4-6",
-        max_tokens=2048,
-        messages=[{
-            "role": "user",
-            "content": f"""{get_prompt("finance_ratios")}
+    # ── Ask Claude to interpret each ratio ────────────────────────────────────
+    # La llamada IA va dentro de try/except: si falla (sin API key, red, etc.)
+    # degradamos a los ratios ya calculados en vez de propagar un 500.
+    try:
+        client = vera_client(db, company_id, module="finanzas", quality="cheap")
+
+        message = client.messages.create(
+            model="claude-opus-4-6",
+            max_tokens=2048,
+            messages=[{
+                "role": "user",
+                "content": f"""{get_prompt("finance_ratios")}
 
 RATIOS CALCULADOS:
 - Razón Corriente: {razon_corriente or 'Sin datos'}
@@ -340,11 +358,17 @@ Datos financieros completos:
 - Patrimonio: {sym}{total_patrimonio:,.2f}
 
 Solo el JSON, sin explicaciones adicionales."""
-        }]
-    )
+            }]
+        )
+    except Exception as e:
+        logging.getLogger("vela.finance").warning("IA ratios degradada: %s", e)
+        return _degraded_ratios(str(e))
 
     try:
         text = message.content[0].text.strip()
+        if not text:
+            # vera/ask devuelve "" cuando no hay cliente LLM disponible.
+            return _degraded_ratios("sin respuesta de IA")
         if text.startswith('```'):
             lines = text.split('\n')
             text = '\n'.join(lines[1:-1])

@@ -213,7 +213,7 @@ def get_kpis(db: Session = Depends(get_tenant_db), current_user: User = Depends(
             FROM journal_entries je JOIN accounts a ON a.id = je.account_id
             WHERE je.company_id = :cid AND a.account_type = 'expense'
               AND je.date >= :d1 AND je.date < :d2
-        """), {"cid": company_id, "d1": str(d1), "d2": str(d2)}).first()
+        """), {"cid": company_id, "d1": d1, "d2": d2}).first()
         return float(r[0] or 0), int(r[1] or 0)
 
     total_mes, count_mes = sum_range(mes_inicio, mes_fin)
@@ -228,7 +228,7 @@ def get_kpis(db: Session = Depends(get_tenant_db), current_user: User = Depends(
         WHERE je.company_id = :cid AND a.account_type = 'expense'
           AND je.date >= :d1 AND je.date < :d2
         GROUP BY a.id ORDER BY t DESC LIMIT 1
-    """), {"cid": company_id, "d1": str(mes_inicio), "d2": str(mes_fin)}).first()
+    """), {"cid": company_id, "d1": mes_inicio, "d2": mes_fin}).first()
     top_categoria = {"name": top_cat[0], "total": round(float(top_cat[1] or 0), 2)} if top_cat else None
 
     # Proveedor no es fiable a nivel de asiento individual → lo omitimos en la vista live.
@@ -534,8 +534,8 @@ def agg_categorias(db: Session = Depends(get_tenant_db), current_user: User = De
         FROM journal_entries je JOIN accounts a ON a.id = je.account_id
         WHERE je.company_id = :cid AND a.account_type = 'expense'
           AND je.date >= :d1 AND je.date < :d2
-        GROUP BY a.id HAVING t > 0 ORDER BY t DESC
-    """), {"cid": current_user.company_id, "d1": str(year_inicio), "d2": str(year_fin)}).fetchall()
+        GROUP BY a.id HAVING SUM(je.debit) > 0 ORDER BY SUM(je.debit) DESC
+    """), {"cid": current_user.company_id, "d1": year_inicio, "d2": year_fin}).fetchall()
 
     _PALETTE = ["#0071E3", "#FF9500", "#34C759", "#AF52DE", "#FF3B30", "#00B4D8", "#FFCC00", "#5856D6"]
     items = [{"category_id": r[0], "name": r[1], "color": _PALETTE[i % len(_PALETTE)],
@@ -599,7 +599,7 @@ def agg_evolucion(db: Session = Depends(get_tenant_db), current_user: User = Dep
             FROM journal_entries je JOIN accounts a ON a.id = je.account_id
             WHERE je.company_id = :cid AND a.account_type = 'expense'
               AND je.date >= :d1 AND je.date < :d2
-        """), {"cid": current_user.company_id, "d1": str(inicio), "d2": str(fin)}).scalar() or 0
+        """), {"cid": current_user.company_id, "d1": inicio, "d2": fin}).scalar() or 0
         items.append({"year": y, "month": m, "label": date(y, m, 1).strftime("%b"), "total": round(float(total), 2)})
     return {"items": items}
 
@@ -682,8 +682,6 @@ def registrar_gasto_manual(payload: GastoManual, db: Session = Depends(get_tenan
             default_gasto, default_acreedor = get_entry_accounts(country, "gasto", "Otro")
         except Exception:
             default_gasto, default_acreedor = ("629", "400")  # ES fallback
-        cuenta_gasto = payload.pgc_cuenta_gasto or default_gasto
-        cuenta_acreedor = default_acreedor
 
         # Resolver account_id por código dentro de la empresa
         def get_account_id(code):
@@ -692,6 +690,15 @@ def registrar_gasto_manual(payload: GastoManual, db: Session = Depends(get_tenan
                 {"c": code, "cid": company_id}
             ).first()
             return r[0] if r else None
+
+        # Base = cuenta de gasto/acreedor del país (siempre existe en el catálogo sembrado).
+        # Solo honramos el pgc_cuenta_gasto recibido si ESA cuenta existe para la empresa;
+        # el frontend manda "629" por defecto (código ES), que en MX/SV no existe y haría
+        # fallar el registro → derivamos del país en ese caso.
+        cuenta_gasto = default_gasto
+        cuenta_acreedor = default_acreedor
+        if payload.pgc_cuenta_gasto and get_account_id(payload.pgc_cuenta_gasto):
+            cuenta_gasto = payload.pgc_cuenta_gasto
 
         # Map the chosen CATEGORY to its PGC expense account — the category is the
         # meaningful signal from the UI. Only override when that account actually

@@ -764,7 +764,7 @@ export default function Dashboard() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
               <div style={{
                 width: 28, height: 28, borderRadius: 8,
-                background: 'rgba(99,102,241,.1)', color: T.purple,
+                background: T.purpleSoft, color: T.purple,
                 display: 'grid', placeItems: 'center',
               }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

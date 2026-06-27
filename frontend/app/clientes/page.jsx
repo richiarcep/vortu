@@ -32,9 +32,14 @@ const RISK_CFG = {
   alto:    { label: 'Alto',     color: '#dc2626', bg: 'rgba(220,38,38,.08)',  dot: '#dc2626' },
   critico: { label: 'Crítico',  color: '#9a3412', bg: 'rgba(154,52,18,.10)',  dot: '#9a3412' },
 }
-const PLATFORM_LABEL = {
-  email: 'Email', whatsapp: 'WhatsApp', instagram: 'Instagram',
-  facebook: 'Facebook', manual: 'Manual',
+// Solo `email` y `manual` están realmente soportados por el backend.
+// WhatsApp/Instagram/Facebook se muestran como "Próximamente" (sin integración real).
+const PLATFORM_CFG = {
+  email:     { label: 'Email',     soon: false },
+  manual:    { label: 'Manual',    soon: false },
+  whatsapp:  { label: 'WhatsApp',  soon: true },
+  instagram: { label: 'Instagram', soon: true },
+  facebook:  { label: 'Facebook',  soon: true },
 }
 const KB_TYPE_CFG = {
   faq:             { label: 'FAQ',       color: '#3D2BFF' },
@@ -84,6 +89,25 @@ function Pill({ label, color, bg, dot }) {
     }}>
       {dot && <span style={{ width: 6, height: 6, borderRadius: 999, background: dot }} />}
       {label}
+    </span>
+  )
+}
+
+function PlatformLabel({ platform }) {
+  const T = useT()
+  const cfg = PLATFORM_CFG[platform]
+  if (!cfg) return <>{platform || '—'}</>
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
+      <span style={{ color: cfg.soon ? T.text4 : 'inherit' }}>{cfg.label}</span>
+      {cfg.soon && (
+        <span style={{
+          display: 'inline-flex', alignItems: 'center',
+          padding: '1px 6px', borderRadius: 6,
+          fontSize: 10, fontWeight: 500,
+          color: T.text4, background: T.hairline, whiteSpace: 'nowrap',
+        }}>Próximamente</span>
+      )}
     </span>
   )
 }
@@ -260,7 +284,7 @@ function ListView({ contacts, onSelect, selectedId }) {
               {c.notes && <div style={{ fontSize: 11, color: T.text4, marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.notes}</div>}
             </div>
             <div style={{ fontSize: 12, color: T.text3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.email || '—'}</div>
-            <div style={{ fontSize: 12, color: T.text3 }}>{PLATFORM_LABEL[c.platform] || c.platform}</div>
+            <div style={{ fontSize: 12, color: T.text3 }}><PlatformLabel platform={c.platform} /></div>
             <div><Pill {...sent} /></div>
             <div><Pill {...risk} /></div>
             <div style={{ textAlign: 'right', fontSize: 12, color: T.text3, fontVariantNumeric: 'tabular-nums' }}>
@@ -912,7 +936,7 @@ function ClientDrawer({ contact, onClose, token, onUpdate }) {
               <div style={{ fontSize: 10.5, color: T.text4, marginBottom: 2 }}>Teléfono</div>
               <div style={{ fontSize: 12.5, color: T.text, marginBottom: 8 }}>{contact.phone || '—'}</div>
               <div style={{ fontSize: 10.5, color: T.text4, marginBottom: 2 }}>Plataforma</div>
-              <div style={{ fontSize: 12.5, color: T.text }}>{PLATFORM_LABEL[contact.platform] || contact.platform}</div>
+              <div style={{ fontSize: 12.5, color: T.text }}><PlatformLabel platform={contact.platform} /></div>
             </div>
           </div>
 

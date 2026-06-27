@@ -22,8 +22,8 @@ export const T_LIGHT = {
   amberSoft: 'rgba(217,119,6,.12)',
   red: '#B91C1C',   // a11y: ≥4.5:1 sobre redSoft/card
   redSoft: 'rgba(220,38,38,.10)',
-  purple: '#6366F1',
-  purpleSoft: 'rgba(99,102,241,.1)',
+  purple: '#3D2BFF',
+  purpleSoft: 'rgba(61,43,255,.10)',
 }
 
 // ── Paleta OSCURA (marca Vela: fondos Midnight Navy + acentos violeta) ────────
@@ -45,8 +45,8 @@ export const T_DARK = {
   amberSoft: 'rgba(210,153,34,.16)',
   red: '#F85149',
   redSoft: 'rgba(248,81,73,.16)',
-  purple: '#818CF8',
-  purpleSoft: 'rgba(129,140,248,.20)',
+  purple: '#6E5DFF',
+  purpleSoft: 'rgba(110,93,255,.20)',
 }
 
 // Compat: `T` estático = paleta clara. Las páginas no migradas lo siguen usando

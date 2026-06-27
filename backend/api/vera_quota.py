@@ -1,6 +1,7 @@
 """
 Vera Quota API — endpoint para el frontend del cliente.
 """
+import logging
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
@@ -23,4 +24,13 @@ def quota_status(
     """
     if not user.company_id:
         return {"error": "Usuario sin empresa asignada"}
-    return get_quota_status(db, user.company_id)
+    # La lectura cruda vera_* (planes/uso) va dentro de try/except: si falla,
+    # hacemos rollback y devolvemos un default seguro en vez de un 500 opaco.
+    try:
+        return get_quota_status(db, user.company_id)
+    except Exception:
+        db.rollback()
+        logging.getLogger("vela.vera_quota").warning(
+            "quota/status degradado: lectura vera_* falló", exc_info=True
+        )
+        return {"plan": "base", "used": 0, "limit": 80000, "degraded": True}

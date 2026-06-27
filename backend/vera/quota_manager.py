@@ -19,13 +19,18 @@ PREMIUM_PROVIDERS = {'openai', 'gemini', 'perplexity', 'groq', 'deepseek'}
 
 def get_company_plan(db: Session, company_id: int) -> dict:
     """Devuelve el plan completo de una empresa."""
-    row = db.execute(text("""
-        SELECT c.plan, p.tokens_daily_limit, p.primary_model, p.fallback_model,
-               p.memory_days, p.features_json
-        FROM companies c
-        LEFT JOIN vera_plans p ON p.plan_key = COALESCE(c.plan, 'base')
-        WHERE c.id = :cid
-    """), {"cid": company_id}).fetchone()
+    try:
+        row = db.execute(text("""
+            SELECT c.plan, p.tokens_daily_limit, p.primary_model, p.fallback_model,
+                   p.memory_days, p.features_json
+            FROM companies c
+            LEFT JOIN vera_plans p ON p.plan_key = COALESCE(c.plan, 'base')
+            WHERE c.id = :cid
+        """), {"cid": company_id}).fetchone()
+    except Exception:
+        db.rollback()
+        return {"plan_key": "base", "tokens_daily_limit": 80000, "primary_model": "claude",
+                "fallback_model": "claude-haiku", "memory_days": 7, "features": {}}
 
     if not row:
         return {"plan_key": "base", "tokens_daily_limit": 80000, "primary_model": "claude",
@@ -45,15 +50,23 @@ def get_company_plan(db: Session, company_id: int) -> dict:
 def get_today_usage(db: Session, company_id: int) -> dict:
     """Uso de tokens HOY de una empresa."""
     today = date.today().isoformat()
-    row = db.execute(text("""
-        SELECT tokens_sonnet_input, tokens_sonnet_output,
-               tokens_haiku_input, tokens_haiku_output,
-               tokens_premium_input, tokens_premium_output,
-               requests_sonnet, requests_haiku, requests_premium,
-               degraded_at, notif_70_sent, notif_90_sent, notif_100_sent
-        FROM vera_token_usage
-        WHERE company_id = :cid AND date_local = :d
-    """), {"cid": company_id, "d": today}).fetchone()
+    try:
+        row = db.execute(text("""
+            SELECT tokens_sonnet_input, tokens_sonnet_output,
+                   tokens_haiku_input, tokens_haiku_output,
+                   tokens_premium_input, tokens_premium_output,
+                   requests_sonnet, requests_haiku, requests_premium,
+                   degraded_at, notif_70_sent, notif_90_sent, notif_100_sent
+            FROM vera_token_usage
+            WHERE company_id = :cid AND date_local = :d
+        """), {"cid": company_id, "d": today}).fetchone()
+    except Exception:
+        db.rollback()
+        return {
+            "sonnet_tokens": 0, "haiku_tokens": 0, "premium_tokens": 0,
+            "sonnet_requests": 0, "haiku_requests": 0, "premium_requests": 0,
+            "degraded": False, "notifs": {"70": False, "90": False, "100": False},
+        }
 
     if not row:
         return {

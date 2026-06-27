@@ -83,10 +83,17 @@ export default function LoginPage() {
         body { font-family: 'Inter', system-ui, sans-serif; }
 
         .login-root {
-          min-height: 100dvh;
+          height: 100dvh;
+          overflow: hidden;
           display: flex;
           background: ${theme === 'dark' ? T.bg : '#f4f6fb'};
           font-family: 'Inter', system-ui, sans-serif;
+        }
+
+        /* Escape hatch: on truly short viewports where the content can't fit,
+           allow scrolling instead of clipping. */
+        @media (max-height: 720px) {
+          .login-root { height: auto; min-height: 100dvh; overflow: visible; }
         }
 
         /* ── Left panel ── */

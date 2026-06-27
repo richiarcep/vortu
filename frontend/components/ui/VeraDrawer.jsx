@@ -151,6 +151,15 @@ export default function VeraDrawer({
                 }
                 return prev
               })
+            } else if (data.type === 'error') {
+              const errText = 'Error: ' + (data.message || 'IA no disponible')
+              setMsgs(prev => {
+                const last = prev[prev.length - 1]
+                if (last && last.role === 'assistant') {
+                  return [...prev.slice(0, -1), { ...last, content: last.content + errText, error: true }]
+                }
+                return prev
+              })
             }
           } catch {}
         }

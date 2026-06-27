@@ -741,7 +741,12 @@ def analyze_document(
 
     # Duplicados
     warnings = analysis.get('warnings', [])
-    dup = check_duplicate(db, current_user.company_id, file.filename, analysis.get('extracted_data', {}))
+    try:
+        dup = check_duplicate(db, current_user.company_id, file.filename, analysis.get('extracted_data', {}))
+    except Exception as e:
+        db.rollback()
+        logger.warning("check_duplicate failed: %s", e)
+        dup = None
     if dup:
         warnings.insert(0, f"POSIBLE DUPLICADO: {dup}")
         # Si es duplicado, no crear en SQL

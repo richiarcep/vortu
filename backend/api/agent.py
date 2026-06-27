@@ -113,12 +113,16 @@ def get_resumen(
     empleados = 0
     try:
         empleados = int(db.execute(text(
-            "SELECT COUNT(*) FROM employees WHERE company_id=:cid AND is_active=1"
+            "SELECT COUNT(*) FROM employees WHERE company_id=:cid AND is_active = true"
         ), {"cid": cid}).scalar() or 0)
     except Exception:
         pass
 
-    alertas = detect_anomalies(db, cid)
+    try:
+        alertas = detect_anomalies(db, cid)
+    except Exception:
+        db.rollback()
+        alertas = []
     resultado = ingresos - gastos
     margen = round(resultado / ingresos * 100, 1) if ingresos > 0 else 0
 
