@@ -145,6 +145,9 @@ def build_business_context(db: Session, company_id) -> str:
     if not company:
         return "No se encontró información de la empresa."
 
+    from country.registry import get_country_info
+    sym = (get_country_info(company[2]) or {}).get("symbol", "€") if company[2] else "€"
+
     ctx = ["## EMPRESA ACTIVA", f"- Nombre: {company[1]}"]
     if company[2]: ctx.append(f"- País: {company[2].upper()}")
     if company[3]: ctx.append(f"- Sector: {company[3]}")
@@ -162,10 +165,10 @@ def build_business_context(db: Session, company_id) -> str:
         """), {"cid": company_id, "d": last_30}).fetchone()
         if row and row[0]:
             ctx.append("\n## VENTAS últimos 30 días")
-            ctx.append(f"- Volumen: €{row[0]:,.2f}")
+            ctx.append(f"- Volumen: {sym}{row[0]:,.2f}")
             ctx.append(f"- Transacciones: {row[1]}")
             if row[1] > 0:
-                ctx.append(f"- Ticket medio: €{row[0]/row[1]:.2f}")
+                ctx.append(f"- Ticket medio: {sym}{row[0]/row[1]:.2f}")
     except Exception:
         pass
 
@@ -182,9 +185,9 @@ def build_business_context(db: Session, company_id) -> str:
             ing, gas = float(row[0] or 0), float(row[1] or 0)
             margen = round((ing - gas) / ing * 100, 1) if ing > 0 else 0
             ctx.append("\n## RESULTADO YTD")
-            ctx.append(f"- Ingresos: €{ing:,.2f}")
-            ctx.append(f"- Gastos: €{gas:,.2f}")
-            ctx.append(f"- Resultado: €{ing-gas:,.2f}  ({margen}%)")
+            ctx.append(f"- Ingresos: {sym}{ing:,.2f}")
+            ctx.append(f"- Gastos: {sym}{gas:,.2f}")
+            ctx.append(f"- Resultado: {sym}{ing-gas:,.2f}  ({margen}%)")
     except Exception:
         pass
 

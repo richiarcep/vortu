@@ -7,6 +7,7 @@ import VeraDrawer from '@/components/ui/VeraDrawer'
 import VeraInsights from '@/components/ui/VeraInsights'
 import { useT, FONT } from '@/components/ui/tokens'
 import { Skeleton, EmptyState, PageHeader, SegmentedFilter, ErrorBanner } from '@/components/ui/primitives'
+import { useMoney } from '@/lib/money'
 
 import { API_BASE as API } from '@/lib/api'
 
@@ -147,12 +148,13 @@ function Gauge({ score=0, size=120 }) {
 
 function ProgressBar({ label, value, max, color, format }) {
   const T = useT()
+  const { fmt } = useMoney()
   const pct = max>0?Math.min(value/max*100,100):0
   return (
     <div style={{marginBottom:10}}>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:4}}>
         <span style={{fontSize:12,color:T.text2}}>{label}</span>
-        <span style={{fontSize:12,fontWeight:600,color:color||T.text,fontVariantNumeric:'tabular-nums'}}>{format?format(value):`€${value.toLocaleString('es-ES')}`}</span>
+        <span style={{fontSize:12,fontWeight:600,color:color||T.text,fontVariantNumeric:'tabular-nums'}}>{format?format(value):fmt(value)}</span>
       </div>
       <div style={{height:6,background:T.sidebar,borderRadius:999,overflow:'hidden'}}>
         <div style={{height:'100%',width:`${pct}%`,background:color||T.blue,borderRadius:999,transition:'width .6s ease'}}/>
@@ -163,6 +165,7 @@ function ProgressBar({ label, value, max, color, format }) {
 
 function TrendChart({ data=[] }) {
   const T = useT()
+  const { fmt, short } = useMoney()
   const [hover,setHover]=useState(null)
   if (!data.length) return (
     <div style={{minHeight:140,display:'grid',placeItems:'center'}}>
@@ -186,7 +189,7 @@ function TrendChart({ data=[] }) {
         const y=padT+plotH-(v/maxVal)*plotH
         return <g key={i}>
           <line x1={padL} x2={W-padR} y1={y} y2={y} stroke={T.soft} strokeWidth=".8"/>
-          <text x={padL-6} y={y+3} textAnchor="end" fontSize="9" fill={T.text4} fontFamily="system-ui">{v===0?'0':`${(v/1000).toFixed(0)}k`}</text>
+          <text x={padL-6} y={y+3} textAnchor="end" fontSize="9" fill={T.text4} fontFamily="system-ui">{v===0?'0':short(v)}</text>
         </g>
       })}
       {data.map((d,i)=>{
@@ -207,9 +210,9 @@ function TrendChart({ data=[] }) {
               <g>
                 <rect x={gx-58} y={padT+plotH-Math.max(ingH,gasH)-62} width="116" height="56" rx="8" fill={T.text}/>
                 <text x={gx} y={padT+plotH-Math.max(ingH,gasH)-46} textAnchor="middle" fontSize="9.5" fill="rgba(255,255,255,.5)" fontFamily="system-ui">Ingresos</text>
-                <text x={gx} y={padT+plotH-Math.max(ingH,gasH)-32} textAnchor="middle" fontSize="11" fill={T.cyan} fontFamily="system-ui" fontWeight="600">€{(d.ingresos||0).toLocaleString('es-ES')}</text>
+                <text x={gx} y={padT+plotH-Math.max(ingH,gasH)-32} textAnchor="middle" fontSize="11" fill={T.cyan} fontFamily="system-ui" fontWeight="600">{fmt(d.ingresos||0)}</text>
                 <text x={gx} y={padT+plotH-Math.max(ingH,gasH)-18} textAnchor="middle" fontSize="9.5" fill="rgba(255,255,255,.5)" fontFamily="system-ui">Resultado</text>
-                <text x={gx} y={padT+plotH-Math.max(ingH,gasH)-4} textAnchor="middle" fontSize="11" fill={isPos?T.green:T.red} fontFamily="system-ui" fontWeight="600">{isPos?'+':''}€{(d.resultado||0).toLocaleString('es-ES')}</text>
+                <text x={gx} y={padT+plotH-Math.max(ingH,gasH)-4} textAnchor="middle" fontSize="11" fill={isPos?T.green:T.red} fontFamily="system-ui" fontWeight="600">{isPos?'+':''}{fmt(d.resultado||0)}</text>
               </g>
             )}
           </g>
@@ -241,6 +244,7 @@ function TrendChart({ data=[] }) {
 // ════════════════════════════════════════════════════════════════════════════
 export default function Finanzas() {
   const T = useT()
+  const { fmt } = useMoney()
   const router = useRouter()
   const [section, setSection] = useState('resumen')
   const [summary, setSummary] = useState(null)
@@ -517,18 +521,18 @@ export default function Finanzas() {
                 <div className="fin-kpis" style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr 200px',gap:12,marginBottom:14}}>
                   <Card padding={18}>
                     <div style={{fontSize:11,color:T.text4,fontWeight:500,letterSpacing:.3,textTransform:'uppercase',marginBottom:8}}>Ingresos</div>
-                    <div style={{fontSize:30,fontWeight:600,letterSpacing:-.8,color:T.text,fontVariantNumeric:'tabular-nums',lineHeight:1,marginBottom:10}}>€{(datos.ingresos||0).toLocaleString('es-ES')}</div>
+                    <div style={{fontSize:30,fontWeight:600,letterSpacing:-.8,color:T.text,fontVariantNumeric:'tabular-nums',lineHeight:1,marginBottom:10}}>{fmt(datos.ingresos||0)}</div>
                     <ProgressBar label="" value={datos.ingresos||0} max={Math.max(datos.ingresos||0,datos.gastos||0,1)} color={T.blue} format={()=>''}/>
                   </Card>
                   <Card padding={18}>
                     <div style={{fontSize:11,color:T.text4,fontWeight:500,letterSpacing:.3,textTransform:'uppercase',marginBottom:8}}>Gastos</div>
-                    <div style={{fontSize:30,fontWeight:600,letterSpacing:-.8,color:T.text,fontVariantNumeric:'tabular-nums',lineHeight:1,marginBottom:10}}>€{(datos.gastos||0).toLocaleString('es-ES')}</div>
+                    <div style={{fontSize:30,fontWeight:600,letterSpacing:-.8,color:T.text,fontVariantNumeric:'tabular-nums',lineHeight:1,marginBottom:10}}>{fmt(datos.gastos||0)}</div>
                     <ProgressBar label="" value={datos.gastos||0} max={Math.max(datos.ingresos||0,datos.gastos||0,1)} color={T.red} format={()=>''}/>
                   </Card>
                   <Card padding={18}>
                     <div style={{fontSize:11,color:T.text4,fontWeight:500,letterSpacing:.3,textTransform:'uppercase',marginBottom:8}}>Resultado neto</div>
                     <div style={{fontSize:30,fontWeight:600,letterSpacing:-.8,color:(datos.resultado||0)>=0?T.green:T.red,fontVariantNumeric:'tabular-nums',lineHeight:1,marginBottom:10}}>
-                      {(datos.resultado||0)>=0?'+':''}€{Math.abs(datos.resultado||0).toLocaleString('es-ES')}
+                      {(datos.resultado||0)>=0?'+':''}{fmt(Math.abs(datos.resultado||0))}
                     </div>
                     <div style={{display:'flex',alignItems:'center',gap:6}}>
                       <div style={{flex:1,height:6,background:T.sidebar,borderRadius:999,overflow:'hidden'}}>
@@ -561,9 +565,9 @@ export default function Finanzas() {
                     <TrendChart data={trend}/>
                     <div className="fin-3" style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,marginTop:14}}>
                       {[
-                        {label:'Mejor mes',value:trend.length?`€${Math.max(...trend.map(d=>d.ingresos||0)).toLocaleString('es-ES')}`:'—',color:T.green},
-                        {label:'Promedio mensual',value:trend.length?`€${Math.round(trend.reduce((a,d)=>a+(d.ingresos||0),0)/trend.length).toLocaleString('es-ES')}`:'—',color:T.blue},
-                        {label:'Total 6 meses',value:trend.length?`€${trend.reduce((a,d)=>a+(d.resultado||0),0).toLocaleString('es-ES')}`:'—',color:trend.reduce((a,d)=>a+(d.resultado||0),0)>=0?T.green:T.red},
+                        {label:'Mejor mes',value:trend.length?fmt(Math.max(...trend.map(d=>d.ingresos||0))):'—',color:T.green},
+                        {label:'Promedio mensual',value:trend.length?fmt(Math.round(trend.reduce((a,d)=>a+(d.ingresos||0),0)/trend.length)):'—',color:T.blue},
+                        {label:'Total 6 meses',value:trend.length?fmt(trend.reduce((a,d)=>a+(d.resultado||0),0)):'—',color:trend.reduce((a,d)=>a+(d.resultado||0),0)>=0?T.green:T.red},
                       ].map((s,i)=>(
                         <div key={i} style={{padding:'10px',background:T.sidebar,borderRadius:10,border:`.5px solid ${T.hairline}`,textAlign:'center'}}>
                           <div style={{fontSize:11,color:T.text4,marginBottom:3}}>{s.label}</div>
@@ -585,7 +589,7 @@ export default function Finanzas() {
                         <div key={i} style={{marginBottom:12}}>
                           <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:4}}>
                             <span style={{fontSize:12,color:T.text2,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',marginRight:8}}>{g.categoria?.replace(/_/g,' ')||'Otros'}</span>
-                            <span style={{fontSize:12,fontWeight:600,color:T.red,fontVariantNumeric:'tabular-nums',flexShrink:0}}>€{g.total.toLocaleString('es-ES')}</span>
+                            <span style={{fontSize:12,fontWeight:600,color:T.red,fontVariantNumeric:'tabular-nums',flexShrink:0}}>{fmt(g.total)}</span>
                           </div>
                           <div style={{height:5,background:T.sidebar,borderRadius:999,overflow:'hidden'}}>
                             <div style={{height:'100%',width:`${(g.total/maxGasto)*100}%`,background:`rgba(255,59,48,${0.3+0.7*(g.total/maxGasto)})`,borderRadius:999,transition:'width .6s ease'}}/>
@@ -596,7 +600,7 @@ export default function Finanzas() {
                     <div style={{marginTop:16,paddingTop:14,borderTop:`.5px solid ${T.hairline}`}}>
                       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
                         <span style={{fontSize:12,color:T.text3}}>Total gastos año</span>
-                        <span style={{fontSize:14,fontWeight:600,color:T.red,fontVariantNumeric:'tabular-nums'}}>€{(cont.año_actual?.gastos||0).toLocaleString('es-ES')}</span>
+                        <span style={{fontSize:14,fontWeight:600,color:T.red,fontVariantNumeric:'tabular-nums'}}>{fmt(cont.año_actual?.gastos||0)}</span>
                       </div>
                     </div>
                   </Card>
@@ -677,9 +681,9 @@ export default function Finanzas() {
                           {(ai.total_income !== undefined) && (
                             <div className="fin-2" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:12}}>
                               {[
-                                {label:'Ingresos', value:`€${(ai.total_income||0).toLocaleString('es-ES')}`,color:T.green},
-                                {label:'Gastos',   value:`€${(ai.total_expenses||0).toLocaleString('es-ES')}`,color:T.red},
-                                {label:'Resultado',value:`€${(ai.net_profit||0).toLocaleString('es-ES')}`,color:(ai.net_profit||0)>=0?T.green:T.red},
+                                {label:'Ingresos', value:fmt(ai.total_income||0),color:T.green},
+                                {label:'Gastos',   value:fmt(ai.total_expenses||0),color:T.red},
+                                {label:'Resultado',value:fmt(ai.net_profit||0),color:(ai.net_profit||0)>=0?T.green:T.red},
                                 {label:'H. Score', value:`${ai.health_score||0}/10`,color:T.amber},
                               ].map(m => (
                                 <div key={m.label} style={{padding:'10px',background:T.sidebar,borderRadius:10,border:`.5px solid ${T.hairline}`,textAlign:'center'}}>
@@ -785,9 +789,9 @@ export default function Finanzas() {
                                 <div key={j} style={{padding:'12px',background:cSoft,borderRadius:10,textAlign:'center'}}>
                                   <div style={{fontSize:11,fontWeight:500,color:c,marginBottom:6}}>{mes.mes}</div>
                                   <div style={{fontSize:11,color:T.text4,marginBottom:1}}>Ingresos</div>
-                                  <div style={{fontSize:14,fontWeight:600,color:T.green,fontVariantNumeric:'tabular-nums',marginBottom:6}}>€{(mes.ingresos||0).toLocaleString('es-ES')}</div>
+                                  <div style={{fontSize:14,fontWeight:600,color:T.green,fontVariantNumeric:'tabular-nums',marginBottom:6}}>{fmt(mes.ingresos||0)}</div>
                                   <div style={{fontSize:11,color:T.text4,marginBottom:1}}>Resultado</div>
-                                  <div style={{fontSize:14,fontWeight:600,color:(mes.resultado||0)>=0?T.green:T.red,fontVariantNumeric:'tabular-nums'}}>{(mes.resultado||0)>=0?'+':''}€{Math.abs(mes.resultado||0).toLocaleString('es-ES')}</div>
+                                  <div style={{fontSize:14,fontWeight:600,color:(mes.resultado||0)>=0?T.green:T.red,fontVariantNumeric:'tabular-nums'}}>{(mes.resultado||0)>=0?'+':''}{fmt(Math.abs(mes.resultado||0))}</div>
                                 </div>
                               ))}
                             </div>

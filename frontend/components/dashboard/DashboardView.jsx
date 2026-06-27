@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
+import { useMoney } from '@/lib/money'
 
 import { API_BASE as API, logout } from '@/lib/api'
 const T = {
@@ -76,6 +77,7 @@ function KpiCard({ label, value, unit, delta, up, comp, color, spark, loading })
 }
 
 function BarChart({ data=[], ingresos30=0, gastos30=0 }) {
+  const { fmt, short, symbol }=useMoney()
   const [hover,setHover]=useState(null)
   const neto=ingresos30-gastos30
   if (!data.length) return (
@@ -109,7 +111,7 @@ function BarChart({ data=[], ingresos30=0, gastos30=0 }) {
           <div key={m.label} style={{display:'flex',flexDirection:'column',gap:4}}>
             <span style={{fontSize:12.5,color:T.text3,fontWeight:500}}>{m.label}</span>
             <span style={{fontSize:26,fontWeight:600,color:m.color,letterSpacing:-0.8,fontVariantNumeric:'tabular-nums'}}>
-              {m.val}<span style={{fontSize:16,color:T.text3,marginLeft:2}}>€</span>
+              {m.val}<span style={{fontSize:16,color:T.text3,marginLeft:2}}>{symbol}</span>
             </span>
           </div>
         ))}
@@ -121,7 +123,7 @@ function BarChart({ data=[], ingresos30=0, gastos30=0 }) {
             <g key={v}>
               <line x1={padL} x2={W-padR} y1={y} y2={y} stroke={T.hairlineSoft} strokeWidth="1"/>
               <text x={padL-8} y={y+3.5} textAnchor="end" fontSize="10" fill={T.text4}>
-                {v===0?'0':`${(v/1000).toFixed(0)}k`}
+                {v===0?'0':short(v)}
               </text>
             </g>
           )
@@ -143,9 +145,9 @@ function BarChart({ data=[], ingresos30=0, gastos30=0 }) {
                   <rect x={gx-62} y={padT+plotH-Math.max(ingH,gasH)-62} width="124" height="52" rx="8" fill="#1D1D1F"/>
                   <text x={gx} y={padT+plotH-Math.max(ingH,gasH)-44} textAnchor="middle" fontSize="10" fill="rgba(255,255,255,.5)">{d.label}</text>
                   <text x={gx-54} y={padT+plotH-Math.max(ingH,gasH)-26} fontSize="11" fill="rgba(255,255,255,.7)">Ingresos</text>
-                  <text x={gx+54} y={padT+plotH-Math.max(ingH,gasH)-26} textAnchor="end" fontSize="11" fill="#fff" fontWeight="600">€{(d.ing||0).toFixed(0)}</text>
+                  <text x={gx+54} y={padT+plotH-Math.max(ingH,gasH)-26} textAnchor="end" fontSize="11" fill="#fff" fontWeight="600">{fmt(d.ing||0,{decimals:0})}</text>
                   <text x={gx-54} y={padT+plotH-Math.max(ingH,gasH)-10} fontSize="11" fill="rgba(255,255,255,.5)">Ventas</text>
-                  <text x={gx+54} y={padT+plotH-Math.max(ingH,gasH)-10} textAnchor="end" fontSize="11" fill={T.cyan} fontWeight="600">€{(d.gas||0).toFixed(0)}</text>
+                  <text x={gx+54} y={padT+plotH-Math.max(ingH,gasH)-10} textAnchor="end" fontSize="11" fill={T.cyan} fontWeight="600">{fmt(d.gas||0,{decimals:0})}</text>
                 </g>
               )}
             </g>
@@ -316,6 +318,7 @@ function ProfileBtn({ user }) {
 }
 
 export default function Dashboard() {
+  const { fmt, short, symbol }=useMoney()
   const router=useRouter()
   const [token,setToken]=useState(null)
   const [user,setUser]=useState(null)
@@ -369,7 +372,7 @@ export default function Dashboard() {
   const isOk=statusRows.every(r=>!r.bad)
 
   const modules=[
-    {icon:'📒',title:'Contabilidad',desc:'Partida doble · PGC',href:'/contabilidad',stat:`€${(d.ingresos||0).toLocaleString('es-ES')}`,statLabel:'ingresos 30d',statColor:T.green},
+    {icon:'📒',title:'Contabilidad',desc:'Partida doble · PGC',href:'/contabilidad',stat:fmt(d.ingresos||0,{decimals:0}),statLabel:'ingresos 30d',statColor:T.green},
     {icon:'👥',title:'Recursos Humanos',desc:'Nominas · IRPF',href:'/hr',stat:resumen?.empleados||'—',statLabel:'empleados',statColor:T.text},
     {icon:'💬',title:'Clientes',desc:'CRM · Inbox · IA',href:'/clientes',stat:clientes?.overview?.pending_responses||0,statLabel:'pendientes',statColor:(clientes?.overview?.pending_responses||0)>0?T.amber:T.green},
     {icon:'📋',title:'Proyectos',desc:'Health score · IA',href:'/proyectos',stat:proyectos?.total_projects||0,statLabel:'activos',statColor:T.text},
@@ -416,10 +419,10 @@ export default function Dashboard() {
 
           {/* KPIs */}
           <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:14,marginBottom:16}}>
-            <KpiCard label="Ingresos (30 dias)" value={(d.ingresos||0).toLocaleString('es-ES')} unit="€" delta={`Margen ${d.margen||0}%`} up={true} comp="ultimos 30 dias" color={T.blue} spark={makeSpark(d.ingresos||1)} loading={loading}/>
-            <KpiCard label="Gastos (30 dias)" value={(d.gastos||0).toLocaleString('es-ES')} unit="€" delta="vs ingresos" up={false} comp="ultimos 30 dias" color={T.cyan} spark={makeSpark(d.gastos||1)} loading={loading}/>
-            <KpiCard label="Resultado neto" value={(d.resultado_neto||0).toLocaleString('es-ES')} unit="€" delta={`${d.margen||0}% margen`} up={esPos} comp="30 dias" color={esPos?T.green:T.red} spark={makeSpark(Math.abs(d.resultado_neto||1))} loading={loading}/>
-            <KpiCard label="Ventas hoy" value={(ventas?.today?.total_revenue||0).toFixed(2)} unit="€" delta={`${ventas?.today?.total_sales||0} ventas`} up={true} comp="hoy" color={T.blue} spark={makeSpark(ventas?.today?.total_revenue||1)} loading={loading}/>
+            <KpiCard label="Ingresos (30 dias)" value={(d.ingresos||0).toLocaleString(locale)} unit={symbol} delta={`Margen ${d.margen||0}%`} up={true} comp="ultimos 30 dias" color={T.blue} spark={makeSpark(d.ingresos||1)} loading={loading}/>
+            <KpiCard label="Gastos (30 dias)" value={(d.gastos||0).toLocaleString(locale)} unit={symbol} delta="vs ingresos" up={false} comp="ultimos 30 dias" color={T.cyan} spark={makeSpark(d.gastos||1)} loading={loading}/>
+            <KpiCard label="Resultado neto" value={(d.resultado_neto||0).toLocaleString(locale)} unit={symbol} delta={`${d.margen||0}% margen`} up={esPos} comp="30 dias" color={esPos?T.green:T.red} spark={makeSpark(Math.abs(d.resultado_neto||1))} loading={loading}/>
+            <KpiCard label="Ventas hoy" value={(ventas?.today?.total_revenue||0).toFixed(2)} unit={symbol} delta={`${ventas?.today?.total_sales||0} ventas`} up={true} comp="hoy" color={T.blue} spark={makeSpark(ventas?.today?.total_revenue||1)} loading={loading}/>
           </div>
 
           {/* Chart + Agent */}

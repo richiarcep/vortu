@@ -4,6 +4,7 @@ import JurisdictionGuard from "@/components/JurisdictionGuard";
 import TokenRefresher from "@/components/TokenRefresher";
 import DemoBadge from "@/components/DemoBadge";
 import { ThemeProvider } from "@/components/ui/tokens";
+import { CompanyProvider } from "@/components/CompanyProvider";
 
 export const metadata: Metadata = {
   title: "Vela",
@@ -33,11 +34,13 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: themeInit }} />
         <a href="#main-content" className="skip-link">Saltar al contenido</a>
         <ThemeProvider>
-          <TokenRefresher />
-          <JurisdictionGuard>
-            {children}
-          </JurisdictionGuard>
-          <DemoBadge />
+          <CompanyProvider>
+            <TokenRefresher />
+            <JurisdictionGuard>
+              {children}
+            </JurisdictionGuard>
+            <DemoBadge />
+          </CompanyProvider>
         </ThemeProvider>
       </body>
     </html>

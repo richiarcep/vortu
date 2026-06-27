@@ -8,6 +8,7 @@ import { Skeleton, EmptyState, PageHeader } from '@/components/ui/primitives'
 import VeraDrawer from '@/components/ui/VeraDrawer'
 
 import { API_BASE as API } from '@/lib/api'
+import { useMoney } from '@/lib/money'
 
 // ───────────────────────────────────────────────────────────────
 // PRIMITIVOS LOCALES
@@ -216,6 +217,7 @@ function VeraInsight({ insight, loading, onOpenChat, onRegenerate }) {
 export default function Ventas() {
   const T = useT()
   const { theme } = useTheme()
+  const { fmt, short, symbol } = useMoney()
   const router = useRouter()
   const [section, setSection] = useState('pos')
   const [token, setToken] = useState(null)
@@ -414,7 +416,7 @@ export default function Ventas() {
             if (!rr.ok) { const rd = await rr.json().catch(() => ({})); setMsg({ type: 'error', text: `Devolución registrada, pero el reembolso a tarjeta falló: ${rd.detail || ''}` }) }
           } catch {}
         }
-        setMsg(m => m || { type: 'success', text: `Devolución registrada · ${data.credit_note_number} · €${data.total?.toFixed(2)}` })
+        setMsg(m => m || { type: 'success', text: `Devolución registrada · ${data.credit_note_number} · ${fmt(data.total)}` })
         setRefundSale(null)
         loadHistorial()
         loadResumen()
@@ -558,7 +560,7 @@ export default function Ventas() {
       })
       const data = await res.json()
       if (res.ok) {
-        setMsg({ type: 'success', text: `Venta registrada · €${data.total?.toFixed(2)}` })
+        setMsg({ type: 'success', text: `Venta registrada · ${fmt(data.total)}` })
         setCart([])
         setShowPaymentModal(false)
         setClienteSelected(null)
@@ -711,7 +713,7 @@ export default function Ventas() {
                 borderRadius: 12, border: `.5px solid rgba(52,199,89,.15)`, marginBottom: 18,
               }}>
                 <div style={{ fontSize: 11, color: T.text3, marginBottom: 6, fontWeight: 500, letterSpacing: 0.5, textTransform: 'uppercase' }}>Total a cobrar</div>
-                <div style={{ fontSize: 36, fontWeight: 600, color: T.text, fontVariantNumeric: 'tabular-nums', letterSpacing: -1, lineHeight: 1 }}>€{cartTotal.toFixed(2)}</div>
+                <div style={{ fontSize: 36, fontWeight: 600, color: T.text, fontVariantNumeric: 'tabular-nums', letterSpacing: -1, lineHeight: 1 }}>{fmt(cartTotal)}</div>
               </div>
 
               {/* Método de pago */}
@@ -837,7 +839,7 @@ export default function Ventas() {
                   width:'100%', marginBottom:8, padding:'11px', borderRadius:10, border:`1px solid ${T.blue}`,
                   background:'rgba(61,43,255,.06)', color:T.blue, fontSize:13.5, fontWeight:600,
                   cursor:charging?'default':'pointer', fontFamily:'inherit', opacity:charging?.6:1}}>
-                  {charging ? 'Abriendo cobro…' : ` Cobrar con tarjeta / Apple Pay · €${cartTotal.toFixed(2)}`}
+                  {charging ? 'Abriendo cobro…' : ` Cobrar con tarjeta / Apple Pay · ${fmt(cartTotal)}`}
                 </button>
               )}
 
@@ -847,7 +849,7 @@ export default function Ventas() {
                 </BtnSec>
                 <Btn onClick={submitSale} disabled={loading || (facturaElectronica && !clienteSelected)} color={T.green}
                   style={{ flex: 2, justifyContent: 'center', padding: '11px', borderRadius: 10, fontSize: 14, fontWeight: 600 }}>
-                  {loading ? 'Procesando…' : `Confirmar venta · €${cartTotal.toFixed(2)}`}
+                  {loading ? 'Procesando…' : `Confirmar venta · ${fmt(cartTotal)}`}
                 </Btn>
               </div>
             </div>
@@ -879,7 +881,7 @@ export default function Ventas() {
                       Devolución · Venta #{refundSale.id}
                     </div>
                     <div style={{ fontSize: 12, color: T.text4, marginTop: 2 }}>
-                      {refundSale.sale_date} · {refundSale.sale_time} · Total €{refundSale.total?.toFixed(2)}
+                      {refundSale.sale_date} · {refundSale.sale_time} · Total {fmt(refundSale.total)}
                     </div>
                   </div>
                   <button onClick={() => setRefundSale(null)} aria-label="Cerrar" style={{
@@ -934,7 +936,7 @@ export default function Ventas() {
                                 {it.product_name}
                               </div>
                               <div style={{ fontSize: 11, color: T.text4 }}>
-                                €{it.unit_price?.toFixed(2)} · IVA {it.iva_rate}% · {returnable} de {it.quantity} devolvibles
+                                {fmt(it.unit_price)} · IVA {it.iva_rate}% · {returnable} de {it.quantity} devolvibles
                               </div>
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -977,7 +979,7 @@ export default function Ventas() {
                       marginTop: 16, padding: '12px 14px', borderRadius: 10, background: T.soft,
                     }}>
                       <span style={{ fontSize: 13, color: T.text3 }}>{refundUnits} unidad{refundUnits === 1 ? '' : 'es'} · a reembolsar</span>
-                      <span style={{ fontSize: 18, fontWeight: 700, color: T.text, fontVariantNumeric: 'tabular-nums' }}>€{refundTotal.toFixed(2)}</span>
+                      <span style={{ fontSize: 18, fontWeight: 700, color: T.text, fontVariantNumeric: 'tabular-nums' }}>{fmt(refundTotal)}</span>
                     </div>
                   </>
                 )}
@@ -991,7 +993,7 @@ export default function Ventas() {
                   {anyReturnable && (
                     <Btn onClick={submitRefund} disabled={refundLoading || refundUnits <= 0} color={T.red}
                       style={{ flex: 2, justifyContent: 'center', padding: '11px', borderRadius: 10, fontSize: 14, fontWeight: 600 }}>
-                      {refundLoading ? 'Procesando…' : `Devolver · €${refundTotal.toFixed(2)}`}
+                      {refundLoading ? 'Procesando…' : `Devolver · ${fmt(refundTotal)}`}
                     </Btn>
                   )}
                 </div>
@@ -1005,7 +1007,7 @@ export default function Ventas() {
 
         <PageHeader
           title="Ventas"
-          subtitle={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><FlagES size={12} />{resumen?.today ? `€${(resumen.today.total_revenue || 0).toFixed(0)} hoy · ` : ''}Punto de venta · IVA 21%</span>}
+          subtitle={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><FlagES size={12} />{resumen?.today ? `${fmt(resumen.today.total_revenue || 0, { decimals: 0 })} hoy · ` : ''}Punto de venta · IVA 21%</span>}
           tabs={sections}
           activeTab={section}
           onTab={setSection}
@@ -1025,9 +1027,9 @@ export default function Ventas() {
               {/* KPIs como pills medianas */}
               <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
                 {[
-                  { label: 'Ventas hoy', value: `€${(resumen?.today?.total_revenue || 0).toFixed(0)}`, accent: T.green },
+                  { label: 'Ventas hoy', value: fmt(resumen?.today?.total_revenue || 0, { decimals: 0 }), accent: T.green },
                   { label: 'Transacciones', value: resumen?.today?.total_sales || 0 },
-                  { label: 'Ticket medio', value: `€${(resumen?.today?.avg_ticket || 0).toFixed(2)}` },
+                  { label: 'Ticket medio', value: fmt(resumen?.today?.avg_ticket || 0) },
                   { label: 'Productos', value: products.length },
                 ].map((k, i) => (
                   <div key={i} style={{
@@ -1141,7 +1143,7 @@ export default function Ventas() {
                             <span style={{
                               fontSize: 14, fontWeight: 600, color: T.text,
                               fontVariantNumeric: 'tabular-nums',
-                            }}>€{p.sale_price?.toFixed(2)}</span>
+                            }}>{fmt(p.sale_price)}</span>
                             <span style={{
                               padding: '2px 8px', borderRadius: 999,
                               fontSize: 10.5, fontWeight: 500,
@@ -1194,7 +1196,7 @@ export default function Ventas() {
                             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                           }}>{c.name}</div>
                           <div style={{ fontSize: 11, color: T.text4 }}>
-                            €{c.sale_price?.toFixed(2)} × {c.qty}
+                            {fmt(c.sale_price)} × {c.qty}
                           </div>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 10 }}>
@@ -1220,17 +1222,17 @@ export default function Ventas() {
                     <>
                       <div style={{ background: T.sidebar, borderRadius: 10, padding: 12, marginBottom: 12 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: 12, color: T.text3 }}>
-                          <span>Subtotal</span><span style={{ fontVariantNumeric: 'tabular-nums' }}>€{cartSubtotal.toFixed(2)}</span>
+                          <span>Subtotal</span><span style={{ fontVariantNumeric: 'tabular-nums' }}>{fmt(cartSubtotal)}</span>
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: 12, color: T.text3 }}>
-                          <span>IVA 21%</span><span style={{ fontVariantNumeric: 'tabular-nums' }}>€{cartIva.toFixed(2)}</span>
+                          <span>IVA 21%</span><span style={{ fontVariantNumeric: 'tabular-nums' }}>{fmt(cartIva)}</span>
                         </div>
                         <div style={{
                           display: 'flex', justifyContent: 'space-between',
                           padding: '8px 0 4px', borderTop: `.5px solid ${T.hairline}`,
                           fontSize: 16, fontWeight: 600, color: T.text,
                         }}>
-                          <span>Total</span><span style={{ fontVariantNumeric: 'tabular-nums' }}>€{cartTotal.toFixed(2)}</span>
+                          <span>Total</span><span style={{ fontVariantNumeric: 'tabular-nums' }}>{fmt(cartTotal)}</span>
                         </div>
                       </div>
 
@@ -1238,7 +1240,7 @@ export default function Ventas() {
 
                       <Btn onClick={() => setShowPaymentModal(true)} disabled={loading} color={T.green}
                         style={{ width: '100%', justifyContent: 'center', padding: '12px', borderRadius: 10, fontSize: 14, fontWeight: 600 }}>
-                        Cobrar €{cartTotal.toFixed(2)}
+                        Cobrar {fmt(cartTotal)}
                       </Btn>
                     </>
                   )}
@@ -1397,15 +1399,15 @@ export default function Ventas() {
                       <td style={{
                         padding: '10px 14px', fontSize: 13, color: T.text2,
                         textAlign: 'right', fontVariantNumeric: 'tabular-nums',
-                      }}>€{s.subtotal?.toFixed(2)}</td>
+                      }}>{fmt(s.subtotal)}</td>
                       <td style={{
                         padding: '10px 14px', fontSize: 13, color: T.text3,
                         textAlign: 'right', fontVariantNumeric: 'tabular-nums',
-                      }}>€{s.iva_amount?.toFixed(2)}</td>
+                      }}>{fmt(s.iva_amount)}</td>
                       <td style={{
                         padding: '10px 14px', fontSize: 13, fontWeight: 600, color: T.text,
                         textAlign: 'right', fontVariantNumeric: 'tabular-nums',
-                      }}>€{s.total?.toFixed(2)}</td>
+                      }}>{fmt(s.total)}</td>
                       <td style={{ padding: '10px 14px', fontSize: 11, color: T.blue, fontWeight: 600, whiteSpace: 'nowrap' }}>
                         {s.status === 'refunded' ? 'Ver' : 'Devolver →'}
                       </td>
@@ -1459,7 +1461,7 @@ export default function Ventas() {
                         <td style={{ padding: '10px 14px', fontSize: 12, color: T.text3, fontVariantNumeric: 'tabular-nums' }}>{r.credit_note_number}</td>
                         <td style={{ padding: '10px 14px', fontSize: 13, color: T.text3 }}>{units}</td>
                         <td style={{ padding: '10px 14px', fontSize: 13, color: T.text3, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.reason || '—'}</td>
-                        <td style={{ padding: '10px 14px', fontSize: 13, fontWeight: 600, color: T.red, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>−€{r.total?.toFixed(2)}</td>
+                        <td style={{ padding: '10px 14px', fontSize: 13, fontWeight: 600, color: T.red, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>−{fmt(r.total)}</td>
                       </tr>
                     )
                   })}
@@ -1490,11 +1492,11 @@ export default function Ventas() {
                       </Field>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px,1fr))', gap: 12 }}>
-                      <Field label="Precio venta €">
+                      <Field label={`Precio venta ${symbol}`}>
                         <Input type="number" step="0.01" value={newProduct.sale_price}
                           onChange={e => setNewProduct({ ...newProduct, sale_price: e.target.value })} required />
                       </Field>
-                      <Field label="Coste €">
+                      <Field label={`Coste ${symbol}`}>
                         <Input type="number" step="0.01" value={newProduct.cost_price}
                           onChange={e => setNewProduct({ ...newProduct, cost_price: e.target.value })} />
                       </Field>
@@ -1558,11 +1560,11 @@ export default function Ventas() {
                           <td style={{
                             padding: '10px 14px', fontSize: 13, color: T.text, fontWeight: 600,
                             textAlign: 'right', fontVariantNumeric: 'tabular-nums',
-                          }}>€{p.sale_price?.toFixed(2)}</td>
+                          }}>{fmt(p.sale_price)}</td>
                           <td style={{
                             padding: '10px 14px', fontSize: 13, color: T.text3,
                             textAlign: 'right', fontVariantNumeric: 'tabular-nums',
-                          }}>€{p.cost_price?.toFixed(2) || '—'}</td>
+                          }}>{p.cost_price != null ? fmt(p.cost_price) : '—'}</td>
                           <td style={{
                             padding: '10px 14px', fontSize: 13, color: T.text2,
                             textAlign: 'right', fontVariantNumeric: 'tabular-nums',

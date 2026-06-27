@@ -11,6 +11,8 @@ from reportlab.platypus import (
 from reportlab.lib.enums import TA_LEFT, TA_CENTER, TA_RIGHT
 from sqlalchemy.orm import Session
 from models.project import Project, Task, TimeEntry, ProjectExpense
+from models.user import Company
+from country.registry import get_country_info
 from modules.projects.health import calculate_health_score
 from modules.projects.velocity import calculate_velocity
 
@@ -68,6 +70,11 @@ def generate_project_report_pdf(
     }
 
     today = date.today()
+
+    company = db.query(Company).filter(Company.id == project.company_id).first()
+    country = company.country if company else None
+    sym = (get_country_info(country) or {}).get("symbol", "€") if country else "€"
+
     tasks = db.query(Task).filter(Task.project_id == project.id).all()
     time_entries = db.query(TimeEntry).filter(
         TimeEntry.task_id.in_([t.id for t in tasks])
@@ -144,8 +151,8 @@ def generate_project_report_pdf(
     # ── KPI CARDS ─────────────────────────────────────────────────────────────
     kpi_data = [[
         Paragraph(f"{project.completion_percentage:.0f}%", ST["kpi_v"]),
-        Paragraph(f"€{total_spent:,.0f}", ST["kpi_v"]),
-        Paragraph(f"€{budget_left:,.0f}", ST["kpi_v"]),
+        Paragraph(f"{sym}{total_spent:,.0f}", ST["kpi_v"]),
+        Paragraph(f"{sym}{budget_left:,.0f}", ST["kpi_v"]),
         Paragraph(f"{total_hours:.1f}h", ST["kpi_v"]),
     ],[
         Paragraph("Completado", ST["kpi_l"]),

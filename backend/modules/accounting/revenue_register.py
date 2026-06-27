@@ -222,6 +222,12 @@ def generate_cierre_caja(
     """
     os.makedirs("templates", exist_ok=True)
     doc_id = generate_doc_id(company_data["id"], fecha)
+
+    # Localize currency from the company country (tenant amounts only).
+    from country.registry import get_country_info
+    _ci = get_country_info(company_data.get("country", "es")) or {}
+    sym = _ci.get("symbol", "€")
+    currency = _ci.get("currency", "EUR")
     filename = (
         f"templates/cierre_{company_data['id']}"
         f"_{fecha.strftime('%Y%m%d')}.pdf"
@@ -343,8 +349,8 @@ def generate_cierre_caja(
 
     cats = CATEGORIAS_VENTA.get(tipo_negocio, CATEGORIAS_VENTA["mixto"])
     sales_data = [
-        ["Departamento / Categoría", "Uds.", "Subtotal €",
-         "% IVA", "IVA €", "Total €"]
+        ["Departamento / Categoría", "Uds.", f"Subtotal {sym}",
+         "% IVA", f"IVA {sym}", f"Total {sym}"]
     ]
     for cat in cats:
         sales_data.append([cat, "", "", "", "", ""])
@@ -374,7 +380,7 @@ def generate_cierre_caja(
         ["Ticket final nº", "___________"],
         ["Total tickets emitidos", "___________"],
         ["Tickets anulados", "___________"],
-        ["Ticket medio €", "___________"],
+        [f"Ticket medio {sym}", "___________"],
     ]
     ticket_tbl = Table(ticket_data, colWidths=[CW*0.25, CW*0.20])
     ticket_tbl.setStyle(TableStyle([
@@ -401,10 +407,10 @@ def generate_cierre_caja(
     if tipo_negocio in ["restaurante", "mixto"]:
         tips_data = [
             ["C  PROPINAS"],
-            ["Propinas efectivo €", "___________"],
-            ["Propinas tarjeta €", "___________"],
-            ["Propinas Bizum €", "___________"],
-            ["TOTAL PROPINAS €", "___________"],
+            [f"Propinas efectivo {sym}", "___________"],
+            [f"Propinas tarjeta {sym}", "___________"],
+            [f"Propinas Bizum {sym}", "___________"],
+            [f"TOTAL PROPINAS {sym}", "___________"],
             ["Reparto: □ Igualitario  □ %  □ Solo camareros", ""],
         ]
         tips_tbl = Table(tips_data, colWidths=[CW*0.30, CW*0.20])
@@ -467,7 +473,7 @@ def generate_cierre_caja(
     story.append(Spacer(1, 1*mm))
 
     exempt_data = [
-        ["Concepto", "Nº Operaciones", "Importe €", "Motivo / Referencia"],
+        ["Concepto", "Nº Operaciones", f"Importe {sym}", "Motivo / Referencia"],
         ["Ventas exentas de IVA", "", "", ""],
         ["Descuentos aplicados", "", "", ""],
         ["Devoluciones / Reembolsos", "", "", ""],
@@ -525,8 +531,8 @@ def generate_cierre_caja(
     story.append(Spacer(1, 1*mm))
 
     pay_data = [
-        ["Método", "Nº Operaciones", "Importe Bruto €",
-         "Comisión €", "Importe Neto €"]
+        ["Método", "Nº Operaciones", f"Importe Bruto {sym}",
+         f"Comisión {sym}", f"Importe Neto {sym}"]
     ]
     for m in METODOS_PAGO:
         pay_data.append([m, "", "", "", ""])
@@ -550,8 +556,8 @@ def generate_cierre_caja(
     story.append(Spacer(1, 1*mm))
 
     iva_data = [
-        ["Tipo IVA", "Base Imponible €", "% IVA",
-         "Cuota IVA €", "Total €"]
+        ["Tipo IVA", f"Base Imponible {sym}", "% IVA",
+         f"Cuota IVA {sym}", f"Total {sym}"]
     ]
     for k, v in TIPOS_IVA.items():
         iva_data.append([v["label"], "", f"{v['rate']}%", "", ""])
@@ -574,12 +580,18 @@ def generate_cierre_caja(
     ))
     story.append(Spacer(1, 1*mm))
 
-    bills  = ["€500", "€200", "€100", "€50", "€20", "€10", "€5"]
-    coins  = ["€2", "€1", "€0,50", "€0,20", "€0,10", "€0,05"]
+    # Denominations are EUR-specific; only print the labelled breakdown for EUR.
+    if currency == "EUR":
+        bills  = ["€500", "€200", "€100", "€50", "€20", "€10", "€5"]
+        coins  = ["€2", "€1", "€0,50", "€0,20", "€0,10", "€0,05"]
+    else:
+        bills  = []
+        coins  = []
 
-    arq_data = [["Billete", "Cant.", "Total €",
-                  "Moneda", "Cant.", "Total €"]]
-    for i in range(max(len(bills), len(coins))):
+    arq_data = [["Billete", "Cant.", f"Total {sym}",
+                  "Moneda", "Cant.", f"Total {sym}"]]
+    n_rows = max(len(bills), len(coins)) or 7
+    for i in range(n_rows):
         b = bills[i] if i < len(bills) else ""
         c = coins[i] if i < len(coins) else ""
         arq_data.append([b, "", "", c, "", ""])
@@ -599,12 +611,12 @@ def generate_cierre_caja(
 
     # Cash totals beside arqueo
     cash_totals = [
-        ["Total Billetes €", "____________"],
-        ["Total Monedas €", "____________"],
-        ["TOTAL CONTADO €", "____________"],
-        ["Fondo Inicial €", "____________"],
-        ["Total Esperado €", "____________"],
-        ["DIFERENCIA €", "____________"],
+        [f"Total Billetes {sym}", "____________"],
+        [f"Total Monedas {sym}", "____________"],
+        [f"TOTAL CONTADO {sym}", "____________"],
+        [f"Fondo Inicial {sym}", "____________"],
+        [f"Total Esperado {sym}", "____________"],
+        [f"DIFERENCIA {sym}", "____________"],
     ]
     ct_tbl = Table(cash_totals,
                     colWidths=[CW*0.22, CW*0.16])
@@ -647,19 +659,19 @@ def generate_cierre_caja(
     story.append(Spacer(1, 1*mm))
 
     res_left = [
-        ["Total Ventas Brutas €", "____________"],
-        ["(-) Descuentos €", "____________"],
-        ["(-) Devoluciones €", "____________"],
-        ["(=) Ventas Netas €", "____________"],
-        ["(+) IVA Total €", "____________"],
-        ["TOTAL FACTURADO €", "____________"],
+        [f"Total Ventas Brutas {sym}", "____________"],
+        [f"(-) Descuentos {sym}", "____________"],
+        [f"(-) Devoluciones {sym}", "____________"],
+        [f"(=) Ventas Netas {sym}", "____________"],
+        [f"(+) IVA Total {sym}", "____________"],
+        [f"TOTAL FACTURADO {sym}", "____________"],
     ]
     res_right = [
-        ["Total Cobrado €", "____________"],
-        ["Total Propinas €", "____________"],
-        ["Diferencia Caja €", "____________"],
+        [f"Total Cobrado {sym}", "____________"],
+        [f"Total Propinas {sym}", "____________"],
+        [f"Diferencia Caja {sym}", "____________"],
         ["Nº Tickets", "____________"],
-        ["Ticket Medio €", "____________"],
+        [f"Ticket Medio {sym}", "____________"],
         ["Resultado del Día", "□ OK  □ Diferencia"],
     ]
 

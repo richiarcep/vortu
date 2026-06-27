@@ -1,6 +1,8 @@
 from datetime import date, timedelta
 from sqlalchemy.orm import Session
 from models.project import Project, Task, TimeEntry
+from models.user import Company
+from country.registry import get_country_info
 
 
 def calculate_velocity(db: Session, project_id: int) -> dict:
@@ -12,6 +14,10 @@ def calculate_velocity(db: Session, project_id: int) -> dict:
     project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
         return {}
+
+    company = db.query(Company).filter(Company.id == project.company_id).first()
+    country = company.country if company else None
+    sym = (get_country_info(country) or {}).get("symbol", "€") if country else "€"
 
     tasks = db.query(Task).filter(Task.project_id == project_id).all()
     if not tasks:
@@ -67,7 +73,7 @@ def calculate_velocity(db: Session, project_id: int) -> dict:
         if projected_total_cost > project.budget * 1.1:
             burn_rate_ok = False
             overage = projected_total_cost - project.budget
-            budget_warning = f"Al ritmo actual el proyecto excederá el presupuesto en €{overage:,.0f}"
+            budget_warning = f"Al ritmo actual el proyecto excederá el presupuesto en {sym}{overage:,.0f}"
 
     # ── Recommendation ────────────────────────────────────────────────────────
     if velocity_per_day == 0 and remaining_tasks > 0:

@@ -100,3 +100,15 @@ export async function apiFetch(path, options = {}) {
   }
   return res
 }
+
+/** Current user + company profile (id, email, is_admin, country, and the
+ *  derived currency/symbol/locale). One round-trip the CompanyProvider caches
+ *  so every page formats money in the company's country currency. */
+export async function getMe() {
+  try {
+    const res = await apiFetch('/api/auth/me')
+    return res.ok ? await res.json() : null
+  } catch {
+    return null
+  }
+}

@@ -6,6 +6,7 @@ import VeraPanel from '@/components/ui/VeraPanel'
 import { useT, useTheme, FONT, I } from '@/components/ui/tokens'
 import VeraDrawer from '@/components/ui/VeraDrawer'
 import { PageHeader, ErrorBanner } from '@/components/ui/primitives'
+import { useMoney } from '@/lib/money'
 
 import { API_BASE as API } from '@/lib/api'
 
@@ -72,8 +73,6 @@ function CatIcon({ name, size = 22, color = 'currentColor' }) {
 }
 
 // utils
-const eur = n => new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(Number(n || 0))
-const eurShort = n => { const v = Number(n || 0); if (Math.abs(v) >= 1e6) return `€${(v/1e6).toFixed(1)}M`; if (Math.abs(v) >= 1e3) return `€${(v/1e3).toFixed(1)}k`; return eur(v) }
 const fmtDate = iso => { if (!iso) return '—'; return new Date(iso).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }) }
 const fmtDateShort = iso => { if (!iso) return '—'; return new Date(iso).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }) }
 
@@ -108,6 +107,7 @@ function TabsPegados({ items, active, onChange }) {
 // ─────────── PULSE CARD ───────────
 function PulseCard({ kpis, variacion }) {
   const T = useT()
+  const { fmt } = useMoney()
   if (!kpis) return null
   const variacionLabel = kpis.total_mes_anterior === 0 ? 'Primer mes con gastos' : variacion === 0 ? 'Igual que mes anterior' : `${variacion > 0 ? '↑' : '↓'} ${Math.abs(variacion)}% vs mes anterior`
   const variacionColor = variacion > 10 ? T.red : variacion < -5 ? T.green : T.text3
@@ -117,19 +117,19 @@ function PulseCard({ kpis, variacion }) {
     <div className="cos-pulse" style={{ padding: '20px 24px', display: 'grid', gridTemplateColumns: '1.4fr 1fr 1.2fr', gap: 24, alignItems: 'center' }}>
       <div>
         <div style={{ fontSize: 11, color: T.text4, fontWeight: 500, letterSpacing: .3, textTransform: 'uppercase', marginBottom: 8 }}>Este mes · {kpis.mes_label}</div>
-        <div style={{ fontSize: 38, fontWeight: 600, letterSpacing: -1, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{eur(kpis.total_mes)}</div>
+        <div style={{ fontSize: 38, fontWeight: 600, letterSpacing: -1, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{fmt(kpis.total_mes)}</div>
         <div style={{ fontSize: 13, color: T.text3, marginTop: 6 }}>{kpis.count_mes} {kpis.count_mes === 1 ? 'transacción' : 'transacciones'}</div>
       </div>
       <div style={{ borderLeft: `.5px solid ${T.hairline}`, paddingLeft: 24 }}>
         <div style={{ fontSize: 11, color: T.text4, fontWeight: 500, letterSpacing: .3, textTransform: 'uppercase', marginBottom: 8 }}>Comparativa</div>
         <div style={{ fontSize: 18, fontWeight: 600, color: variacionColor, letterSpacing: -.3 }}>{variacionLabel}</div>
-        <div style={{ fontSize: 12, color: T.text3, marginTop: 6, fontVariantNumeric: 'tabular-nums' }}>Mes ant: {eur(kpis.total_mes_anterior)} · YTD: {eur(kpis.total_ytd)}</div>
+        <div style={{ fontSize: 12, color: T.text3, marginTop: 6, fontVariantNumeric: 'tabular-nums' }}>Mes ant: {fmt(kpis.total_mes_anterior)} · YTD: {fmt(kpis.total_ytd)}</div>
       </div>
       <div style={{ borderLeft: `.5px solid ${T.hairline}`, paddingLeft: 24 }}>
         <div style={{ fontSize: 11, color: T.text4, fontWeight: 500, letterSpacing: .3, textTransform: 'uppercase', marginBottom: 8 }}>Top proveedor</div>
         {kpis.top_proveedor ? <>
           <div style={{ fontSize: 17, fontWeight: 600, letterSpacing: -.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{kpis.top_proveedor.name}</div>
-          <div style={{ fontSize: 12, color: T.text3, marginTop: 6, fontVariantNumeric: 'tabular-nums' }}>{eur(kpis.top_proveedor.total)} · {pctTop}% del mes</div>
+          <div style={{ fontSize: 12, color: T.text3, marginTop: 6, fontVariantNumeric: 'tabular-nums' }}>{fmt(kpis.top_proveedor.total)} · {pctTop}% del mes</div>
         </> : <div style={{ fontSize: 13, color: T.text4 }}>Sin datos aún</div>}
       </div>
     </div>
@@ -166,6 +166,7 @@ function InicializarBanner({ onInit, loading }) {
 // ─────────── CATEGORY CARD (la pieza estrella) ───────────
 function CategoryCard({ c, ancho = 'normal', onClick }) {
   const T = useT()
+  const { fmt } = useMoney()
   const color = c.color || T.text
   const isLarge = ancho === 'large'
 
@@ -194,7 +195,7 @@ function CategoryCard({ c, ancho = 'normal', onClick }) {
 
       <div style={{ fontSize: isLarge ? 13 : 12, color: T.text3, fontWeight: 500, marginBottom: 4 }}>{c.name}</div>
       <div style={{ fontSize: isLarge ? 26 : 22, fontWeight: 600, letterSpacing: -.5, fontVariantNumeric: 'tabular-nums', lineHeight: 1.1, marginBottom: 10 }}>
-        {eur(c.total)}
+        {fmt(c.total)}
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
@@ -212,6 +213,7 @@ function CategoryCard({ c, ancho = 'normal', onClick }) {
 // ─────────── PREVIEW DRAWER ───────────
 function PreviewDrawer({ detail, onClose }) {
   const T = useT()
+  const { fmt } = useMoney()
   const [showContable, setShowContable] = useState(false)
   if (!detail) return null
   const g = detail.gasto
@@ -233,13 +235,13 @@ function PreviewDrawer({ detail, onClose }) {
         <button onClick={onClose} aria-label="Cerrar" style={{ width: 30, height: 30, borderRadius: 8, border: 'none', background: T.sidebar, color: T.text3, cursor: 'pointer', fontSize: 18 }}>×</button>
       </div>
       <div style={{ padding: 20, borderBottom: `.5px solid ${T.hairline}` }}>
-        <div style={{ fontSize: 32, fontWeight: 600, letterSpacing: -.6, fontVariantNumeric: 'tabular-nums' }}>{eur(g.amount)}</div>
-        {(g.base_imponible || g.iva_amount) && <div style={{ fontSize: 12, color: T.text3, marginTop: 4 }}>Base {eur(g.base_imponible)} + IVA {eur(g.iva_amount)} ({g.iva_rate || 21}%)</div>}
+        <div style={{ fontSize: 32, fontWeight: 600, letterSpacing: -.6, fontVariantNumeric: 'tabular-nums' }}>{fmt(g.amount)}</div>
+        {(g.base_imponible || g.iva_amount) && <div style={{ fontSize: 12, color: T.text3, marginTop: 4 }}>Base {fmt(g.base_imponible)} + IVA {fmt(g.iva_amount)} ({g.iva_rate || 21}%)</div>}
         {g.factura_ref && <div style={{ fontSize: 11, color: T.text4, marginTop: 8 }}>Factura: <span style={{ color: T.text2, fontWeight: 500 }}>{g.factura_ref}</span></div>}
       </div>
       {g.proveedor_total_ytd > 0 && <div style={{ padding: '16px 16px 0' }}>
         <div style={{ background: 'linear-gradient(180deg, rgba(61,43,255,.04), rgba(61,43,255,.01))', border: `.5px solid rgba(61,43,255,.15)`, borderRadius: 10, padding: 12, fontSize: 12.5, color: T.text2, lineHeight: 1.5 }}>
-          <strong style={{ color: T.blue }}>Vera observa:</strong> Llevas <strong>{eur(g.proveedor_total_ytd)}</strong> pagados a {g.provider} este año ({g.proveedor_count_ytd} {g.proveedor_count_ytd === 1 ? 'factura' : 'facturas'}).
+          <strong style={{ color: T.blue }}>Vera observa:</strong> Llevas <strong>{fmt(g.proveedor_total_ytd)}</strong> pagados a {g.provider} este año ({g.proveedor_count_ytd} {g.proveedor_count_ytd === 1 ? 'factura' : 'facturas'}).
         </div>
       </div>}
       {doc && <div style={{ padding: '16px 16px 0' }}>
@@ -255,7 +257,7 @@ function PreviewDrawer({ detail, onClose }) {
         <div style={{ fontSize: 11, color: T.text4, fontWeight: 600, textTransform: 'uppercase', letterSpacing: .4, marginBottom: 8 }}>Histórico con {g.provider}</div>
         {histo.map(h => (<div key={h.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: `.5px solid ${T.hairline}`, fontSize: 12 }}>
           <div><div>{h.description}</div><div style={{ color: T.text4, fontSize: 11 }}>{fmtDate(h.date)}</div></div>
-          <div style={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{eur(h.amount)}</div>
+          <div style={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{fmt(h.amount)}</div>
         </div>))}
       </div>}
       {asiento.length > 0 && <div style={{ padding: 16 }}>
@@ -275,13 +277,13 @@ function PreviewDrawer({ detail, onClose }) {
               {asiento.map(l => (<tr key={l.id} style={{ borderTop: `.5px solid ${T.purple}20` }}>
                 <td style={{ padding: '6px 0', fontWeight: 600 }}>{l.account_code}</td>
                 <td style={{ padding: '6px 6px', color: T.text3, fontSize: 10.5 }}>{l.account_name}</td>
-                <td style={{ padding: '6px 0', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: l.debit > 0 ? T.text : T.text4 }}>{l.debit > 0 ? eur(l.debit) : '—'}</td>
-                <td style={{ padding: '6px 0', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: l.credit > 0 ? T.text : T.text4 }}>{l.credit > 0 ? eur(l.credit) : '—'}</td>
+                <td style={{ padding: '6px 0', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: l.debit > 0 ? T.text : T.text4 }}>{l.debit > 0 ? fmt(l.debit) : '—'}</td>
+                <td style={{ padding: '6px 0', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: l.credit > 0 ? T.text : T.text4 }}>{l.credit > 0 ? fmt(l.credit) : '—'}</td>
               </tr>))}
               <tr style={{ borderTop: `1px solid ${T.purple}` }}>
                 <td colSpan={2} style={{ padding: '7px 0', fontWeight: 600 }}>Totales</td>
-                <td style={{ padding: '7px 0', textAlign: 'right', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{eur(tDebe)}</td>
-                <td style={{ padding: '7px 0', textAlign: 'right', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{eur(tHaber)}</td>
+                <td style={{ padding: '7px 0', textAlign: 'right', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{fmt(tDebe)}</td>
+                <td style={{ padding: '7px 0', textAlign: 'right', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{fmt(tHaber)}</td>
               </tr>
             </tbody>
           </table>
@@ -395,6 +397,7 @@ function PreviewField({ label, value, onChange, type = 'text', options }) {
 // ─────────── PÁGINA PRINCIPAL ───────────
 export default function CentroCostes() {
   const T = useT()
+  const { fmt } = useMoney()
   const router = useRouter()
   const [token, setToken] = useState(null)
   const [section, setSection] = useState('dashboard')
@@ -485,7 +488,7 @@ export default function CentroCostes() {
               <span style={{ color: 'inherit', opacity: .4 }}>·</span>
               {kpis?.count_mes || 0} {kpis?.count_mes === 1 ? 'gasto' : 'gastos'}
               <span style={{ color: 'inherit', opacity: .4 }}>·</span>
-              <span style={{ fontWeight: 500 }}>{eur(kpis?.total_mes)} este mes</span>
+              <span style={{ fontWeight: 500 }}>{fmt(kpis?.total_mes)} este mes</span>
               <span style={{ color: 'inherit', opacity: .4 }}>·</span>
               IVA 21%
             </span>
@@ -569,6 +572,7 @@ function DashboardSection({ kpis, variacion, aggCats, aggProvs, recientes, onSel
 
 function ProveedorMiniRow({ p }) {
   const T = useT()
+  const { short } = useMoney()
   return <div style={{ padding: '10px 18px', borderBottom: `.5px solid ${T.hairline}`, display: 'flex', alignItems: 'center', gap: 10, fontSize: 12 }}>
     <div style={{ width: 26, height: 26, borderRadius: 6, background: T.sidebar, fontSize: 11, fontWeight: 600, display: 'grid', placeItems: 'center' }}>{p.inicial}</div>
     <div style={{ flex: 1, minWidth: 0 }}>
@@ -578,7 +582,7 @@ function ProveedorMiniRow({ p }) {
       </div>
       <span style={{ fontSize: 10.5, color: T.text4 }}>{p.count} fac. · {fmtDateShort(p.ultimo_gasto)}</span>
     </div>
-    <span style={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{eurShort(p.total)}</span>
+    <span style={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{short(p.total)}</span>
   </div>
 }
 
@@ -619,6 +623,7 @@ function FilterPill({ active, onClick, children, count, color }) {
 
 function GastoRow({ g, selected, onSelect }) {
   const T = useT()
+  const { fmt } = useMoney()
   return <div onClick={onSelect} style={{
     display: 'grid', gridTemplateColumns: '2fr 1.3fr 1fr 110px 80px',
     padding: '11px 18px', borderBottom: `.5px solid ${T.hairline}`,
@@ -630,7 +635,7 @@ function GastoRow({ g, selected, onSelect }) {
     <span style={{ fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{g.description}</span>
     <span style={{ color: T.text3, fontSize: 12, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{g.provider || '—'}</span>
     <span style={{ color: T.text3, fontSize: 12 }}>{g.category_name || '—'}</span>
-    <span style={{ textAlign: 'right', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{eur(g.amount)}</span>
+    <span style={{ textAlign: 'right', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{fmt(g.amount)}</span>
     <span style={{ textAlign: 'right', color: T.text4, fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>{fmtDateShort(g.date)}</span>
   </div>
 }
@@ -647,6 +652,7 @@ function CategoriasSection({ data }) {
 // ─────────── PROVEEDORES (expandibles) ───────────
 function ProveedoresSection({ data, expanded, onExpand, detail, onSelectGasto }) {
   const T = useT()
+  const { fmt } = useMoney()
   if (!data?.items?.length) return <div style={{ color: T.text4, padding: 24 }}>Sin proveedores.</div>
   return <Card padding={0}>
     <div style={{ display: 'grid', gridTemplateColumns: '24px 44px 2fr 80px 1fr 100px 1fr', padding: '10px 18px', borderBottom: `.5px solid ${T.hairline}`, fontSize: 10, fontWeight: 600, color: T.text4, textTransform: 'uppercase', letterSpacing: .4, background: T.sidebar }}>
@@ -674,7 +680,7 @@ function ProveedoresSection({ data, expanded, onExpand, detail, onSelectGasto })
           <span style={{ color: T.text3 }}>{p.count} fac.</span>
           <span style={{ color: T.text4, fontSize: 12 }}>{fmtDate(p.ultimo_gasto)}</span>
           <span style={{ color: T.text4, fontSize: 12 }}>{fmtDateShort(p.primer_gasto)}</span>
-          <span style={{ fontWeight: 600, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{eur(p.total)}</span>
+          <span style={{ fontWeight: 600, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{fmt(p.total)}</span>
         </div>
         {isOpen && <ProveedorExpandido d={d} onSelectGasto={onSelectGasto} />}
       </div>
@@ -684,6 +690,7 @@ function ProveedoresSection({ data, expanded, onExpand, detail, onSelectGasto })
 
 function ProveedorExpandido({ d, onSelectGasto }) {
   const T = useT()
+  const { fmt } = useMoney()
   if (!d) return <div style={{ padding: 24, background: T.sidebar, borderBottom: `.5px solid ${T.hairline}`, fontSize: 12, color: T.text4, textAlign: 'center' }}>Cargando…</div>
   const maxEvol = Math.max(...d.evolucion.map(m => m.total), 1)
   return <div style={{ padding: '18px 24px 22px 56px', background: T.sidebar, borderBottom: `.5px solid ${T.hairline}` }}>
@@ -694,14 +701,14 @@ function ProveedorExpandido({ d, onSelectGasto }) {
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 70, background: T.card, padding: 10, borderRadius: 10, border: `.5px solid ${T.hairline}` }}>
           {d.evolucion.map((m, i) => {
             const h = (m.total / maxEvol) * 48
-            return <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }} title={`${m.label}: ${eur(m.total)}`}>
+            return <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }} title={`${m.label}: ${fmt(m.total)}`}>
               <div style={{ width: '100%', height: Math.max(h, 1), background: m.total > 0 ? T.blue : T.hairline, borderRadius: 2 }} />
               <div style={{ fontSize: 8.5, color: T.text4 }}>{m.label[0]}</div>
             </div>
           })}
         </div>
         <div style={{ fontSize: 12, color: T.text3, marginTop: 10 }}>
-          <strong style={{ color: T.text }}>{eur(d.total_ytd)}</strong> en {d.count_ytd} {d.count_ytd === 1 ? 'factura' : 'facturas'} este año
+          <strong style={{ color: T.text }}>{fmt(d.total_ytd)}</strong> en {d.count_ytd} {d.count_ytd === 1 ? 'factura' : 'facturas'} este año
         </div>
       </div>
 
@@ -721,7 +728,7 @@ function ProveedorExpandido({ d, onSelectGasto }) {
                 <div style={{ fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.description}</div>
                 <div style={{ fontSize: 10.5, color: T.text4, marginTop: 1 }}>{fmtDate(c.date)} {c.factura_ref ? `· ${c.factura_ref}` : ''}</div>
               </div>
-              <div style={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums', marginLeft: 12 }}>{eur(c.amount)}</div>
+              <div style={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums', marginLeft: 12 }}>{fmt(c.amount)}</div>
             </div>
           ))}
         </div>

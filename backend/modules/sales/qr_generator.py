@@ -1,6 +1,8 @@
 import hashlib
 import math
 
+from country.registry import get_country_info
+
 
 # ── Vela color palette (NaviLens-inspired CMYK) ─────────────────────────────
 COLORS = {
@@ -188,12 +190,14 @@ def generate_label_svg(
     sale_price: float,
     iva_rate: float,
     category: str = "",
+    country: str = None,
 ) -> str:
     """
     Generates a printable product label SVG.
     Includes the NaviLens QR, product name, price, and IVA.
     Standard label size: 85mm x 54mm (business card size)
     """
+    sym = (get_country_info(country) or {}).get('symbol', '€') if country else '€'
     W, H = 340, 216   # 4x scale of 85x54mm
 
     qr_svg_inner = generate_vela_qr_svg(vela_code, size=160)
@@ -220,8 +224,8 @@ def generate_label_svg(
 
     label += [
         # Price
-        f'<text x="188" y="100" font-family="sans-serif" font-size="28" font-weight="800" fill="#0B1426">€{price_incl:.2f}</text>',
-        f'<text x="188" y="118" font-family="sans-serif" font-size="9" fill="#9CA3AF">IVA {iva_rate:.0f}% incluido · s/IVA €{sale_price:.2f}</text>',
+        f'<text x="188" y="100" font-family="sans-serif" font-size="28" font-weight="800" fill="#0B1426">{sym}{price_incl:.2f}</text>',
+        f'<text x="188" y="118" font-family="sans-serif" font-size="9" fill="#9CA3AF">IVA {iva_rate:.0f}% incluido · s/IVA {sym}{sale_price:.2f}</text>',
 
         # Vela code
         f'<text x="188" y="150" font-family="monospace" font-size="11" fill="#00B4D8" font-weight="bold">{vela_code}</text>',

@@ -205,6 +205,10 @@ def get_ratios_financieros(
     year_start = date(today.year, 1, 1)
     company_id = current_user.company_id
 
+    from country.registry import get_country_info
+    _country = getattr(getattr(current_user, "company", None), "country", None)
+    sym = (get_country_info(_country) or {}).get("symbol", "€") if _country else "€"
+
     # ── Pull real accounting data ─────────────────────────────────────────────
     try:
         pl = generate_pl_statement(db, company_id, year_start, today)
@@ -316,7 +320,7 @@ RATIOS CALCULADOS:
     {{
       "nombre": "Punto de Equilibrio",
       "formula": "Total gastos fijos del período",
-      "valor": "€{punto_equilibrio or 0:,.0f}",
+      "valor": "{sym}{punto_equilibrio or 0:,.0f}",
       "interpretacion": "explicación de cuánto necesita vender el negocio para no perder dinero",
       "estado": "bueno|regular|malo",
       "benchmark": "Referencia: tus gastos totales del período"
@@ -328,12 +332,12 @@ RATIOS CALCULADOS:
 
 Datos calculados: {json.dumps(ratios_calculados, default=str)}
 Datos financieros completos: 
-- Ingresos: €{total_ingresos:,.2f}
-- Gastos: €{total_gastos:,.2f}
-- Utilidad neta: €{utilidad_neta:,.2f}
-- Total activos: €{total_activos:,.2f}
-- Total pasivos: €{total_pasivos:,.2f}
-- Patrimonio: €{total_patrimonio:,.2f}
+- Ingresos: {sym}{total_ingresos:,.2f}
+- Gastos: {sym}{total_gastos:,.2f}
+- Utilidad neta: {sym}{utilidad_neta:,.2f}
+- Total activos: {sym}{total_activos:,.2f}
+- Total pasivos: {sym}{total_pasivos:,.2f}
+- Patrimonio: {sym}{total_patrimonio:,.2f}
 
 Solo el JSON, sin explicaciones adicionales."""
         }]

@@ -204,6 +204,7 @@ def generar_plantilla(
         "nif": getattr(company, "nif", "—"),
         "address": getattr(company, "address", "—"),
         "email": company.email,
+        "country": company.country,
     }
 
     logo_path = f"logos/{current_user.company_id}_logo.png"
@@ -534,6 +535,7 @@ def reporte_pl(
         "nif": getattr(company, "nif", "—"),
         "address": getattr(company, "address", "—"),
         "email": company.email,
+        "country": company.country,
     }
     pl_data = generate_pl_statement(db, current_user.company_id,
                                      fecha_inicio, fecha_fin)
@@ -564,6 +566,7 @@ def reporte_balance(
         "nif": getattr(company, "nif", "—"),
         "address": getattr(company, "address", "—"),
         "email": company.email,
+        "country": company.country,
     }
     balance_data = generate_balance_sheet(db, current_user.company_id, fecha)
     filename = generate_balance_report(balance_data, company_data, str(fecha))
@@ -591,6 +594,7 @@ def reporte_flujo(
         "nif": getattr(company, "nif", "—"),
         "address": getattr(company, "address", "—"),
         "email": company.email,
+        "country": company.country,
     }
     cf_data = generate_cash_flow_statement(db, current_user.company_id,
                                             fecha_inicio, fecha_fin)

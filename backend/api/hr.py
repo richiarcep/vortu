@@ -254,7 +254,7 @@ def process_payroll_document(
     from services.parsers import parse_file
     parsed_data = parse_file(document.file_path, document.file_type)
 
-    result = process_payroll(parsed_data)
+    result = process_payroll(parsed_data, country=current_user.company.country)
 
     return {
         "document_id": document_id,
@@ -754,16 +754,20 @@ def vera_analyze_hr(
     # Contexto HR específico
     dashboard = hr_dashboard(db=db, current_user=current_user)
 
+    from country.registry import get_country_info
+    _country = getattr(getattr(current_user, "company", None), "country", None)
+    sym = (get_country_info(_country) or {}).get("symbol", "€") if _country else "€"
+
     hr_context = f"""
 CONTEXTO RECURSOS HUMANOS de la empresa (datos en tiempo real):
 
 EQUIPO:
 - Total: {dashboard['total_employees']} empleados activos
-- Coste anual: {dashboard['total_salary_annual']:,.0f}€
-- Coste mensual: {dashboard['monthly_cost']:,.0f}€
+- Coste anual: {sym}{dashboard['total_salary_annual']:,.0f}
+- Coste mensual: {sym}{dashboard['monthly_cost']:,.0f}
 
 POR DEPARTAMENTO:
-{chr(10).join(f"- {d['department']}: {d['count']} personas, {d['salary']:,.0f}€/año" for d in dashboard['by_department'])}
+{chr(10).join(f"- {d['department']}: {d['count']} personas, {sym}{d['salary']:,.0f}/año" for d in dashboard['by_department'])}
 
 VACACIONES:
 - Fuera hoy: {dashboard['out_today']} personas

@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
 import { FONT, useT, useTheme } from '@/components/ui/tokens'
 import { PageHeader } from '@/components/ui/primitives'
+import { useMoney } from '@/lib/money'
 
 import { API_BASE as API } from '@/lib/api'
 const VERA_BLUE = '#3D2BFF'
@@ -58,7 +59,6 @@ function fmtDateShort(d) {
   if (!d) return '—'
   return new Date(d).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })
 }
-function fmtEuro(n) { return n != null ? '€' + Math.round(n).toLocaleString('es-ES') : '—' }
 
 // ─────────────────────────────────────────────
 // BANDERA ES
@@ -121,6 +121,7 @@ function FileIcon({ ext, size = 32 }) {
 // ─────────────────────────────────────────────
 function ApprovalModal({ analysis, onApprove, onReject, onClose }) {
   const T = useT()
+  const { fmt } = useMoney()
   const [notes, setNotes] = useState('')
   const [overrideType, setOverrideType] = useState(analysis.document_type)
   const [saveToSql, setSaveToSql] = useState(analysis.sql_action?.should_create !== false)
@@ -441,7 +442,7 @@ function ApprovalModal({ analysis, onApprove, onReject, onClose }) {
                             <tr key={k}>
                               <td style={{ padding: '3px 0', color: T.text4, fontWeight: 500, width: '35%', textTransform: 'capitalize' }}>{k.replace(/_/g, ' ')}</td>
                               <td style={{ padding: '3px 0', color: T.text, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
-                                {typeof v === 'number' && (k.includes('amount') || k.includes('importe') || k.includes('gross') || k.includes('net')) ? fmtEuro(v) : String(v)}
+                                {typeof v === 'number' && (k.includes('amount') || k.includes('importe') || k.includes('gross') || k.includes('net')) ? fmt(v, { decimals: 0 }) : String(v)}
                               </td>
                             </tr>
                           ))}
@@ -527,20 +528,20 @@ function ApprovalModal({ analysis, onApprove, onReject, onClose }) {
                           <div style={{ fontSize: 10, color: T.text4, marginTop: 1 }}>{l.account_name}</div>
                         </td>
                         <td style={{ padding: '8px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: l.debit > 0 ? T.text : T.text4 }}>
-                          {l.debit > 0 ? fmtEuro(l.debit) : '—'}
+                          {l.debit > 0 ? fmt(l.debit, { decimals: 0 }) : '—'}
                         </td>
                         <td style={{ padding: '8px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: l.credit > 0 ? T.text : T.text4 }}>
-                          {l.credit > 0 ? fmtEuro(l.credit) : '—'}
+                          {l.credit > 0 ? fmt(l.credit, { decimals: 0 }) : '—'}
                         </td>
                       </tr>
                     ))}
                     <tr style={{ background: 'rgba(61,43,255,.05)', borderTop: '.5px solid rgba(61,43,255,.2)' }}>
                       <td colSpan={2} style={{ padding: '8px 10px', fontWeight: 700, fontSize: 10.5, color: T.text2, textTransform: 'uppercase', letterSpacing: 0.4 }}>Totales</td>
                       <td style={{ padding: '8px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 700, color: T.text }}>
-                        {fmtEuro(journalEntry.lines.reduce((s, l) => s + (l.debit || 0), 0))}
+                        {fmt(journalEntry.lines.reduce((s, l) => s + (l.debit || 0), 0), { decimals: 0 })}
                       </td>
                       <td style={{ padding: '8px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 700, color: T.text }}>
-                        {fmtEuro(journalEntry.lines.reduce((s, l) => s + (l.credit || 0), 0))}
+                        {fmt(journalEntry.lines.reduce((s, l) => s + (l.credit || 0), 0), { decimals: 0 })}
                       </td>
                     </tr>
                   </tbody>
@@ -568,7 +569,7 @@ function ApprovalModal({ analysis, onApprove, onReject, onClose }) {
                       <tr key={k} style={{ borderBottom: `.5px solid ${T.hairline}` }}>
                         <td style={{ padding: '5px 4px', color: T.text4, fontWeight: 500, width: '35%', textTransform: 'capitalize' }}>{k.replace(/_/g, ' ')}</td>
                         <td style={{ padding: '5px 4px', color: T.text, fontVariantNumeric: 'tabular-nums', fontWeight: 500 }}>
-                          {typeof v === 'number' && k.includes('importe') ? fmtEuro(v) : String(v)}
+                          {typeof v === 'number' && k.includes('importe') ? fmt(v, { decimals: 0 }) : String(v)}
                         </td>
                       </tr>
                     ))}
@@ -679,6 +680,7 @@ function AnalyzingModal({ filename }) {
 // ─────────────────────────────────────────────
 function DocPreview({ doc, token, onClose, onDelete }) {
   const T = useT()
+  const { fmt } = useMoney()
   const [detail, setDetail] = useState(null)
   const [loading, setLoading] = useState(true)
   const [deleting, setDeleting] = useState(false)
@@ -782,7 +784,7 @@ function DocPreview({ doc, token, onClose, onDelete }) {
                     }}>
                       <span style={{ color: T.text4, textTransform: 'capitalize' }}>{k.replace(/_/g, ' ')}</span>
                       <span style={{ color: T.text, fontWeight: 500, fontVariantNumeric: 'tabular-nums', textAlign: 'right' }}>
-                        {typeof v === 'number' && k.includes('importe') ? fmtEuro(v) : String(v)}
+                        {typeof v === 'number' && k.includes('importe') ? fmt(v, { decimals: 0 }) : String(v)}
                       </span>
                     </div>
                   ))}
@@ -850,6 +852,7 @@ function DocPreview({ doc, token, onClose, onDelete }) {
 // ─────────────────────────────────────────────
 export default function DocumentosPage() {
   const T = useT()
+  const { fmt } = useMoney()
   useTheme()
   const router = useRouter()
   const [token, setToken] = useState(null)
@@ -1191,7 +1194,7 @@ export default function DocumentosPage() {
                         <div style={{ textAlign: 'right' }}>
                           {importe ? (
                             <div style={{ fontSize: 13, fontWeight: 700, color: T.text, fontVariantNumeric: 'tabular-nums', lineHeight: 1.1 }}>
-                              {fmtEuro(importe)}
+                              {fmt(importe, { decimals: 0 })}
                             </div>
                           ) : (
                             <span style={{ color: T.text4, fontSize: 11 }}>—</span>

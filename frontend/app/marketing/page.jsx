@@ -7,6 +7,7 @@ import VeraDrawer from '@/components/ui/VeraDrawer'
 import { PageHeader, Btn, BtnSec, Input, Field } from '@/components/ui/primitives'
 
 import { API_BASE as API } from '@/lib/api'
+import { useMoney } from '@/lib/money'
 const VERA_BLUE = '#3D2BFF'
 const ANALYSIS_CACHE_KEY = 'vela_marketing_analysis'
 
@@ -36,7 +37,6 @@ const IMPACT_CFG = {
 // ─────────────────────────────────────────────────────────
 // HELPERS
 // ─────────────────────────────────────────────────────────
-function fmtEuro(n) { return n != null ? '€' + Math.round(n).toLocaleString('es-ES') : '—' }
 function safeParse(json) {
   try { return JSON.parse(json) } catch { return null }
 }
@@ -113,6 +113,7 @@ function KpiCard({ label, value, color }) {
 // ─────────────────────────────────────────────────────────
 function EstrategiaTab({ token, onCreateCampaign }) {
   const T = useT()
+  const { fmt } = useMoney()
   const [analysis, setAnalysis] = useState(null)
   const [loading, setLoading] = useState(false)
   const [regenerating, setRegenerating] = useState(false)
@@ -304,7 +305,7 @@ function EstrategiaTab({ token, onCreateCampaign }) {
               color: '#0EA5E9', fontVariantNumeric: 'tabular-nums',
               lineHeight: 1,
             }}>
-              {fmtEuro(analysis.recommended_budget_monthly)}
+              {fmt(analysis.recommended_budget_monthly, { decimals: 0 })}
             </div>
             <div style={{ fontSize: 10.5, color: 'rgba(255,255,255,.55)', marginTop: 6, lineHeight: 1.4 }}>
               Presupuesto mensual<br />recomendado
@@ -559,6 +560,7 @@ function EstrategiaTab({ token, onCreateCampaign }) {
 // ─────────────────────────────────────────────────────────
 function CampanasTab({ token }) {
   const T = useT()
+  const { fmt } = useMoney()
   const [campaigns, setCampaigns] = useState([])
   const [filter, setFilter] = useState('all')
   const [loading, setLoading] = useState(true)
@@ -729,7 +731,7 @@ function CampanasTab({ token }) {
                           Presupuesto diario
                         </div>
                         <div style={{ fontSize: 22, fontWeight: 700, color: T.text, fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
-                          {fmtEuro(c.budget_daily)}
+                          {c.budget_daily != null ? fmt(c.budget_daily, { decimals: 0 }) : '—'}
                           <span style={{ fontSize: 12, color: T.text4, fontWeight: 400, marginLeft: 2 }}>/día</span>
                         </div>
                       </div>
@@ -824,6 +826,7 @@ function CampanasTab({ token }) {
 // ─────────────────────────────────────────────────────────
 function CampaignDrawer({ campaign, onClose, token, onUpdate }) {
   const T = useT()
+  const { fmt } = useMoney()
   const [detail, setDetail] = useState(null)
   const [metrics, setMetrics] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -929,13 +932,13 @@ function CampaignDrawer({ campaign, onClose, token, onUpdate }) {
                   borderRadius: 10, padding: 12,
                 }}>
                   <div style={{ fontSize: 9.5, color: T.text4, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Diario</div>
-                  <div style={{ fontSize: 18, fontWeight: 700, color: T.text, fontVariantNumeric: 'tabular-nums' }}>{fmtEuro(c.budget_daily)}</div>
+                  <div style={{ fontSize: 18, fontWeight: 700, color: T.text, fontVariantNumeric: 'tabular-nums' }}>{c.budget_daily != null ? fmt(c.budget_daily, { decimals: 0 }) : '—'}</div>
                 </div>
                 <div style={{
                   background: T.sidebar, borderRadius: 10, padding: 12,
                 }}>
                   <div style={{ fontSize: 9.5, color: T.text4, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Total</div>
-                  <div style={{ fontSize: 18, fontWeight: 600, color: T.text, fontVariantNumeric: 'tabular-nums' }}>{fmtEuro(c.budget_total)}</div>
+                  <div style={{ fontSize: 18, fontWeight: 600, color: T.text, fontVariantNumeric: 'tabular-nums' }}>{c.budget_total != null ? fmt(c.budget_total, { decimals: 0 }) : '—'}</div>
                 </div>
                 <div style={{
                   background: T.sidebar, borderRadius: 10, padding: 12,
@@ -979,7 +982,7 @@ function CampaignDrawer({ campaign, onClose, token, onUpdate }) {
                     {metrics.cost != null && (
                       <div>
                         <div style={{ fontSize: 10, color: T.text4 }}>Gasto</div>
-                        <div style={{ fontSize: 15, fontWeight: 600 }}>{fmtEuro(metrics.cost)}</div>
+                        <div style={{ fontSize: 15, fontWeight: 600 }}>{metrics.cost != null ? fmt(metrics.cost, { decimals: 0 }) : '—'}</div>
                       </div>
                     )}
                   </div>
@@ -1286,6 +1289,7 @@ function PlataformasTab({ token }) {
 // ─────────────────────────────────────────────────────────
 function NewCampaignModal({ onClose, token, prefill, onCreated }) {
   const T = useT()
+  const { fmt, symbol } = useMoney()
   const [name, setName] = useState(prefill?.name || '')
   const [objective, setObjective] = useState(prefill?.objective || 'sales')
   const [platforms, setPlatforms] = useState(prefill?.platforms || ['google', 'meta'])
@@ -1545,7 +1549,7 @@ function NewCampaignModal({ onClose, token, prefill, onCreated }) {
                   border: '.5px solid rgba(61,43,255,.15)',
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                    <span style={{ fontSize: 13, color: T.text3 }}>€</span>
+                    <span style={{ fontSize: 13, color: T.text3 }}>{symbol}</span>
                     <input type="number" value={budgetDaily}
                       onChange={e => setBudgetDaily(parseFloat(e.target.value) || 0)}
                       min="1" max="10000"
@@ -1561,8 +1565,8 @@ function NewCampaignModal({ onClose, token, prefill, onCreated }) {
                     onChange={e => setBudgetDaily(parseFloat(e.target.value))}
                     style={{ width: '100%', accentColor: VERA_BLUE }} />
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, color: T.text4, marginTop: 4 }}>
-                    <span>≈ {fmtEuro(budgetDaily * 7)}/semana</span>
-                    <span>≈ {fmtEuro(budgetDaily * 30)}/mes</span>
+                    <span>≈ {fmt(budgetDaily * 7, { decimals: 0 })}/semana</span>
+                    <span>≈ {fmt(budgetDaily * 30, { decimals: 0 })}/mes</span>
                   </div>
                 </div>
               </div>

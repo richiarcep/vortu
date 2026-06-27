@@ -6,6 +6,7 @@ import VeraPanel from '@/components/ui/VeraPanel'
 import { FONT, useT, useTheme } from '@/components/ui/tokens'
 import VeraDrawer from '@/components/ui/VeraDrawer'
 import { PageHeader, ErrorBanner } from '@/components/ui/primitives'
+import { useMoney } from '@/lib/money'
 
 import { API_BASE as API } from '@/lib/api'
 
@@ -322,6 +323,7 @@ function DownloadModal({ onClose, estadosPeriodo, downloadReport, downloadingRep
 export default function Contabilidad() {
   const T = useT()
   const { theme } = useTheme()
+  const { fmt, short, symbol } = useMoney()
   const router = useRouter()
   const [section, setSection] = useState('resumen')
   const [tab, setTab] = useState('ingreso')
@@ -618,7 +620,7 @@ export default function Contabilidad() {
       .map(l => ({ account_code: l.account_code, debit: parseFloat(l.debit) || 0, credit: parseFloat(l.credit) || 0 }))
     if (lineas.length < 2) { setMsg({ type: 'error', text: 'Añade al menos 2 líneas con cuenta e importe' }); return }
     if (!asientoBalanced) {
-      setMsg({ type: 'error', text: `El asiento no cuadra: debe €${asientoTotals.debit.toFixed(2)} ≠ haber €${asientoTotals.credit.toFixed(2)}` })
+      setMsg({ type: 'error', text: `El asiento no cuadra: debe ${fmt(asientoTotals.debit)} ≠ haber ${fmt(asientoTotals.credit)}` })
       return
     }
     setAsientoLoading(true); setMsg(null)
@@ -757,8 +759,8 @@ export default function Contabilidad() {
               {cuadre && (
                 <span
                   title={cuadre.balanced
-                    ? `Libro cuadrado · DEBE €${cuadre.debe?.toLocaleString('es-ES')} = HABER €${cuadre.haber?.toLocaleString('es-ES')}`
-                    : `Descuadre · DEBE €${cuadre.debe?.toLocaleString('es-ES')} vs HABER €${cuadre.haber?.toLocaleString('es-ES')}`}
+                    ? `Libro cuadrado · DEBE ${fmt(cuadre.debe || 0)} = HABER ${fmt(cuadre.haber || 0)}`
+                    : `Descuadre · DEBE ${fmt(cuadre.debe || 0)} vs HABER ${fmt(cuadre.haber || 0)}`}
                   style={{
                     width: 7, height: 7, borderRadius: 999,
                     background: cuadre.balanced ? T.green : T.red,
@@ -824,18 +826,18 @@ export default function Contabilidad() {
                 {[
                   {
                     label: 'Ingresos',
-                    value: `€${(pl?.ingresos?.total_ingresos || 0).toLocaleString('es-ES')}`,
+                    value: fmt(pl?.ingresos?.total_ingresos || 0),
                     sub: `Margen ${pl?.margen_utilidad_porcentaje || 0}%`,
                     trend: 'up',
                   },
                   {
                     label: 'Gastos',
-                    value: `€${(pl?.gastos?.total_gastos || 0).toLocaleString('es-ES')}`,
+                    value: fmt(pl?.gastos?.total_gastos || 0),
                     sub: 'Últimos 30 días',
                   },
                   {
                     label: 'Resultado neto',
-                    value: `€${(pl?.utilidad_neta || 0).toLocaleString('es-ES')}`,
+                    value: fmt(pl?.utilidad_neta || 0),
                     sub: pl?.es_rentable ? 'Rentable' : 'No rentable',
                     trend: (pl?.utilidad_neta || 0) >= 0 ? 'up' : 'down',
                   },
@@ -908,7 +910,7 @@ export default function Contabilidad() {
                           <span style={{
                             fontSize: 12.5, fontWeight: 500,
                             color: T.text, fontVariantNumeric: 'tabular-nums',
-                          }}>+€{(typeof v === 'number' ? v : v?.saldo || v?.balance || 0).toLocaleString('es-ES')}</span>
+                          }}>+{fmt(typeof v === 'number' ? v : v?.saldo || v?.balance || 0)}</span>
                         </div>
                       ))}
                       {Object.entries(pl.gastos?.cuentas || {}).map(([k, v]) => (
@@ -922,7 +924,7 @@ export default function Contabilidad() {
                           <span style={{
                             fontSize: 12.5, fontWeight: 500,
                             color: T.text3, fontVariantNumeric: 'tabular-nums',
-                          }}>-€{(typeof v === 'number' ? v : v?.saldo || v?.balance || 0).toLocaleString('es-ES')}</span>
+                          }}>-{fmt(typeof v === 'number' ? v : v?.saldo || v?.balance || 0)}</span>
                         </div>
                       ))}
                     </div>
@@ -936,7 +938,7 @@ export default function Contabilidad() {
                     <span style={{
                       fontSize: 20, fontWeight: 600, color: T.text,
                       fontVariantNumeric: 'tabular-nums', letterSpacing: -0.4,
-                    }}>€{(pl?.utilidad_neta || 0).toLocaleString('es-ES')}</span>
+                    }}>{fmt(pl?.utilidad_neta || 0)}</span>
                   </div>
                 </Card>
 
@@ -959,7 +961,7 @@ export default function Contabilidad() {
                       <div style={{
                         fontSize: 13, fontWeight: 600, color: T.text,
                         fontVariantNumeric: 'tabular-nums', marginTop: 2,
-                      }}>€{(bal?.activos?.total_activos || 0).toLocaleString('es-ES')}</div>
+                      }}>{fmt(bal?.activos?.total_activos || 0)}</div>
                     </div>
                     <div style={{ textAlign: 'center' }}>
                       <DonutChart value={bal?.pasivos?.total_pasivos || 0}
@@ -968,7 +970,7 @@ export default function Contabilidad() {
                       <div style={{
                         fontSize: 13, fontWeight: 600, color: T.text,
                         fontVariantNumeric: 'tabular-nums', marginTop: 2,
-                      }}>€{(bal?.pasivos?.total_pasivos || 0).toLocaleString('es-ES')}</div>
+                      }}>{fmt(bal?.pasivos?.total_pasivos || 0)}</div>
                     </div>
                     <div style={{ textAlign: 'center' }}>
                       <DonutChart value={bal?.patrimonio?.total_patrimonio || 0}
@@ -977,7 +979,7 @@ export default function Contabilidad() {
                       <div style={{
                         fontSize: 13, fontWeight: 600, color: T.text,
                         fontVariantNumeric: 'tabular-nums', marginTop: 2,
-                      }}>€{(bal?.patrimonio?.total_patrimonio || 0).toLocaleString('es-ES')}</div>
+                      }}>{fmt(bal?.patrimonio?.total_patrimonio || 0)}</div>
                     </div>
                   </div>
                   <div style={{
@@ -1019,7 +1021,7 @@ export default function Contabilidad() {
                           <div style={{
                             fontSize: 14, fontWeight: 600, color: T.text,
                             fontVariantNumeric: 'tabular-nums',
-                          }}>€{s.value.toLocaleString('es-ES')}</div>
+                          }}>{fmt(s.value)}</div>
                         </div>
                       ))}
                     </div>
@@ -1065,7 +1067,7 @@ export default function Contabilidad() {
                             fontSize: 13, fontWeight: 500,
                             color: r.tipo === 'ingreso' ? T.text : T.text3,
                             fontVariantNumeric: 'tabular-nums',
-                          }}>{r.tipo === 'ingreso' ? '+' : '-'}€{r.monto}</span>
+                          }}>{r.tipo === 'ingreso' ? '+' : '-'}{fmt(r.monto)}</span>
                         </div>
                       ))}
                     {!registro && (
@@ -1161,7 +1163,7 @@ export default function Contabilidad() {
                         <div style={{
                           fontSize: 22, fontWeight: 600, color: T.text,
                           fontVariantNumeric: 'tabular-nums', letterSpacing: -0.5,
-                        }}>€{(pl?.utilidad_neta || 0).toLocaleString('es-ES')}</div>
+                        }}>{fmt(pl?.utilidad_neta || 0)}</div>
                         <div style={{ fontSize: 11, color: T.text4 }}>
                           Utilidad neta · {pl?.margen_utilidad_porcentaje || 0}% margen
                         </div>
@@ -1170,10 +1172,10 @@ export default function Contabilidad() {
                     <div className="cont-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                       <div>
                         {[
-                          { label: 'Total Ingresos', value: `€${(pl?.ingresos?.total_ingresos || 0).toLocaleString('es-ES')}` },
-                          { label: 'Total Gastos', value: `€${(pl?.gastos?.total_gastos || 0).toLocaleString('es-ES')}` },
-                          { label: 'EBITDA', value: `€${(pl?.ebitda || 0).toLocaleString('es-ES')}` },
-                          { label: 'Utilidad Neta', value: `€${(pl?.utilidad_neta || 0).toLocaleString('es-ES')}` },
+                          { label: 'Total Ingresos', value: fmt(pl?.ingresos?.total_ingresos || 0) },
+                          { label: 'Total Gastos', value: fmt(pl?.gastos?.total_gastos || 0) },
+                          { label: 'EBITDA', value: fmt(pl?.ebitda || 0) },
+                          { label: 'Utilidad Neta', value: fmt(pl?.utilidad_neta || 0) },
                           { label: 'Margen', value: `${pl?.margen_utilidad_porcentaje || 0}%` },
                         ].map((row, i) => (
                           <div key={i} style={{
@@ -1222,10 +1224,10 @@ export default function Contabilidad() {
                     <div className="cont-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                       <div>
                         {[
-                          { label: 'Total Activos', value: `€${(bal?.activos?.total_activos || 0).toLocaleString('es-ES')}` },
-                          { label: 'Total Pasivos', value: `€${(bal?.pasivos?.total_pasivos || 0).toLocaleString('es-ES')}` },
-                          { label: 'Total Patrimonio', value: `€${(bal?.patrimonio?.total_patrimonio || 0).toLocaleString('es-ES')}` },
-                          { label: 'Pasivos + Patrimonio', value: `€${(bal?.total_pasivos_y_patrimonio || 0).toLocaleString('es-ES')}` },
+                          { label: 'Total Activos', value: fmt(bal?.activos?.total_activos || 0) },
+                          { label: 'Total Pasivos', value: fmt(bal?.pasivos?.total_pasivos || 0) },
+                          { label: 'Total Patrimonio', value: fmt(bal?.patrimonio?.total_patrimonio || 0) },
+                          { label: 'Pasivos + Patrimonio', value: fmt(bal?.total_pasivos_y_patrimonio || 0) },
                         ].map((row, i) => (
                           <div key={i} style={{
                             display: 'flex', justifyContent: 'space-between',
@@ -1279,7 +1281,7 @@ export default function Contabilidad() {
                           <div style={{
                             fontSize: 15, fontWeight: 600, color: T.text,
                             fontVariantNumeric: 'tabular-nums',
-                          }}>€{s.value.toLocaleString('es-ES')}</div>
+                          }}>{fmt(s.value)}</div>
                         </div>
                       ))}
                     </div>
@@ -1361,7 +1363,7 @@ export default function Contabilidad() {
                             <Input type="date" value={form.fecha}
                               onChange={e => setForm({ ...form, fecha: e.target.value })} required />
                           </Field>
-                          <Field label="Monto € (IVA incl.)">
+                          <Field label={`Monto ${symbol} (IVA incl.)`}>
                             <Input type="number" step="0.01" placeholder="0.00"
                               value={form.monto}
                               onChange={e => setForm({ ...form, monto: e.target.value })} required />
@@ -1514,9 +1516,9 @@ export default function Contabilidad() {
                         gap: 8, marginBottom: 14,
                       }}>
                         {[
-                          { label: 'Ingresos', value: `€${registro.resumen?.total_ingresos || 0}` },
-                          { label: 'Gastos', value: `€${registro.resumen?.total_gastos || 0}` },
-                          { label: 'Neto', value: `€${registro.resumen?.resultado_neto || 0}` },
+                          { label: 'Ingresos', value: fmt(registro.resumen?.total_ingresos || 0) },
+                          { label: 'Gastos', value: fmt(registro.resumen?.total_gastos || 0) },
+                          { label: 'Neto', value: fmt(registro.resumen?.resultado_neto || 0) },
                         ].map((s, i) => (
                           <div key={i} style={{
                             padding: '10px', background: T.sidebar,
@@ -1549,7 +1551,7 @@ export default function Contabilidad() {
                                 fontSize: 13, fontWeight: 500,
                                 color: r.tipo === 'ingreso' ? T.text : T.text3,
                                 fontVariantNumeric: 'tabular-nums',
-                              }}>{r.tipo === 'ingreso' ? '+' : '-'}€{r.monto}</span>
+                              }}>{r.tipo === 'ingreso' ? '+' : '-'}{fmt(r.monto)}</span>
                             </div>
                           ))}
                         {(registro.ingresos?.length || 0) + (registro.gastos?.length || 0) === 0 && (
@@ -1639,7 +1641,7 @@ export default function Contabilidad() {
                         <span style={{
                           fontSize: 14, fontWeight: 600, color: T.text,
                           fontVariantNumeric: 'tabular-nums', flexShrink: 0, marginLeft: 12,
-                        }}>€{account.closing_balance?.toFixed(2)}</span>
+                        }}>{fmt(account.closing_balance || 0)}</span>
                       </button>
                       {isOpen && (
                       <div style={{ maxHeight: 280, overflowY: 'auto', marginTop: 12 }}>
@@ -1674,15 +1676,15 @@ export default function Contabilidad() {
                                 <td style={{
                                   padding: '5px 8px', color: T.text2,
                                   textAlign: 'right', fontVariantNumeric: 'tabular-nums',
-                                }}>{entry.debit > 0 ? `€${entry.debit}` : ''}</td>
+                                }}>{entry.debit > 0 ? fmt(entry.debit) : ''}</td>
                                 <td style={{
                                   padding: '5px 8px', color: T.text2,
                                   textAlign: 'right', fontVariantNumeric: 'tabular-nums',
-                                }}>{entry.credit > 0 ? `€${entry.credit}` : ''}</td>
+                                }}>{entry.credit > 0 ? fmt(entry.credit) : ''}</td>
                                 <td style={{
                                   padding: '5px 8px', color: T.text, fontWeight: 500,
                                   textAlign: 'right', fontVariantNumeric: 'tabular-nums',
-                                }}>€{entry.balance?.toFixed(2)}</td>
+                                }}>{fmt(entry.balance || 0)}</td>
                               </tr>
                             ))}
                           </tbody>
@@ -1717,12 +1719,12 @@ export default function Contabilidad() {
                       padding: '5px 14px', background: T.sidebar,
                       borderRadius: 999, fontSize: 13, color: T.text2,
                       border: `.5px solid ${T.hairline}`,
-                    }}>Débitos: €{balanza.total_debits?.toFixed(2)}</span>
+                    }}>Débitos: {fmt(balanza.total_debits || 0)}</span>
                     <span style={{
                       padding: '5px 14px', background: T.sidebar,
                       borderRadius: 999, fontSize: 13, color: T.text2,
                       border: `.5px solid ${T.hairline}`,
-                    }}>Créditos: €{balanza.total_credits?.toFixed(2)}</span>
+                    }}>Créditos: {fmt(balanza.total_credits || 0)}</span>
                   </div>
                   <Card padding={0} style={{ overflow: 'hidden' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -1750,12 +1752,12 @@ export default function Contabilidad() {
                               padding: '9px 14px', fontSize: 13, color: T.text2,
                               fontWeight: 500, textAlign: 'right',
                               fontVariantNumeric: 'tabular-nums',
-                            }}>{acc.debit > 0 ? `€${acc.debit?.toFixed(2)}` : ''}</td>
+                            }}>{acc.debit > 0 ? fmt(acc.debit) : ''}</td>
                             <td style={{
                               padding: '9px 14px', fontSize: 13, color: T.text2,
                               fontWeight: 500, textAlign: 'right',
                               fontVariantNumeric: 'tabular-nums',
-                            }}>{acc.credit > 0 ? `€${acc.credit?.toFixed(2)}` : ''}</td>
+                            }}>{acc.credit > 0 ? fmt(acc.credit) : ''}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -1766,12 +1768,12 @@ export default function Contabilidad() {
                             padding: '10px 14px', fontSize: 13, fontWeight: 600,
                             color: T.text, textAlign: 'right',
                             fontVariantNumeric: 'tabular-nums',
-                          }}>€{balanza.total_debits?.toFixed(2)}</td>
+                          }}>{fmt(balanza.total_debits || 0)}</td>
                           <td style={{
                             padding: '10px 14px', fontSize: 13, fontWeight: 600,
                             color: T.text, textAlign: 'right',
                             fontVariantNumeric: 'tabular-nums',
-                          }}>€{balanza.total_credits?.toFixed(2)}</td>
+                          }}>{fmt(balanza.total_credits || 0)}</td>
                         </tr>
                       </tfoot>
                     </table>
@@ -1831,11 +1833,11 @@ export default function Contabilidad() {
                   <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 28, marginTop: 14, padding: '12px 16px', borderRadius: 10, background: T.sidebar }}>
                     <div style={{ textAlign: 'right' }}>
                       <div style={{ fontSize: 11, color: T.text4 }}>Total Debe</div>
-                      <div style={{ fontSize: 15, fontWeight: 600, color: T.text, fontVariantNumeric: 'tabular-nums' }}>€{asientoTotals.debit.toFixed(2)}</div>
+                      <div style={{ fontSize: 15, fontWeight: 600, color: T.text, fontVariantNumeric: 'tabular-nums' }}>{fmt(asientoTotals.debit)}</div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
                       <div style={{ fontSize: 11, color: T.text4 }}>Total Haber</div>
-                      <div style={{ fontSize: 15, fontWeight: 600, color: T.text, fontVariantNumeric: 'tabular-nums' }}>€{asientoTotals.credit.toFixed(2)}</div>
+                      <div style={{ fontSize: 15, fontWeight: 600, color: T.text, fontVariantNumeric: 'tabular-nums' }}>{fmt(asientoTotals.credit)}</div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
                       <div style={{ fontSize: 11, color: T.text4 }}>Cuadre</div>
@@ -1880,7 +1882,7 @@ export default function Contabilidad() {
                     ].map((k, i) => (
                       <Card key={i}>
                         <div style={{ fontSize: 11, color: T.text4, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.4 }}>{k.label}</div>
-                        <div style={{ fontSize: 24, fontWeight: 700, color: k.color, fontVariantNumeric: 'tabular-nums' }}>€{(k.value || 0).toFixed(2)}</div>
+                        <div style={{ fontSize: 24, fontWeight: 700, color: k.color, fontVariantNumeric: 'tabular-nums' }}>{fmt(k.value || 0)}</div>
                       </Card>
                     ))}
                   </div>
@@ -1896,7 +1898,7 @@ export default function Contabilidad() {
                         ].map(([k, v], i) => (
                           <tr key={i} style={{ borderBottom: `.5px solid ${T.soft}` }}>
                             <td style={{ padding: '10px 4px', fontSize: 13, color: T.text2 }}>{k}</td>
-                            <td style={{ padding: '10px 4px', fontSize: 13, fontWeight: 600, color: T.text, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>€{(v || 0).toFixed(2)}</td>
+                            <td style={{ padding: '10px 4px', fontSize: 13, fontWeight: 600, color: T.text, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{fmt(v || 0)}</td>
                           </tr>
                         ))}
                       </tbody>

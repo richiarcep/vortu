@@ -17,10 +17,16 @@ from reportlab.platypus import Flowable
 from io import BytesIO
 import qrcode
 from core.config import get_settings
+from country.registry import get_country_info
 import anthropic
 from vera.compat import vera_client
 
 settings = get_settings()
+
+
+def _sym(company_data: dict) -> str:
+    """Símbolo de moneda según el país de la empresa (tenant)."""
+    return (get_country_info((company_data or {}).get("country") or "") or {}).get("symbol", "€")
 
 # ── Colors ─────────────────────────────────────────────────────────────────────
 NAVY     = colors.HexColor("#0B1426")
@@ -189,7 +195,7 @@ def build_data_table(rows, cw, left_w=0.65):
     return t
 
 
-def get_ai_analysis(data: dict, report_type: str) -> dict:
+def get_ai_analysis(data: dict, report_type: str, sym: str = "€") -> dict:
     """Ask Claude to generate structured analysis for page 2."""
     client = vera_client(None, None, module="contabilidad")
 
@@ -260,9 +266,9 @@ Solo el JSON. Datos: {json.dumps(data, default=str)}"""
             "titulo_principal": "Negocio con flujo positivo y margen saludable",
             "veredicto": "positivo",
             "kpis": [
-                {"label": "Total Ingresos", "valor": f"€{data.get('ingresos', {}).get('total_ingresos', 0):,.2f}", "color": "green"},
-                {"label": "Total Gastos", "valor": f"€{data.get('gastos', {}).get('total_gastos', 0):,.2f}", "color": "red"},
-                {"label": "Utilidad Neta", "valor": f"€{data.get('utilidad_neta', data.get('cambio_neto_efectivo', 0)):,.2f}", "color": "green"},
+                {"label": "Total Ingresos", "valor": f"{sym}{data.get('ingresos', {}).get('total_ingresos', 0):,.2f}", "color": "green"},
+                {"label": "Total Gastos", "valor": f"{sym}{data.get('gastos', {}).get('total_gastos', 0):,.2f}", "color": "red"},
+                {"label": "Utilidad Neta", "valor": f"{sym}{data.get('utilidad_neta', data.get('cambio_neto_efectivo', 0)):,.2f}", "color": "green"},
                 {"label": "Margen", "valor": f"{data.get('margen_utilidad_porcentaje', 0):.1f}%", "color": "navy"},
             ],
             "fortalezas": [
@@ -502,6 +508,7 @@ def build_ai_page(story, analysis: dict, accent_color, cw):
 def generate_pl_report(pl_data: dict, company_data: dict,
                         periodo: dict) -> str:
     os.makedirs("reports", exist_ok=True)
+    sym = _sym(company_data)
     did = doc_id(company_data["id"], "PL", date.today())
     filename = f"reports/estado_resultados_{company_data['id']}_{date.today().strftime('%Y%m%d')}.pdf"
 
@@ -556,11 +563,11 @@ def generate_pl_report(pl_data: dict, company_data: dict,
     for code, label in ing_labels.items():
         val = cuentas_ing.get(code, {}).get("saldo", 0) or 0
         color = TEAL if val > 0 else MUTED
-        ing_rows.append(data_row(label, f"€{val:,.2f}" if val else "—",
+        ing_rows.append(data_row(label, f"{sym}{val:,.2f}" if val else "—",
                                   label_color=INK, value_color=color))
 
     ing_rows.append(data_row("TOTAL INGRESOS",
-                              f"€{ingresos.get('total_ingresos',0):,.2f}",
+                              f"{sym}{ingresos.get('total_ingresos',0):,.2f}",
                               bold=True, label_color=TEAL, value_color=TEAL))
     story.append(build_data_table(ing_rows, CW))
     story.append(Spacer(1, 3*mm))
@@ -589,11 +596,11 @@ def generate_pl_report(pl_data: dict, company_data: dict,
     for code, label in gas_labels.items():
         val = cuentas_gas.get(code, {}).get("saldo", 0) or 0
         color = CORAL if val > 0 else MUTED
-        gas_rows.append(data_row(label, f"€{val:,.2f}" if val else "—",
+        gas_rows.append(data_row(label, f"{sym}{val:,.2f}" if val else "—",
                                   label_color=INK, value_color=color))
 
     gas_rows.append(data_row("TOTAL GASTOS",
-                              f"€{gastos.get('total_gastos',0):,.2f}",
+                              f"{sym}{gastos.get('total_gastos',0):,.2f}",
                               bold=True, label_color=CORAL, value_color=CORAL))
     story.append(build_data_table(gas_rows, CW))
     story.append(Spacer(1, 3*mm))
@@ -608,11 +615,11 @@ def generate_pl_report(pl_data: dict, company_data: dict,
     es_rentable = pl_data.get("es_rentable", False)
 
     res_rows = [
-        data_row("EBITDA", f"€{ebitda:,.2f}",
+        data_row("EBITDA", f"{sym}{ebitda:,.2f}",
                   label_color=PURPLE, value_color=PURPLE if ebitda >= 0 else RED),
         data_row("Margen de utilidad", f"{margen:.1f}%",
                   label_color=INK, value_color=TEAL if margen >= 20 else AMBER if margen >= 5 else RED),
-        data_row("UTILIDAD / PÉRDIDA NETA", f"€{utilidad:,.2f}",
+        data_row("UTILIDAD / PÉRDIDA NETA", f"{sym}{utilidad:,.2f}",
                   bold=True, label_color=PURPLE,
                   value_color=TEAL if es_rentable else RED),
         data_row("Estado del período",
@@ -631,7 +638,7 @@ def generate_pl_report(pl_data: dict, company_data: dict,
                 f"Período: {periodo.get('inicio','')} — {periodo.get('fin','')}",
                 TEAL, did, date.today(), CW)
 
-    analysis = get_ai_analysis(pl_data, "pl")
+    analysis = get_ai_analysis(pl_data, "pl", sym)
     build_ai_page(story, analysis, TEAL, CW)
     story.append(Spacer(1, 4*mm))
     page_footer(story, did, CW)
@@ -647,6 +654,7 @@ def generate_pl_report(pl_data: dict, company_data: dict,
 def generate_balance_report(balance_data: dict, company_data: dict,
                               fecha: str) -> str:
     os.makedirs("reports", exist_ok=True)
+    sym = _sym(company_data)
     did = doc_id(company_data["id"], "BG", date.today())
     filename = f"reports/balance_general_{company_data['id']}_{date.today().strftime('%Y%m%d')}.pdf"
 
@@ -719,11 +727,11 @@ def generate_balance_report(balance_data: dict, company_data: dict,
         val = all_ac.get(code, {}).get("saldo", 0) or 0
         if section == "Activo corriente": act_corriente_total += val
         else: act_nocorriente_total += val
-        act_rows.append(data_row(f"  {label}", f"€{val:,.2f}" if val else "—",
+        act_rows.append(data_row(f"  {label}", f"{sym}{val:,.2f}" if val else "—",
                                   indent=1, value_color=BLUE if val > 0 else MUTED))
 
     act_rows.append(data_row("TOTAL ACTIVOS",
-                              f"€{activos.get('total_activos',0):,.2f}",
+                              f"{sym}{activos.get('total_activos',0):,.2f}",
                               bold=True, label_color=BLUE, value_color=BLUE))
     story.append(build_data_table(act_rows, CW))
     story.append(Spacer(1, 3*mm))
@@ -755,11 +763,11 @@ def generate_balance_report(balance_data: dict, company_data: dict,
         all_pa = {**pasivos.get("pasivos_corrientes", {}),
                    **pasivos.get("pasivos_no_corrientes", {})}
         val = all_pa.get(code, {}).get("saldo", 0) or 0
-        pas_rows.append(data_row(f"  {label}", f"€{val:,.2f}" if val else "—",
+        pas_rows.append(data_row(f"  {label}", f"{sym}{val:,.2f}" if val else "—",
                                   indent=1, value_color=AMBER if val > 0 else MUTED))
 
     pas_rows.append(data_row("TOTAL PASIVOS",
-                              f"€{pasivos.get('total_pasivos',0):,.2f}",
+                              f"{sym}{pasivos.get('total_pasivos',0):,.2f}",
                               bold=True, label_color=AMBER, value_color=AMBER))
     story.append(build_data_table(pas_rows, CW))
     story.append(Spacer(1, 3*mm))
@@ -777,11 +785,11 @@ def generate_balance_report(balance_data: dict, company_data: dict,
     pat_rows = []
     for code, label in pat_labels.items():
         val = pat_cuentas.get(code, {}).get("saldo", 0) or 0
-        pat_rows.append(data_row(label, f"€{val:,.2f}" if val else "—",
+        pat_rows.append(data_row(label, f"{sym}{val:,.2f}" if val else "—",
                                   value_color=PURPLE if val > 0 else MUTED))
 
     pat_rows.append(data_row("TOTAL PATRIMONIO NETO",
-                              f"€{patrimonio.get('total_patrimonio',0):,.2f}",
+                              f"{sym}{patrimonio.get('total_patrimonio',0):,.2f}",
                               bold=True, label_color=PURPLE, value_color=PURPLE))
     story.append(build_data_table(pat_rows, CW))
     story.append(Spacer(1, 3*mm))
@@ -793,13 +801,13 @@ def generate_balance_report(balance_data: dict, company_data: dict,
     ecuacion_ok = balance_data.get("ecuacion_balanceada", False)
     ver_rows = [
         data_row("Total Activos",
-                  f"€{activos.get('total_activos',0):,.2f}",
+                  f"{sym}{activos.get('total_activos',0):,.2f}",
                   value_color=BLUE),
         data_row("Total Pasivos + Patrimonio",
-                  f"€{balance_data.get('total_pasivos_y_patrimonio',0):,.2f}",
+                  f"{sym}{balance_data.get('total_pasivos_y_patrimonio',0):,.2f}",
                   value_color=AMBER),
         data_row("Diferencia",
-                  f"€{balance_data.get('diferencia',0):,.2f}",
+                  f"{sym}{balance_data.get('diferencia',0):,.2f}",
                   value_color=GREEN if ecuacion_ok else RED),
         data_row("Estado de la ecuación",
                   "✓ BALANCEADA" if ecuacion_ok else "✗ NO BALANCEADA",
@@ -828,7 +836,7 @@ def generate_balance_report(balance_data: dict, company_data: dict,
                 f"A fecha de: {fecha}",
                 BLUE, did, date.today(), CW)
 
-    analysis = get_ai_analysis(balance_data, "balance")
+    analysis = get_ai_analysis(balance_data, "balance", sym)
     build_ai_page(story, analysis, BLUE, CW)
     story.append(Spacer(1, 4*mm))
     page_footer(story, did, CW)
@@ -844,6 +852,7 @@ def generate_balance_report(balance_data: dict, company_data: dict,
 def generate_cashflow_report(cf_data: dict, company_data: dict,
                               periodo: dict) -> str:
     os.makedirs("reports", exist_ok=True)
+    sym = _sym(company_data)
     did = doc_id(company_data["id"], "FE", date.today())
     filename = f"reports/flujo_efectivo_{company_data['id']}_{date.today().strftime('%Y%m%d')}.pdf"
 
@@ -892,15 +901,15 @@ def generate_cashflow_report(cf_data: dict, company_data: dict,
 
     op_rows = [
         data_row("Cobros de clientes por ventas y servicios",
-                  f"€{operativo.get('efectivo_recibido_ventas',0):,.2f}",
+                  f"{sym}{operativo.get('efectivo_recibido_ventas',0):,.2f}",
                   value_color=TEAL if operativo.get('efectivo_recibido_ventas',0) > 0 else MUTED),
         data_row("Pagos a proveedores y empleados",
-                  f"-€{abs(operativo.get('pagos_gastos_operativos',0)):,.2f}",
+                  f"-{sym}{abs(operativo.get('pagos_gastos_operativos',0)):,.2f}",
                   value_color=CORAL if operativo.get('pagos_gastos_operativos',0) > 0 else MUTED),
         data_row("Pagos de impuestos operativos", "—", value_color=MUTED),
         data_row("Otros cobros/pagos operativos", "—", value_color=MUTED),
         data_row("FLUJO NETO OPERATIVO",
-                  f"€{operativo.get('flujo_operativo_neto',0):,.2f}",
+                  f"{sym}{operativo.get('flujo_operativo_neto',0):,.2f}",
                   bold=True, label_color=TEAL,
                   value_color=TEAL if operativo.get('flujo_operativo_neto',0) >= 0 else RED),
     ]
@@ -913,13 +922,13 @@ def generate_cashflow_report(cf_data: dict, company_data: dict,
 
     inv_rows = [
         data_row("Compra de activos fijos",
-                  f"-€{abs(inversion.get('compra_activos_fijos',0)):,.2f}" if inversion.get('compra_activos_fijos',0) else "—",
+                  f"-{sym}{abs(inversion.get('compra_activos_fijos',0)):,.2f}" if inversion.get('compra_activos_fijos',0) else "—",
                   value_color=CORAL if inversion.get('compra_activos_fijos',0) else MUTED),
         data_row("Venta de activos fijos", "—", value_color=MUTED),
         data_row("Adquisición de intangibles", "—", value_color=MUTED),
         data_row("Inversiones financieras", "—", value_color=MUTED),
         data_row("FLUJO NETO DE INVERSIÓN",
-                  f"€{inversion.get('flujo_inversion_neto',0):,.2f}",
+                  f"{sym}{inversion.get('flujo_inversion_neto',0):,.2f}",
                   bold=True, label_color=CORAL,
                   value_color=CORAL if inversion.get('flujo_inversion_neto',0) < 0 else TEAL),
     ]
@@ -932,13 +941,13 @@ def generate_cashflow_report(cf_data: dict, company_data: dict,
 
     fin_rows = [
         data_row("Ingresos por préstamos recibidos",
-                  f"€{financiamiento.get('ingresos_prestamos',0):,.2f}" if financiamiento.get('ingresos_prestamos',0) else "—",
+                  f"{sym}{financiamiento.get('ingresos_prestamos',0):,.2f}" if financiamiento.get('ingresos_prestamos',0) else "—",
                   value_color=TEAL if financiamiento.get('ingresos_prestamos',0) > 0 else MUTED),
         data_row("Repago de préstamos y deudas", "—", value_color=MUTED),
         data_row("Aportaciones de capital", "—", value_color=MUTED),
         data_row("Dividendos pagados", "—", value_color=MUTED),
         data_row("FLUJO NETO DE FINANCIAMIENTO",
-                  f"€{financiamiento.get('flujo_financiamiento_neto',0):,.2f}",
+                  f"{sym}{financiamiento.get('flujo_financiamiento_neto',0):,.2f}",
                   bold=True, label_color=AMBER,
                   value_color=TEAL if financiamiento.get('flujo_financiamiento_neto',0) >= 0 else RED),
     ]
@@ -954,16 +963,16 @@ def generate_cashflow_report(cf_data: dict, company_data: dict,
 
     net_rows = [
         data_row("Flujo operativo",
-                  f"€{operativo.get('flujo_operativo_neto',0):,.2f}",
+                  f"{sym}{operativo.get('flujo_operativo_neto',0):,.2f}",
                   value_color=TEAL),
         data_row("Flujo de inversión",
-                  f"€{inversion.get('flujo_inversion_neto',0):,.2f}",
+                  f"{sym}{inversion.get('flujo_inversion_neto',0):,.2f}",
                   value_color=CORAL),
         data_row("Flujo de financiamiento",
-                  f"€{financiamiento.get('flujo_financiamiento_neto',0):,.2f}",
+                  f"{sym}{financiamiento.get('flujo_financiamiento_neto',0):,.2f}",
                   value_color=AMBER),
         data_row("CAMBIO NETO EN EFECTIVO",
-                  f"€{neto:,.2f}",
+                  f"{sym}{neto:,.2f}",
                   bold=True, label_color=PURPLE,
                   value_color=TEAL if neto >= 0 else RED),
         data_row("Posición de efectivo",
@@ -982,7 +991,7 @@ def generate_cashflow_report(cf_data: dict, company_data: dict,
                 f"Período: {periodo.get('inicio','')} — {periodo.get('fin','')}",
                 TEAL, did, date.today(), CW)
 
-    analysis = get_ai_analysis(cf_data, "flujo")
+    analysis = get_ai_analysis(cf_data, "flujo", sym)
     build_ai_page(story, analysis, TEAL, CW)
     story.append(Spacer(1, 4*mm))
     page_footer(story, did, CW)

@@ -9,6 +9,7 @@ from reportlab.lib.enums import TA_CENTER, TA_LEFT
 from sqlalchemy.orm import Session
 from models.sales import Product
 from modules.sales.qr_generator import generate_vela_qr_svg, generate_vela_code
+from country.registry import get_country_info
 
 
 NAVY  = colors.HexColor("#0B1426")
@@ -22,12 +23,14 @@ def generate_product_label_pdf(
     db: Session,
     product: Product,
     copies: int = 1,
+    country: str = None,
 ) -> bytes:
     """
     Generates a printable PDF label for a product.
     Business card size: 85mm x 54mm landscape.
     Includes the NaviLens-style QR code and product info.
     """
+    sym = (get_country_info(country) or {}).get('symbol', '€') if country else '€'
     buffer = io.BytesIO()
 
     PAGE_W = 85 * mm
@@ -135,8 +138,8 @@ def generate_product_label_pdf(
 
         name_para  = Paragraph(product.name[:30], ST["name"])
         code_para  = Paragraph(vela_code, ST["code"])
-        price_para = Paragraph(f"€{price_w_iva:.2f}", ST["price"])
-        sub_para   = Paragraph(f"IVA {product.iva_rate:.0f}% incl. · s/IVA €{price_no_iva:.2f}", ST["sub"])
+        price_para = Paragraph(f"{sym}{price_w_iva:.2f}", ST["price"])
+        sub_para   = Paragraph(f"IVA {product.iva_rate:.0f}% incl. · s/IVA {sym}{price_no_iva:.2f}", ST["sub"])
         cat_para   = Paragraph(product.category or "", ST["cat"])
         brand_para = Paragraph("Vela", ST["brand"])
 
@@ -187,6 +190,7 @@ def generate_bulk_labels_pdf(
     db: Session,
     company_id: int,
     product_ids: list,
+    country: str = None,
 ) -> bytes:
     """
     Generates a sheet of labels for multiple products.
@@ -211,7 +215,7 @@ def generate_bulk_labels_pdf(
     ).all()
 
     for product in products:
-        label_bytes = generate_product_label_pdf(db, product, copies=1)
+        label_bytes = generate_product_label_pdf(db, product, copies=1, country=country)
         elements.append(Spacer(1, 2 * mm))
 
     doc.build(elements)

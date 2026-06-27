@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
 import { useT, useTheme, FONT } from '@/components/ui/tokens'
+import { useMoney } from '@/lib/money'
 
 import { API_BASE as API } from '@/lib/api'
 
@@ -122,6 +123,7 @@ function StepIndicator({ paso, total }) {
 export default function FiscalConfig() {
   const T = useT()
   const { theme } = useTheme()
+  const { fmt } = useMoney()
   const router = useRouter()
   const [token, setToken] = useState(null)
   const [user, setUser] = useState(null)
@@ -352,7 +354,7 @@ export default function FiscalConfig() {
                 {label:'DTE emitidos',value:stats.total,color:T.text},
                 {label:'Aceptados',   value:stats.aceptados,color:T.green},
                 {label:'Pendientes',  value:stats.pendientes,color:T.amber},
-                {label:'Monto total', value:`$${(stats.monto_total||0).toLocaleString('es-SV',{minimumFractionDigits:2})}`,color:T.blue},
+                {label:'Monto total', value:fmt(stats.monto_total||0),color:T.blue},
               ].map((s,i)=>(
                 <Card key={i} style={{padding:'16px 18px'}}>
                   <div style={{fontSize:11,color:T.text4,marginBottom:6}}>{s.label}</div>
@@ -447,7 +449,7 @@ export default function FiscalConfig() {
                     <div key={r.id} style={{display:'grid',gridTemplateColumns:'90px 1fr 110px 110px 150px',gap:8,padding:'10px 14px',borderTop:`.5px solid ${T.hairline}`,alignItems:'center',fontSize:12.5,color:T.text}}>
                       <div style={{fontWeight:600,fontVariantNumeric:'tabular-nums'}}>{r.serie}{r.numero}</div>
                       <div style={{color:T.text3}}>{r.fecha_expedicion}</div>
-                      <div style={{textAlign:'right',fontVariantNumeric:'tabular-nums'}}>{Number(r.importe_total||0).toLocaleString('es-ES',{minimumFractionDigits:2})} €</div>
+                      <div style={{textAlign:'right',fontVariantNumeric:'tabular-nums'}}>{fmt(r.importe_total||0)}</div>
                       <div>
                         <span style={{fontSize:10.5,fontWeight:600,padding:'2px 8px',borderRadius:999,
                           background:r.tipo==='anulacion'?T.redSoft:(r.estado==='sin_firma'?T.amberSoft||T.sidebar:T.greenSoft),

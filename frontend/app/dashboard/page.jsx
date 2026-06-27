@@ -7,6 +7,7 @@ import { FONT, useT, useTheme } from '@/components/ui/tokens'
 import { Skeleton, EmptyState, Sparkline, PageHeader, SegmentedFilter, BtnSec } from '@/components/ui/primitives'
 import VeraDrawer from '@/components/ui/VeraDrawer'
 import { openVeraDrawer } from '@/components/ui/useVeraStore'
+import { useMoney } from '@/lib/money'
 
 import { API_BASE as API } from '@/lib/api'
 
@@ -222,6 +223,7 @@ function VeraHybrid({ token, onOpenChat }) {
 // ───────────────────────────────────────────────────────────────
 function BarChart({ data = [] }) {
   const T = useT()
+  const { fmt, short } = useMoney()
   const [hover, setHover] = useState(null)
   if (!data.length) return (
     <Card style={{ minHeight: 260, display: 'grid', placeItems: 'center' }}>
@@ -259,7 +261,7 @@ function BarChart({ data = [] }) {
               <line x1={padL} x2={W - padR} y1={y} y2={y}
                 stroke={T.hairline} strokeWidth="1" strokeDasharray={idx === 0 ? 'none' : '0'} />
               <text x={padL - 8} y={y + 4} textAnchor="end" fontSize="10" fill={T.text4} fontFamily={FONT}>
-                {v === 0 ? '0' : `${(v / 1000).toFixed(0)}k`}
+                {v === 0 ? '0' : short(v)}
               </text>
             </g>
           )
@@ -285,7 +287,7 @@ function BarChart({ data = [] }) {
                   <text x={cx} y={padT + plotH - ingH - 28} textAnchor="middle" fontSize="10"
                     fill="rgba(255,255,255,.55)" fontFamily={FONT}>{d.label}</text>
                   <text x={cx} y={padT + plotH - ingH - 14} textAnchor="middle" fontSize="12"
-                    fill="#fff" fontWeight="600" fontFamily={FONT}>€{(d.ing || 0).toLocaleString('es-ES')}</text>
+                    fill="#fff" fontWeight="600" fontFamily={FONT}>{fmt(d.ing || 0)}</text>
                 </g>
               )}
             </g>
@@ -320,6 +322,7 @@ function SectionTitle({ children }) {
 export default function Dashboard() {
   const T = useT()
   const { theme } = useTheme()
+  const { fmt, short } = useMoney()
   const router = useRouter()
   const [token, setToken] = useState(null)
   const [user, setUser] = useState(null)
@@ -371,7 +374,7 @@ export default function Dashboard() {
   const isOk = statusRows.every(r => !r.bad)
 
   const modules = [
-    { title: 'Contabilidad', desc: 'Partida doble · PGC', href: '/contabilidad', stat: resumen ? `€${((d.ingresos || 0) / 1000).toFixed(0)}k` : '—', statLabel: 'ingresos' },
+    { title: 'Contabilidad', desc: 'Partida doble · PGC', href: '/contabilidad', stat: resumen ? short(d.ingresos || 0) : '—', statLabel: 'ingresos' },
     { title: 'Recursos Humanos', desc: 'Nóminas · IRPF · SS', href: '/hr', stat: resumen?.empleados || '—', statLabel: 'empleados' },
     { title: 'Clientes', desc: 'CRM · Inbox · IA', href: '/clientes', stat: clientes?.overview?.pending_responses || 0, statLabel: 'pendientes' },
     { title: 'Proyectos', desc: 'Health score · IA', href: '/proyectos', stat: proyectos?.total_projects || 0, statLabel: 'activos' },
@@ -438,7 +441,7 @@ export default function Dashboard() {
               return [
                 {
                   label: 'Ingresos',
-                  value: `€${(d.ingresos || 0).toLocaleString('es-ES')}`,
+                  value: fmt(d.ingresos || 0),
                   sub: `Margen ${margen}%`,
                   trend: margen > 10 ? 'up' : 'down',
                   color: ingresosColor,
@@ -451,7 +454,7 @@ export default function Dashboard() {
                 },
                 {
                   label: 'Gastos',
-                  value: `€${(d.gastos || 0).toLocaleString('es-ES')}`,
+                  value: fmt(d.gastos || 0),
                   sub: 'Últimos 30 días',
                   color: T.amber,
                   icon: (
@@ -463,7 +466,7 @@ export default function Dashboard() {
                 },
                 {
                   label: 'Resultado neto',
-                  value: `€${(d.resultado_neto || 0).toLocaleString('es-ES')}`,
+                  value: fmt(d.resultado_neto || 0),
                   sub: esPositivo ? 'Rentable' : 'Pérdida',
                   trend: esPositivo ? 'up' : 'down',
                   color: netoColor,
@@ -476,7 +479,7 @@ export default function Dashboard() {
                 },
                 {
                   label: 'Ventas hoy',
-                  value: `€${ventasHoyVal.toFixed(0)}`,
+                  value: fmt(ventasHoyVal, { decimals: 0 }),
                   sub: `${ventas?.today?.total_sales || 0} transacciones`,
                   color: T.blue,
                   icon: (
@@ -749,7 +752,7 @@ export default function Dashboard() {
                     <div style={{
                       fontSize: 13, fontWeight: 600, color: T.text,
                       fontVariantNumeric: 'tabular-nums',
-                    }}>€{p.revenue.toFixed(0)}</div>
+                    }}>{fmt(p.revenue, { decimals: 0 })}</div>
                   </div>
                 ))
               )}

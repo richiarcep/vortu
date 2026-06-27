@@ -5,6 +5,7 @@ import Sidebar from '@/components/Sidebar'
 import { T, FONT, useT } from '@/components/ui/tokens'
 import VeraDrawer from '@/components/ui/VeraDrawer'
 import { PageHeader, Btn, BtnSec, Input, Field } from '@/components/ui/primitives'
+import { useMoney } from '@/lib/money'
 
 import { API_BASE as API } from '@/lib/api'
 const VERA_BLUE = '#3D2BFF'
@@ -83,7 +84,6 @@ function avatarColor(name) {
 function initials(name) {
   return name.split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase()
 }
-function fmtEuro(n) { return n != null ? '€' + Math.round(n).toLocaleString('es-ES') : '—' }
 function fmtDate(d) {
   if (!d) return '—'
   return new Date(d).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })
@@ -258,6 +258,8 @@ function VeraInsight({ dashboard, onAsk }) {
 // ─────────────────────────────────────────────────────────
 function EquipoTab({ employees, onSelect }) {
   const T = useT()
+  const { fmt } = useMoney()
+  const money = (n) => n != null ? fmt(n, { decimals: 0 }) : '—'
   const [search, setSearch] = useState('')
   const [deptFilter, setDeptFilter] = useState('all')
   const [typeFilter, setTypeFilter] = useState('all')
@@ -375,7 +377,7 @@ function EquipoTab({ employees, onSelect }) {
                     <div>
                       <div style={{ fontSize: 10, color: T.text4, fontWeight: 500, textTransform: 'uppercase', letterSpacing: 0.5 }}>Salario anual</div>
                       <div style={{ fontSize: 14, fontWeight: 600, color: T.text, fontVariantNumeric: 'tabular-nums', marginTop: 1 }}>
-                        {fmtEuro(e.gross_salary)}
+                        {money(e.gross_salary)}
                       </div>
                     </div>
                   )}
@@ -425,7 +427,7 @@ function EquipoTab({ employees, onSelect }) {
                 <div>{etype && <Pill label={etype.label} color={etype.color} bg={etype.bg} dot={etype.dot} />}</div>
                 <div>{e.department && <Pill label={dept.label} color={dept.color} bg={dept.bg} />}</div>
                 <div style={{ textAlign: 'right', fontSize: 13, fontWeight: 500, fontVariantNumeric: 'tabular-nums' }}>
-                  {isVolunteer ? `${(e.hours_contributed || 0)}h` : fmtEuro(e.gross_salary)}
+                  {isVolunteer ? `${(e.hours_contributed || 0)}h` : money(e.gross_salary)}
                 </div>
               </div>
             )
@@ -594,6 +596,7 @@ function VacacionesTab({ token }) {
 // ─────────────────────────────────────────────────────────
 function CreateContractModal({ token, employees, onClose, onCreated }) {
   const T = useT()
+  const { symbol } = useMoney()
   const [form, setForm] = useState({ employee_id: '', contract_type: 'indefinido', start_date: '', end_date: '', working_hours: '40', salary_gross: '' })
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
@@ -648,7 +651,7 @@ function CreateContractModal({ token, employees, onClose, onCreated }) {
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <Field label="Horas/sem"><Input type="number" value={form.working_hours} onChange={e => set('working_hours', e.target.value)} /></Field>
-          <Field label="Salario bruto (€)"><Input type="number" value={form.salary_gross} onChange={e => set('salary_gross', e.target.value)} placeholder="(del empleado)" /></Field>
+          <Field label={`Salario bruto (${symbol})`}><Input type="number" value={form.salary_gross} onChange={e => set('salary_gross', e.target.value)} placeholder="(del empleado)" /></Field>
         </div>
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 16 }}>
           <BtnSec onClick={onClose}>Cancelar</BtnSec>
@@ -661,6 +664,8 @@ function CreateContractModal({ token, employees, onClose, onCreated }) {
 
 function ContratosTab({ token }) {
   const T = useT()
+  const { fmt } = useMoney()
+  const money = (n) => n != null ? fmt(n, { decimals: 0 }) : '—'
   const [contracts, setContracts] = useState([])
   const [summary, setSummary] = useState({})
   const [employees, setEmployees] = useState([])
@@ -742,7 +747,7 @@ function ContratosTab({ token }) {
                 {c.expires_soon && <span style={{ marginLeft: 4 }}>⚠</span>}
               </div>
               <div style={{ textAlign: 'right', fontSize: 12 }}>{c.working_hours}h</div>
-              <div style={{ textAlign: 'right', fontSize: 13, fontWeight: 500, fontVariantNumeric: 'tabular-nums' }}>{fmtEuro(c.salary_gross)}</div>
+              <div style={{ textAlign: 'right', fontSize: 13, fontWeight: 500, fontVariantNumeric: 'tabular-nums' }}>{money(c.salary_gross)}</div>
             </div>
           )
         })}
@@ -756,6 +761,8 @@ function ContratosTab({ token }) {
 // ─────────────────────────────────────────────────────────
 function NominasTab({ token }) {
   const T = useT()
+  const { fmt } = useMoney()
+  const money = (n) => n != null ? fmt(n, { decimals: 0 }) : '—'
   const [payslips, setPayslips] = useState([])
   const [summary, setSummary] = useState({})
 
@@ -783,15 +790,15 @@ function NominasTab({ token }) {
       <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
         <div style={{ padding: '8px 14px', borderRadius: 10, background: T.card, border: `.5px solid ${T.hairline}` }}>
           <div style={{ fontSize: 10, color: T.text4, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>Bruto pagado</div>
-          <div style={{ fontSize: 18, fontWeight: 600, color: T.text, fontVariantNumeric: 'tabular-nums' }}>{fmtEuro(summary.total_gross)}</div>
+          <div style={{ fontSize: 18, fontWeight: 600, color: T.text, fontVariantNumeric: 'tabular-nums' }}>{money(summary.total_gross)}</div>
         </div>
         <div style={{ padding: '8px 14px', borderRadius: 10, background: T.card, border: `.5px solid ${T.hairline}` }}>
           <div style={{ fontSize: 10, color: T.text4, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>Neto pagado</div>
-          <div style={{ fontSize: 18, fontWeight: 600, color: T.text, fontVariantNumeric: 'tabular-nums' }}>{fmtEuro(summary.total_net)}</div>
+          <div style={{ fontSize: 18, fontWeight: 600, color: T.text, fontVariantNumeric: 'tabular-nums' }}>{money(summary.total_net)}</div>
         </div>
         <div style={{ padding: '8px 14px', borderRadius: 10, background: T.card, border: `.5px solid ${T.hairline}` }}>
           <div style={{ fontSize: 10, color: T.text4, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>Coste total empresa</div>
-          <div style={{ fontSize: 18, fontWeight: 600, color: T.text, fontVariantNumeric: 'tabular-nums' }}>{fmtEuro(summary.total_cost)}</div>
+          <div style={{ fontSize: 18, fontWeight: 600, color: T.text, fontVariantNumeric: 'tabular-nums' }}>{money(summary.total_cost)}</div>
         </div>
       </div>
 
@@ -806,9 +813,9 @@ function NominasTab({ token }) {
                 {group.label} · {group.items.length} nóminas
               </div>
               <div style={{ display: 'flex', gap: 14, fontSize: 11 }}>
-                <span style={{ color: T.text4 }}>Bruto: <strong style={{ color: T.text2 }}>{fmtEuro(group.total_gross)}</strong></span>
-                <span style={{ color: T.text4 }}>Neto: <strong style={{ color: T.text2 }}>{fmtEuro(group.total_net)}</strong></span>
-                <span style={{ color: T.text4 }}>Coste: <strong style={{ color: T.text2 }}>{fmtEuro(group.total_cost)}</strong></span>
+                <span style={{ color: T.text4 }}>Bruto: <strong style={{ color: T.text2 }}>{money(group.total_gross)}</strong></span>
+                <span style={{ color: T.text4 }}>Neto: <strong style={{ color: T.text2 }}>{money(group.total_net)}</strong></span>
+                <span style={{ color: T.text4 }}>Coste: <strong style={{ color: T.text2 }}>{money(group.total_cost)}</strong></span>
               </div>
             </div>
 
@@ -827,19 +834,19 @@ function NominasTab({ token }) {
                   </div>
                   <div style={{ textAlign: 'right', fontSize: 11.5 }}>
                     <div style={{ color: T.text4, fontSize: 9.5, textTransform: 'uppercase', letterSpacing: 0.4 }}>Bruto</div>
-                    <div style={{ fontWeight: 500, fontVariantNumeric: 'tabular-nums' }}>{fmtEuro(p.gross_amount)}</div>
+                    <div style={{ fontWeight: 500, fontVariantNumeric: 'tabular-nums' }}>{money(p.gross_amount)}</div>
                   </div>
                   <div style={{ textAlign: 'right', fontSize: 11.5 }}>
                     <div style={{ color: T.text4, fontSize: 9.5, textTransform: 'uppercase', letterSpacing: 0.4 }}>IRPF</div>
-                    <div style={{ color: T.text3, fontVariantNumeric: 'tabular-nums' }}>{fmtEuro(p.irpf)}</div>
+                    <div style={{ color: T.text3, fontVariantNumeric: 'tabular-nums' }}>{money(p.irpf)}</div>
                   </div>
                   <div style={{ textAlign: 'right', fontSize: 11.5 }}>
                     <div style={{ color: T.text4, fontSize: 9.5, textTransform: 'uppercase', letterSpacing: 0.4 }}>SS</div>
-                    <div style={{ color: T.text3, fontVariantNumeric: 'tabular-nums' }}>{fmtEuro(p.ss_employee)}</div>
+                    <div style={{ color: T.text3, fontVariantNumeric: 'tabular-nums' }}>{money(p.ss_employee)}</div>
                   </div>
                   <div style={{ textAlign: 'right', fontSize: 11.5 }}>
                     <div style={{ color: T.text4, fontSize: 9.5, textTransform: 'uppercase', letterSpacing: 0.4 }}>Neto</div>
-                    <div style={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{fmtEuro(p.net_amount)}</div>
+                    <div style={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{money(p.net_amount)}</div>
                   </div>
                 </div>
               ))}
@@ -856,6 +863,8 @@ function NominasTab({ token }) {
 // ─────────────────────────────────────────────────────────
 function EmployeeDrawer({ employee, onClose, token }) {
   const T = useT()
+  const { fmt } = useMoney()
+  const money = (n) => n != null ? fmt(n, { decimals: 0 }) : '—'
   const [feedbacks, setFeedbacks] = useState([])
   const [contract, setContract] = useState(null)
   const [vacations, setVacations] = useState([])
@@ -964,7 +973,7 @@ function EmployeeDrawer({ employee, onClose, token }) {
               <div style={{ background: T.sidebar, borderRadius: 10, padding: 12 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                   <Pill {...(CONTRACT_CFG[contract.contract_type] || CONTRACT_CFG.indefinido)} />
-                  <span style={{ fontSize: 13, fontWeight: 600 }}>{fmtEuro(contract.salary_gross)}/año</span>
+                  <span style={{ fontSize: 13, fontWeight: 600 }}>{money(contract.salary_gross)}/año</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, color: T.text3 }}>
                   <span>{fmtDate(contract.start_date)}</span>
@@ -1021,6 +1030,7 @@ function Label({ children }) {
 
 function NewEmployeeModal({ token, onClose, onCreated }) {
   const T = useT()
+  const { symbol } = useMoney()
   const [form, setForm] = useState({
     full_name: '', email: '', employee_type: 'permanente', department: '', position: '',
     gross_salary: '', start_date: '', end_date: '', availability: '', skills: '',
@@ -1097,7 +1107,7 @@ function NewEmployeeModal({ token, onClose, onCreated }) {
           </div>
 
           {!isVolunteer && (
-            <div><Label>Salario bruto anual (€)</Label>
+            <div><Label>Salario bruto anual ({symbol})</Label>
               <input style={fieldStyle(T)} type="number" value={form.gross_salary} onChange={e => set('gross_salary', e.target.value)} /></div>
           )}
 
@@ -1506,6 +1516,8 @@ function GroupDrawer({ groupId, token, employees, onClose, onChanged }) {
 // ─────────────────────────────────────────────────────────
 export default function HRPage() {
   const T = useT()
+  const { fmt } = useMoney()
+  const money = (n) => n != null ? fmt(n, { decimals: 0 }) : '—'
   const router = useRouter()
   const [tab, setTab] = useState('equipo')
   const [employees, setEmployees] = useState([])
@@ -1576,7 +1588,7 @@ export default function HRPage() {
               {dashboard && (
                 <>
                   <span>·</span>
-                  <span style={{ fontVariantNumeric: 'tabular-nums' }}>{dashboard.total_employees} personas · {fmtEuro(dashboard.monthly_cost)}/mes · {dashboard.out_today} fuera hoy</span>
+                  <span style={{ fontVariantNumeric: 'tabular-nums' }}>{dashboard.total_employees} personas · {money(dashboard.monthly_cost)}/mes · {dashboard.out_today} fuera hoy</span>
                 </>
               )}
             </span>

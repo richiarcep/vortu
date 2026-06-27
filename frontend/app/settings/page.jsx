@@ -8,6 +8,7 @@ const API = API_BASE
 import Sidebar from '@/components/Sidebar'
 import { useT, useTheme } from '@/components/ui/tokens'
 import { PageHeader } from '@/components/ui/primitives'
+import { useMoney } from '@/lib/money'
 
 const MODULE_ACCESS = [
   { key:'dashboard',    label:'Dashboard'        },
@@ -102,6 +103,7 @@ function Steps({current,total,labels}){
 // ── Fiscal Wizard ──────────────────────────────────────────────────────────────
 function FiscalWizard({token}){
   const T = useT()
+  const { fmt } = useMoney()
   const [paso,setPaso]=useState(1)
   const [companyCountry,setCompanyCountry]=useState(null)
   const [config,setConfig]=useState(null)
@@ -227,7 +229,7 @@ function FiscalWizard({token}){
             {label:'DTE emitidos',value:stats.total,          color:T.text},
             {label:'Aceptados',   value:stats.aceptados,      color:T.green},
             {label:'Pendientes',  value:stats.pendientes,     color:T.amber},
-            {label:'Monto total', value:`$${(stats.monto_total||0).toLocaleString('es-SV',{minimumFractionDigits:2})}`,color:T.blue},
+            {label:'Monto total', value:fmt(stats.monto_total||0),color:T.blue},
           ].map((s,i)=>(
             <Card key={i} style={{padding:'14px 16px'}}>
               <div style={{fontSize:11,color:T.text4,marginBottom:4}}>{s.label}</div>
@@ -1330,6 +1332,27 @@ function SecurityTab({token,T,showSaved}){
     }catch{setTfa(p=>({...p,error:'Error de conexion',verifying:false}))}
   }
 
+  const [pwMsg,setPwMsg]=useState(null)
+  const [pwBusy,setPwBusy]=useState(false)
+  async function changePassword(){
+    setPwMsg(null)
+    if(passwords.new1!==passwords.new2){setPwMsg({err:true,t:'Las contraseñas nuevas no coinciden'});return}
+    if(passwords.new1.length<8){setPwMsg({err:true,t:'Mínimo 8 caracteres'});return}
+    setPwBusy(true)
+    try{
+      const r=await fetch(`${API}/api/auth/change-password`,{method:'POST',headers:h(),body:JSON.stringify({current_password:passwords.current,new_password:passwords.new1})})
+      const d=await r.json().catch(()=>({}))
+      if(r.ok){
+        setPwMsg({err:false,t:'Contraseña actualizada. Cerrando sesión…'})
+        setTimeout(()=>{try{localStorage.removeItem('vela_token')}catch{};window.location.href='/login'},1200)
+      }else{
+        const msg=Array.isArray(d.detail)?(d.detail[0]?.msg||'Contraseña no válida'):(d.detail||'No se pudo cambiar la contraseña')
+        setPwMsg({err:true,t:msg})
+      }
+    }catch{setPwMsg({err:true,t:'Error de conexión'})}
+    finally{setPwBusy(false)}
+  }
+
   // GDPR Art.15/20 — descarga de datos personales en JSON.
   async function exportMyData(){
     try{
@@ -1362,14 +1385,15 @@ function SecurityTab({token,T,showSaved}){
     <div className="set-row" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
       <Card>
         <div style={{fontSize:15,fontWeight:600,color:T.text,letterSpacing:-0.2,marginBottom:4}}>Cambiar contrasena</div>
-        <div style={{fontSize:13,color:T.text3,marginBottom:16}}>Minimo 12 caracteres</div>
+        <div style={{fontSize:13,color:T.text3,marginBottom:16}}>Minimo 8 caracteres</div>
         {[{k:'current',l:'Contrasena actual'},{k:'new1',l:'Nueva contrasena'},{k:'new2',l:'Confirmar contrasena'}].map(f=>(
           <div key={f.k} style={{marginBottom:12}}>
             <div style={{fontSize:12,fontWeight:500,color:T.text3,marginBottom:5}}>{f.l}</div>
             <input type="password" value={passwords[f.k]} onChange={e=>setPasswords(p=>({...p,[f.k]:e.target.value}))} placeholder="••••••••••••" style={{width:'100%',padding:'10px 14px',borderRadius:10,border:`.5px solid ${T.hairline}`,fontSize:13,fontFamily:'inherit',outline:'none',boxSizing:'border-box'}}/>
           </div>
         ))}
-        <Btn onClick={showSaved} style={{marginTop:8}}>Actualizar contrasena</Btn>
+        {pwMsg && <div style={{fontSize:12,marginTop:10,color:pwMsg.err?'#dc2626':'#059669'}}>{pwMsg.t}</div>}
+        <Btn onClick={changePassword} disabled={pwBusy||!passwords.current||!passwords.new1} style={{marginTop:8}}>{pwBusy?'Actualizando…':'Actualizar contrasena'}</Btn>
       </Card>
 
       <div style={{display:'flex',flexDirection:'column',gap:14}}>

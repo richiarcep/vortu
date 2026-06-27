@@ -5,6 +5,7 @@ import Sidebar from '@/components/Sidebar'
 import { FONT, useT } from '@/components/ui/tokens'
 import VeraDrawer from '@/components/ui/VeraDrawer'
 import { Skeleton, EmptyState, PageHeader, Btn, BtnSec, Input, Field } from '@/components/ui/primitives'
+import { useMoney } from '@/lib/money'
 
 import { API_BASE as API } from '@/lib/api'
 const VERA_BLUE = '#3D2BFF'
@@ -36,7 +37,6 @@ const PRIORITY_CFG = {
 // ─────────────────────────────────────────────────────────
 // HELPERS
 // ─────────────────────────────────────────────────────────
-function fmtEuro(n) { return n != null ? '€' + Math.round(n).toLocaleString('es-ES') : '—' }
 function fmtDate(d) {
   if (!d) return '—'
   return new Date(d).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })
@@ -166,6 +166,7 @@ function HealthRing({ score, size = 36 }) {
 // ─────────────────────────────────────────────────────────
 function ProyectosTab({ projects, onSelect, employees }) {
   const T = useT()
+  const { fmt } = useMoney()
   const [filter, setFilter] = useState('all')
   const [sortBy, setSortBy] = useState('priority')
 
@@ -347,10 +348,10 @@ function ProyectosTab({ projects, onSelect, employees }) {
               {/* PRESUPUESTO (gastado / total) con barra */}
               <div style={{ textAlign: 'right' }}>
                 <div style={{ fontSize: 13, fontWeight: 600, color: overBudget ? '#dc2626' : T.text, fontVariantNumeric: 'tabular-nums', lineHeight: 1.1 }}>
-                  {fmtEuro(p.budget)}
+                  {p.budget != null ? fmt(p.budget, { decimals: 0 }) : '—'}
                 </div>
                 <div style={{ fontSize: 10, color: overBudget ? '#dc2626' : T.text4, marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>
-                  {fmtEuro(spent)} gastado · {Math.round(budgetPct)}%
+                  {fmt(spent, { decimals: 0 })} gastado · {Math.round(budgetPct)}%
                 </div>
               </div>
 
@@ -760,6 +761,7 @@ function CalendarioTab({ projects }) {
 // ─────────────────────────────────────────────────────────
 function ProjectDrawer({ project, onClose, token, employees }) {
   const T = useT()
+  const { fmt, symbol } = useMoney()
   const [detail, setDetail] = useState(null)
   const [analysis, setAnalysis] = useState(null)
   const [analyzing, setAnalyzing] = useState(false)
@@ -895,11 +897,11 @@ function ProjectDrawer({ project, onClose, token, employees }) {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
                 <div style={{ background: T.sidebar, borderRadius: 10, padding: 12 }}>
                   <div style={{ fontSize: 10, color: T.text4, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.4 }}>Presupuesto</div>
-                  <div style={{ fontSize: 16, fontWeight: 600, color: T.text, marginTop: 3 }}>{fmtEuro(p.budget)}</div>
+                  <div style={{ fontSize: 16, fontWeight: 600, color: T.text, marginTop: 3 }}>{p.budget != null ? fmt(p.budget, { decimals: 0 }) : '—'}</div>
                 </div>
                 <div style={{ background: T.sidebar, borderRadius: 10, padding: 12 }}>
                   <div style={{ fontSize: 10, color: T.text4, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.4 }}>Gastado</div>
-                  <div style={{ fontSize: 16, fontWeight: 600, color: T.text2, marginTop: 3 }}>{fmtEuro(p.total_spent || 0)}</div>
+                  <div style={{ fontSize: 16, fontWeight: 600, color: T.text2, marginTop: 3 }}>{fmt(p.total_spent || 0, { decimals: 0 })}</div>
                 </div>
                 <div style={{ background: T.sidebar, borderRadius: 10, padding: 12 }}>
                   <div style={{ fontSize: 10, color: T.text4, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.4 }}>Inicio</div>
@@ -918,7 +920,7 @@ function ProjectDrawer({ project, onClose, token, employees }) {
                   style={{ flex: 1, fontSize: 12, padding: '7px 10px', borderRadius: 8, border: `.5px solid ${T.hairline}`, background: T.card, color: T.text, fontFamily: 'inherit' }} />
                 <input type="number" value={exp.amount} onChange={e => setExp(s => ({ ...s, amount: e.target.value }))}
                   onKeyDown={e => { if (e.key === 'Enter') createExpense() }}
-                  placeholder="€" aria-label="Importe"
+                  placeholder={symbol} aria-label="Importe"
                   style={{ width: 80, fontSize: 12, padding: '7px 10px', borderRadius: 8, border: `.5px solid ${T.hairline}`, background: T.card, color: T.text, fontFamily: 'inherit' }} />
                 <BtnSec onClick={createExpense} style={{ padding: '7px 12px', fontSize: 12 }}>{addingExp ? '…' : '+ Gasto'}</BtnSec>
               </div>
@@ -1044,6 +1046,7 @@ function ProjectDrawer({ project, onClose, token, employees }) {
 // ─────────────────────────────────────────────────────────
 function CreateProjectModal({ token, onClose, onCreated }) {
   const T = useT()
+  const { symbol } = useMoney()
   const [form, setForm] = useState({ name: '', client_name: '', deadline: '', budget: '', description: '' })
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
@@ -1079,7 +1082,7 @@ function CreateProjectModal({ token, onClose, onCreated }) {
         <Field label="Cliente"><Input value={form.client_name} onChange={e => set('client_name', e.target.value)} placeholder="Acme S.L." /></Field>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <Field label="Fecha límite"><Input type="date" value={form.deadline} onChange={e => set('deadline', e.target.value)} /></Field>
-          <Field label="Presupuesto (€)"><Input type="number" value={form.budget} onChange={e => set('budget', e.target.value)} placeholder="0" /></Field>
+          <Field label={`Presupuesto (${symbol})`}><Input type="number" value={form.budget} onChange={e => set('budget', e.target.value)} placeholder="0" /></Field>
         </div>
         <Field label="Descripción"><Input value={form.description} onChange={e => set('description', e.target.value)} placeholder="Opcional" /></Field>
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 16 }}>
@@ -1093,6 +1096,7 @@ function CreateProjectModal({ token, onClose, onCreated }) {
 
 export default function ProjectsPage() {
   const T = useT()
+  const { short } = useMoney()
   const router = useRouter()
   const [tab, setTab] = useState('proyectos')
   const [projects, setProjects] = useState([])
@@ -1176,7 +1180,7 @@ export default function ProjectsPage() {
           subtitle={
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
               <FlagES size={11} />
-              España · {summary.total} proyectos · {summary.active} activos · health {summary.avgHealth}/10 · {fmtEuro(summary.totalBudget)} presupuesto
+              España · {summary.total} proyectos · {summary.active} activos · health {summary.avgHealth}/10 · {short(summary.totalBudget)} presupuesto
             </span>
           }
           tabs={[

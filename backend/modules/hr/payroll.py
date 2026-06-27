@@ -8,11 +8,13 @@ from reportlab.lib.enums import TA_CENTER, TA_RIGHT
 import os
 
 
-def process_payroll(parsed_data: dict) -> dict:
+def process_payroll(parsed_data: dict, country: str = "ES") -> dict:
     """
     Takes parsed employee/payroll data and calculates
     gross to net wages for every employee automatically.
     """
+    from country.registry import get_country_info
+    sym = (get_country_info(country) or {}).get("symbol", "€")
 
     # Step 1 — Load data into DataFrame
     rows = parsed_data.get("data", [])
@@ -78,7 +80,7 @@ def process_payroll(parsed_data: dict) -> dict:
     payslip_paths = []
     os.makedirs("payslips", exist_ok=True)
     for emp in employees:
-        path = generate_payslip_pdf(emp)
+        path = generate_payslip_pdf(emp, sym=sym)
         payslip_paths.append(path)
 
     return {
@@ -126,7 +128,7 @@ def calculate_net(gross: float) -> dict:
     }
 
 
-def generate_payslip_pdf(employee: dict) -> str:
+def generate_payslip_pdf(employee: dict, sym: str = "€") -> str:
     """
     Generates a professional payslip PDF for one employee.
     Returns the file path.
@@ -177,14 +179,14 @@ def generate_payslip_pdf(employee: dict) -> str:
     # Earnings and deductions table
     pay_data = [
         ["Description", "Amount"],
-        ["Gross Salary", f"€{employee['gross_salary']:,.2f}"],
+        ["Gross Salary", f"{sym}{employee['gross_salary']:,.2f}"],
         ["", ""],
         ["DEDUCTIONS", ""],
-        ["Social Security (6.35%)", f"-€{employee['social_security']:,.2f}"],
-        ["Income Tax (IRPF)", f"-€{employee['income_tax']:,.2f}"],
-        ["Total Deductions", f"-€{employee['total_deductions']:,.2f}"],
+        ["Social Security (6.35%)", f"-{sym}{employee['social_security']:,.2f}"],
+        ["Income Tax (IRPF)", f"-{sym}{employee['income_tax']:,.2f}"],
+        ["Total Deductions", f"-{sym}{employee['total_deductions']:,.2f}"],
         ["", ""],
-        ["NET SALARY", f"€{employee['net_salary']:,.2f}"],
+        ["NET SALARY", f"{sym}{employee['net_salary']:,.2f}"],
     ]
 
     pay_table = Table(pay_data, colWidths=[W*0.6, W*0.4])
