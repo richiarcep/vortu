@@ -46,6 +46,7 @@ sync_code() {
     --exclude '.venv/' --exclude 'venv/' --exclude '.pytest_cache/' \
     --exclude '*.db' --exclude '*.db-wal' --exclude '*.db-shm' --exclude '*.sqlite' \
     --exclude 'uploads/' --exclude 'payslips/' --exclude 'reports/' \
+    --exclude 'backups/' \
     "$HERE/" "$SERVER:$REMOTE_DIR/"
 
   # Frontend → sibling dir on the server. The compose 'frontend' build context is

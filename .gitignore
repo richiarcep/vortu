@@ -53,4 +53,5 @@ _backups/
 
 # ── Local/internal data dumps (no secrets, but not for the repo) ─────────────
 backend/data/
+backend/backups/
 .gstack/
