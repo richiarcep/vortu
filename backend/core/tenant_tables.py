@@ -43,6 +43,15 @@ RAW_TENANT_TABLES = [
     "verifactu_config",
     "verifactu_mode_audit",
     "verifactu_retry_queue",
+    # Vera AI tables (carry company_id, created out-of-band; were missing an RLS
+    # policy → app role had unrestricted cross-tenant access. Now tenant-scoped).
+    "vera_conversations",
+    "vera_token_usage",
+    "vera_insights_cache",
+    "vera_routing_logs",
+    "vera_plus_requests",
+    "vera_usage_daily",
+    "expenses",
 ]
 
 # Identity/auth tables that must NOT get a plain company_id RLS policy.
