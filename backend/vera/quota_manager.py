@@ -223,9 +223,9 @@ def record_usage(
         INSERT INTO vera_token_usage (company_id, date_local, {col_in}, {col_out}, {col_req})
         VALUES (:cid, :d, :tin, :tout, 1)
         ON CONFLICT(company_id, date_local) DO UPDATE SET
-            {col_in} = {col_in} + :tin,
-            {col_out} = {col_out} + :tout,
-            {col_req} = {col_req} + 1,
+            {col_in} = vera_token_usage.{col_in} + :tin,
+            {col_out} = vera_token_usage.{col_out} + :tout,
+            {col_req} = vera_token_usage.{col_req} + 1,
             updated_at = datetime('now')
     """), {"cid": company_id, "d": today, "tin": tokens_input, "tout": tokens_output})
 

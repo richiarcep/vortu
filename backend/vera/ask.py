@@ -134,6 +134,15 @@ def ask(db, company_id, *, module: str = "general", system: str = "",
             try:
                 record_usage(db, company_id, resp.provider, resp.tokens_input, resp.tokens_output)
             except Exception as e:
+                # A failed usage write poisons the CALLER's transaction on Postgres
+                # ("current transaction is aborted"), which would 500 the endpoint that
+                # invoked ask() (e.g. the financial-statements snapshot, which calls the
+                # AI for its narrative mid-transaction). Roll it back — usage accounting
+                # is best-effort and must never break the calling request.
+                try:
+                    db.rollback()
+                except Exception:
+                    pass
                 logger.debug("record_usage skipped: %s", e)
 
         if resp.error or not resp.text:
@@ -163,5 +172,9 @@ def ask_full(db, company_id: int, **kwargs):
     try:
         record_usage(db, company_id, resp.provider, resp.tokens_input, resp.tokens_output)
     except Exception:
-        pass
+        # Best-effort: roll back a failed usage write so it can't poison the caller's txn.
+        try:
+            db.rollback()
+        except Exception:
+            pass
     return resp
