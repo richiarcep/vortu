@@ -334,7 +334,8 @@ def get_product_label_pdf(
     if not product:
         raise HTTPException(status_code=404, detail="Producto no encontrado")
 
-    pdf_bytes = generate_product_label_pdf(db, product, copies=copies)
+    country = current_user.company.country if current_user.company else None
+    pdf_bytes = generate_product_label_pdf(db, product, copies=copies, country=country)
     filename  = f"etiqueta_{product.vela_code or product_id}.pdf"
     return Response(
         content=pdf_bytes,

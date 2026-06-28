@@ -81,19 +81,19 @@ def get_resumen(
     since = today - timedelta(days=days)
     cid = current_user.company_id
 
-    INGRESOS_PREFIXES = ['70']
-    GASTOS_PREFIXES = ['60', '62', '63', '64', '65', '66', '67', '68', '69']
-    CAJA_PREFIXES = ['57']
+    # Detección por account_type (PORTABLE a todos los países) en vez de prefijos del
+    # PGC español: MX usa 401.01/502.01, SV 410101/510201… que no empiezan por 70/60,
+    # así que `a.code LIKE '70%'` daba ingresos=0 en MX/SV. account_type lo da bien.
+    _CASH = "(LOWER(a.name) LIKE '%caja%' OR LOWER(a.name) LIKE '%banco%' OR LOWER(a.name) LIKE '%efectivo%')"
 
-    def sum_by_prefixes(prefixes, mode, since_d, until_d):
-        like_clauses = " OR ".join([f"a.code LIKE '{p}%'" for p in prefixes])
+    def sum_where(where_sql, mode, since_d, until_d):
         q = f"""
             SELECT
                 COALESCE(SUM(je.debit), 0) as deb,
                 COALESCE(SUM(je.credit), 0) as cre
             FROM journal_entries je
             JOIN accounts a ON je.account_id = a.id
-            WHERE ({like_clauses})
+            WHERE ({where_sql})
               AND je.company_id = :cid
               AND je.date >= :since
               AND je.date <= :until
@@ -103,9 +103,9 @@ def get_resumen(
         return (cre - deb) if mode == "credit" else (deb - cre)
 
     try:
-        ingresos = sum_by_prefixes(INGRESOS_PREFIXES, "credit", since, today)
-        gastos = sum_by_prefixes(GASTOS_PREFIXES, "debit", since, today)
-        saldo = sum_by_prefixes(CAJA_PREFIXES, "debit", date(2000, 1, 1), today)
+        ingresos = sum_where("a.account_type = 'income'", "credit", since, today)
+        gastos = sum_where("a.account_type = 'expense'", "debit", since, today)
+        saldo = sum_where(f"a.account_type = 'asset' AND {_CASH}", "debit", date(2000, 1, 1), today)
     except Exception as e:
         print(f"ERROR resumen: {e}")
         ingresos = gastos = saldo = 0
@@ -150,11 +150,8 @@ def get_resumen(
         since14 = end_d - timedelta(days=13)
         rows = db.execute(text("""
             SELECT je.date,
-              COALESCE(SUM(CASE WHEN a.code LIKE '70%' THEN je.credit - je.debit ELSE 0 END), 0) AS ing,
-              COALESCE(SUM(CASE WHEN (a.code LIKE '60%' OR a.code LIKE '62%' OR a.code LIKE '63%'
-                                   OR a.code LIKE '64%' OR a.code LIKE '65%' OR a.code LIKE '66%'
-                                   OR a.code LIKE '67%' OR a.code LIKE '68%' OR a.code LIKE '69%')
-                            THEN je.debit - je.credit ELSE 0 END), 0) AS gas
+              COALESCE(SUM(CASE WHEN a.account_type = 'income' THEN je.credit - je.debit ELSE 0 END), 0) AS ing,
+              COALESCE(SUM(CASE WHEN a.account_type = 'expense' THEN je.debit - je.credit ELSE 0 END), 0) AS gas
             FROM journal_entries je JOIN accounts a ON a.id = je.account_id
             WHERE je.company_id = :cid AND je.date >= :d1 AND je.date <= :d2
             GROUP BY je.date ORDER BY je.date

@@ -18,7 +18,7 @@ if os.path.exists('/tmp/cacert.pem'):
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from core.security import require_module, block_impersonated_writes
+from core.security import require_module, block_impersonated_writes, block_impersonation
 from apscheduler.schedulers.background import BackgroundScheduler
 from core.config import get_settings
 from core.database import create_tables, ensure_runtime_schema
@@ -303,7 +303,11 @@ app.include_router(impersonation_admin_router)  # /api/admin/impersonate/* (star
 app.include_router(prospector_router)
 app.include_router(costs_router, dependencies=[_block_imp, Depends(require_module("finanzas"))])
 app.include_router(costes_router, dependencies=[_block_imp, Depends(require_module("finanzas"))])
-app.include_router(two_factor_router)
+# 2FA setup/verify/disable mutate the user's OWN security record (totp_secret).
+# A support impersonation session must NEVER touch a customer's 2FA — in ANY mode —
+# so this carries the full block_impersonation guard, not just the read-only one
+# (POST /2fa/setup overwrites totp_secret with no TOTP code required).
+app.include_router(two_factor_router, dependencies=[Depends(block_impersonation)])
 # These Vera / profit-optimizer routers authenticate with get_current_user (so an
 # impersonation token resolves to the TARGET and reaches them) and expose
 # state-changing endpoints that write the customer's tenant data (Vera

@@ -359,7 +359,14 @@ export default function Dashboard() {
 
   const d = resumen?.ultimos_30_dias || {}
   const esPositivo = (d.resultado_neto || 0) >= 0
-  const chartData = (ventas?.daily_revenue || []).map(x => ({ label: x.label, ing: x.revenue || 0, gas: (x.revenue || 0) * 0.45 }))
+  // Alimentado por el LEDGER (contabilidad), no por la tabla de ventas: ingresos y
+  // gastos REALES por día desde journal_entries (resumen.series_14d), no un gasto
+  // inventado (antes: ventas.daily_revenue con gastos = revenue*0.45).
+  const chartData = (resumen?.series_14d || []).map(x => ({
+    label: new Date(x.date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }),
+    ing: x.ingresos || 0,
+    gas: x.gastos || 0,
+  }))
 
   const now = new Date()
   const hour = now.getHours()

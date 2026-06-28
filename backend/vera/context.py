@@ -69,14 +69,9 @@ def build_sql_context(db: Session, company_id: int) -> str:
     try:
         je = db.execute(text("""
             SELECT
-              COALESCE(SUM(CASE WHEN a.code LIKE '70%' THEN je.credit - je.debit ELSE 0 END), 0) as ingresos,
-              COALESCE(SUM(CASE WHEN a.code LIKE '60%' OR a.code LIKE '62%' OR
-                            a.code LIKE '63%' OR a.code LIKE '64%' OR
-                            a.code LIKE '65%' OR a.code LIKE '66%' OR
-                            a.code LIKE '67%' OR a.code LIKE '68%' OR
-                            a.code LIKE '69%'
-                       THEN je.debit - je.credit ELSE 0 END), 0) as gastos,
-              COALESCE(SUM(CASE WHEN a.code LIKE '57%' THEN je.debit - je.credit ELSE 0 END), 0) as caja
+              COALESCE(SUM(CASE WHEN a.account_type = 'income' THEN je.credit - je.debit ELSE 0 END), 0) as ingresos,
+              COALESCE(SUM(CASE WHEN a.account_type = 'expense' THEN je.debit - je.credit ELSE 0 END), 0) as gastos,
+              COALESCE(SUM(CASE WHEN a.account_type = 'asset' AND (LOWER(a.name) LIKE '%caja%' OR LOWER(a.name) LIKE '%banco%' OR LOWER(a.name) LIKE '%efectivo%') THEN je.debit - je.credit ELSE 0 END), 0) as caja
             FROM journal_entries je
             JOIN accounts a ON a.id = je.account_id
             WHERE je.company_id = :cid AND je.date >= :d

@@ -422,6 +422,270 @@ def get_security_audit(
     }
 
 
+# ── Security: cyber-attack detection (aggregated/scored over the audit log) ─────
+#
+# Read-only complement to /security-audit: instead of the raw tamper-evident log,
+# this aggregates security_audit_log over short/long windows and scores attack
+# indicators (brute force per IP / per account, credential stuffing, 2FA spikes,
+# account lockouts, rate-limit blocks). Cross-tenant + pre-tenant events
+# (login_failure has company_id=null), so it MUST run on get_admin_db (BYPASSRLS);
+# an RLS-scoped session would hide the very rows that matter.
+#
+# ts is ISO-8601 TEXT, so every window filter is a plain lexicographic string
+# compare `ts >= :cutoff` (no date functions → identical on SQLite dev + Postgres
+# prod; covered by ix_audit_ts). login_failure carries the SUBMITTED username in
+# actor_email even when the user doesn't exist, which is what makes per-email
+# brute-force and per-IP credential-stuffing computable from one event type.
+#
+# Thresholds are module constants (tuned to the app's own limits: per-account
+# throttle 10/300s, per-IP login 8/60s) so they are tunable without touching SQL.
+
+# Severity ladder: ok < vigilancia < elevado < crítico.
+_SEV_OK, _SEV_WATCH, _SEV_HIGH, _SEV_CRIT = "ok", "vigilancia", "elevado", "crítico"
+_SEV_RANK = {_SEV_OK: 0, _SEV_WATCH: 1, _SEV_HIGH: 2, _SEV_CRIT: 3}
+# Map indicator severity → top-level threat_level (ok collapses to "tranquilo").
+_LEVEL_FOR_SEV = {_SEV_OK: "tranquilo", _SEV_WATCH: "vigilancia", _SEV_HIGH: "elevado", _SEV_CRIT: "crítico"}
+
+# brute_force_ip: login_failure GROUP BY ip over 15m (slow-burn fallback at 24h).
+_BF_IP_15M_HIGH, _BF_IP_15M_CRIT = 20, 50
+_BF_IP_24H_HIGH = 200
+# brute_force_account: login_failure GROUP BY actor_email over 15m.
+_BF_ACCT_15M_HIGH, _BF_ACCT_15M_CRIT = 10, 30
+# credential_stuffing: distinct actor_email per ip over 24h.
+_CS_24H_HIGH, _CS_24H_CRIT = 10, 30
+# twofa_spike: login_2fa_failure over 15m (global + per-account).
+_2FA_GLOBAL_15M_HIGH = 20
+_2FA_ACCT_15M_HIGH = 5
+# account_lockouts: account_disabled + admin disable over 24h.
+_LOCKOUT_24H_WATCH, _LOCKOUT_24H_HIGH = 3, 5
+# rate_limit_blocks: rate_limit_block over 24h (available once the audit hook ships).
+_RL_24H_HIGH, _RL_24H_CRIT = 100, 500
+
+_OFFENDERS_CAP = 10  # each offenders list sorted desc by count, top N.
+
+
+def _worst(*severities: str) -> str:
+    """Highest severity among the args (ok if none triggered)."""
+    return max(severities, key=lambda s: _SEV_RANK.get(s, 0)) if severities else _SEV_OK
+
+
+@router.get("/security/threats")
+def get_security_threats(
+    db: Session = Depends(get_admin_db),       # BYPASSRLS worker session — audit spans tenants
+    admin: User = Depends(get_admin_user),     # superadmin-only (is_superadmin), 403 otherwise
+    window_hours: int = 24,                    # main window, clamped 1..168
+):
+    """Aggregated cyber-attack detection over the security audit log.
+
+    Scores brute-force (per-IP / per-account), credential-stuffing, 2FA spikes,
+    account lockouts and rate-limit blocks across a recent 15-minute window and a
+    longer `window_hours` window, then derives an overall threat_level from the
+    worst triggered indicator. Read-only; aggregates in SQL where possible.
+    """
+    from datetime import timedelta
+
+    window_hours = max(1, min(window_hours, 168))
+    now = datetime.utcnow()
+    cutoff_24h = (now - timedelta(hours=window_hours)).isoformat()
+    cutoff_15m = (now - timedelta(minutes=15)).isoformat()
+
+    # ── Raw grouped pulls (all string-compare `ts >= :cutoff` over ix_audit_ts) ──
+
+    # login_failure per IP, recent 15m window (with distinct submitted emails).
+    bf_ip_15m = db.execute(text("""
+        SELECT ip, COUNT(*) AS c, COUNT(DISTINCT actor_email) AS de, MAX(ts) AS last_ts
+        FROM security_audit_log
+        WHERE event = 'login_failure' AND ts >= :cutoff AND ip IS NOT NULL
+        GROUP BY ip ORDER BY c DESC
+    """), {"cutoff": cutoff_15m}).fetchall()
+
+    # login_failure per IP, full window (slow-burn fallback + summary distinct IPs).
+    bf_ip_24h = db.execute(text("""
+        SELECT ip, COUNT(*) AS c, COUNT(DISTINCT actor_email) AS de, MAX(ts) AS last_ts
+        FROM security_audit_log
+        WHERE event = 'login_failure' AND ts >= :cutoff AND ip IS NOT NULL
+        GROUP BY ip ORDER BY c DESC
+    """), {"cutoff": cutoff_24h}).fetchall()
+
+    # login_failure per account, recent 15m window (with distinct source IPs).
+    bf_acct_15m = db.execute(text("""
+        SELECT actor_email, COUNT(*) AS c, COUNT(DISTINCT ip) AS di, MAX(ts) AS last_ts
+        FROM security_audit_log
+        WHERE event = 'login_failure' AND ts >= :cutoff AND actor_email IS NOT NULL
+        GROUP BY actor_email ORDER BY c DESC
+    """), {"cutoff": cutoff_15m}).fetchall()
+
+    # login_2fa_failure per account, recent 15m window (carry an example IP).
+    twofa_15m = db.execute(text("""
+        SELECT actor_email, COUNT(*) AS c, MAX(ip) AS ip, MAX(ts) AS last_ts
+        FROM security_audit_log
+        WHERE event = 'login_2fa_failure' AND ts >= :cutoff
+        GROUP BY actor_email ORDER BY c DESC
+    """), {"cutoff": cutoff_15m}).fetchall()
+
+    twofa_total_15m = db.execute(text("""
+        SELECT COUNT(*) FROM security_audit_log
+        WHERE event = 'login_2fa_failure' AND ts >= :cutoff
+    """), {"cutoff": cutoff_15m}).scalar() or 0
+
+    # Account lockouts over the full window — union of two events:
+    #  • account_disabled: a disabled user still attempting login.
+    #  • admin_user_status_change with detail.is_active.after = false (an admin disabling).
+    # detail is a JSON string; admin disable rows always contain '"after": false'
+    # (json.dumps(..., sort_keys=True) → ``"is_active": {"after": false, ...}``).
+    # We match on the substring to stay portable across SQLite/Postgres without JSON ops.
+    lockouts = db.execute(text("""
+        SELECT actor_email, target, COUNT(*) AS c, MAX(ts) AS last_ts
+        FROM security_audit_log
+        WHERE ts >= :cutoff AND (
+            event = 'account_disabled'
+            OR (event = 'admin_user_status_change' AND detail LIKE '%"after": false%')
+        )
+        GROUP BY actor_email, target ORDER BY c DESC
+    """), {"cutoff": cutoff_24h}).fetchall()
+
+    # rate_limit_blocks over the full window. The event is PROPOSED — not emitted
+    # until the core/rate_limit.py audit hook ships — so we report available=false
+    # whenever zero such rows exist (and count 0). Once the hook lands, rows appear
+    # and the indicator self-activates.
+    rl_blocks = db.execute(text("""
+        SELECT ip, actor_email, COUNT(*) AS c, MAX(ts) AS last_ts
+        FROM security_audit_log
+        WHERE event = 'rate_limit_block' AND ts >= :cutoff
+        GROUP BY ip, actor_email ORDER BY c DESC
+    """), {"cutoff": cutoff_24h}).fetchall()
+
+    # ── Indicator: brute_force_ip ───────────────────────────────────────────────
+    bf_ip_offenders, bf_ip_sev = [], _SEV_OK
+    by_ip_24h = {r[0]: r for r in bf_ip_24h}
+    seen_ips = set()
+    for ip, c, de, last_ts in bf_ip_15m:
+        sev = _SEV_CRIT if c >= _BF_IP_15M_CRIT else (_SEV_HIGH if c >= _BF_IP_15M_HIGH else _SEV_OK)
+        if sev != _SEV_OK:
+            bf_ip_sev = _worst(bf_ip_sev, sev)
+        seen_ips.add(ip)
+        bf_ip_offenders.append({"ip": ip, "count": c, "distinct_emails": de, "last_ts": last_ts})
+    # Slow-burn 24h fallback: a high per-IP volume over the long window → elevado.
+    for ip, c, de, last_ts in bf_ip_24h:
+        if c >= _BF_IP_24H_HIGH:
+            bf_ip_sev = _worst(bf_ip_sev, _SEV_HIGH)
+            if ip not in seen_ips:
+                bf_ip_offenders.append({"ip": ip, "count": c, "distinct_emails": de, "last_ts": last_ts})
+    bf_ip_offenders.sort(key=lambda o: o["count"], reverse=True)
+    bf_ip_offenders = bf_ip_offenders[:_OFFENDERS_CAP]
+
+    # ── Indicator: brute_force_account ──────────────────────────────────────────
+    bf_acct_offenders, bf_acct_sev = [], _SEV_OK
+    for email, c, di, last_ts in bf_acct_15m:
+        sev = _SEV_CRIT if c >= _BF_ACCT_15M_CRIT else (_SEV_HIGH if c >= _BF_ACCT_15M_HIGH else _SEV_OK)
+        if sev != _SEV_OK:
+            bf_acct_sev = _worst(bf_acct_sev, sev)
+        bf_acct_offenders.append({"email": email, "count": c, "distinct_ips": di, "last_ts": last_ts})
+    bf_acct_offenders = bf_acct_offenders[:_OFFENDERS_CAP]
+
+    # ── Indicator: credential_stuffing (one IP touching many distinct emails / 24h)
+    cs_offenders, cs_sev = [], _SEV_OK
+    for ip, c, de, last_ts in bf_ip_24h:
+        sev = _SEV_CRIT if de >= _CS_24H_CRIT else (_SEV_HIGH if de >= _CS_24H_HIGH else _SEV_OK)
+        if sev != _SEV_OK:
+            cs_sev = _worst(cs_sev, sev)
+            cs_offenders.append({"ip": ip, "distinct_emails": de, "count": c, "last_ts": last_ts})
+    cs_offenders.sort(key=lambda o: o["distinct_emails"], reverse=True)
+    cs_offenders = cs_offenders[:_OFFENDERS_CAP]
+
+    # ── Indicator: twofa_spike (global OR per-account / 15m) ─────────────────────
+    twofa_offenders, twofa_sev = [], _SEV_OK
+    if twofa_total_15m >= _2FA_GLOBAL_15M_HIGH:
+        twofa_sev = _worst(twofa_sev, _SEV_HIGH)
+    for email, c, ip, last_ts in twofa_15m:
+        if c >= _2FA_ACCT_15M_HIGH:
+            twofa_sev = _worst(twofa_sev, _SEV_HIGH)
+        twofa_offenders.append({"email": email, "ip": ip, "count": c, "last_ts": last_ts})
+    twofa_offenders = twofa_offenders[:_OFFENDERS_CAP]
+
+    # ── Indicator: account_lockouts (account_disabled + admin disable / 24h) ─────
+    lockout_offenders = [
+        {"actor_email": r[0], "target": r[1], "count": r[2], "last_ts": r[3]}
+        for r in lockouts
+    ]
+    lockout_total = sum(o["count"] for o in lockout_offenders)
+    lockout_sev = (_SEV_HIGH if lockout_total >= _LOCKOUT_24H_HIGH
+                   else (_SEV_WATCH if lockout_total >= _LOCKOUT_24H_WATCH else _SEV_OK))
+    lockout_offenders = lockout_offenders[:_OFFENDERS_CAP]
+
+    # ── Indicator: rate_limit_blocks (available only once rows exist) ────────────
+    rl_offenders = [
+        {"ip": r[0], "email": r[1], "count": r[2], "last_ts": r[3]}
+        for r in rl_blocks
+    ]
+    rl_total = sum(o["count"] for o in rl_offenders)
+    rl_available = rl_total > 0
+    rl_sev = _SEV_OK
+    if rl_available:
+        rl_sev = (_SEV_CRIT if rl_total >= _RL_24H_CRIT
+                  else (_SEV_HIGH if rl_total >= _RL_24H_HIGH else _SEV_OK))
+    rl_offenders = rl_offenders[:_OFFENDERS_CAP]
+
+    # ── Summary counts (raw, over the 24h window) ───────────────────────────────
+    # Counted directly (not summed from bf_ip_24h, which excludes null-IP rows).
+    failed_logins_24h = db.execute(text("""
+        SELECT COUNT(*) FROM security_audit_log
+        WHERE event = 'login_failure' AND ts >= :cutoff
+    """), {"cutoff": cutoff_24h}).scalar() or 0
+    failed_logins_15m = db.execute(text("""
+        SELECT COUNT(*) FROM security_audit_log
+        WHERE event = 'login_failure' AND ts >= :cutoff
+    """), {"cutoff": cutoff_15m}).scalar() or 0
+    twofa_failures_24h = db.execute(text("""
+        SELECT COUNT(*) FROM security_audit_log
+        WHERE event = 'login_2fa_failure' AND ts >= :cutoff
+    """), {"cutoff": cutoff_24h}).scalar() or 0
+
+    # ── Assemble indicators (each: triggered = severity above ok) ───────────────
+    indicators = [
+        {"key": "brute_force_ip", "label": "Fuerza bruta por IP",
+         "severity": bf_ip_sev, "triggered": bf_ip_sev != _SEV_OK,
+         "threshold": _BF_IP_15M_CRIT, "window": "15m", "offenders": bf_ip_offenders},
+        {"key": "brute_force_account", "label": "Fuerza bruta por cuenta",
+         "severity": bf_acct_sev, "triggered": bf_acct_sev != _SEV_OK,
+         "threshold": _BF_ACCT_15M_HIGH, "window": "15m", "offenders": bf_acct_offenders},
+        {"key": "credential_stuffing", "label": "Relleno de credenciales",
+         "severity": cs_sev, "triggered": cs_sev != _SEV_OK,
+         "threshold": _CS_24H_HIGH, "window": "24h", "offenders": cs_offenders},
+        {"key": "twofa_spike", "label": "Pico de fallos 2FA",
+         "severity": twofa_sev, "triggered": twofa_sev != _SEV_OK,
+         "threshold": _2FA_GLOBAL_15M_HIGH, "window": "15m", "offenders": twofa_offenders},
+        {"key": "account_lockouts", "label": "Cuentas deshabilitadas / bloqueos",
+         "severity": lockout_sev, "triggered": lockout_sev != _SEV_OK,
+         "threshold": _LOCKOUT_24H_HIGH, "window": "24h", "offenders": lockout_offenders},
+        {"key": "rate_limit_blocks", "label": "Bloqueos por límite de tasa (429)",
+         "severity": rl_sev, "triggered": rl_available and rl_sev != _SEV_OK,
+         "threshold": _RL_24H_HIGH, "window": "24h",
+         "available": rl_available, "offenders": rl_offenders},
+    ]
+
+    # threat_level = worst severity across all TRIGGERED indicators.
+    worst_sev = _worst(*[i["severity"] for i in indicators if i["triggered"]])
+    threat_level = _LEVEL_FOR_SEV[worst_sev]
+
+    distinct_attacker_ips_24h = len([r for r in bf_ip_24h if r[0]])
+
+    return {
+        "generated_at": now.isoformat(),
+        "window": {"hours": window_hours, "recent_minutes": 15},
+        "threat_level": threat_level,
+        "summary": {
+            "failed_logins_24h": failed_logins_24h,
+            "failed_logins_15m": failed_logins_15m,
+            "twofa_failures_24h": twofa_failures_24h,
+            "distinct_attacker_ips_24h": distinct_attacker_ips_24h,
+            "account_disables_24h": lockout_total,
+            "rate_limit_blocks_24h": rl_total,
+        },
+        "indicators": indicators,
+    }
+
+
 # ── Snapshots ──────────────────────────────────────────────────────────────────
 
 @router.get("/snapshots")

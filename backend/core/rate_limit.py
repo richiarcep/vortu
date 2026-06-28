@@ -142,6 +142,34 @@ def _hit(key: str, max_calls: int, window_seconds: int) -> Tuple[bool, int]:
     return _inmemory.hit(key, max_calls, window_seconds)
 
 
+def _audit_rate_block(request: Optional[Request], scope: str, identifier: Optional[str] = None) -> None:
+    """Best-effort: record a 429 in the security audit log so brute-force attempts
+    the limiter already REJECTED become visible to /api/admin/security/threats
+    (the most direct brute-force signal — it counts what never reached a handler).
+
+    Opens its own short-lived worker session (the dependency only has `request`, no
+    db Session) and swallows every error: an audit hiccup must NEVER change throttle
+    behaviour or break the 429 path. Consistent with audit.py's best-effort contract
+    EXCEPT it stays silent here — the throttle decision is already made and logged by
+    the caller; we don't want a flood of audit-write errors during an active attack."""
+    try:
+        from core.database import worker_session
+        from core.audit import audit_event
+        db = worker_session()
+        try:
+            audit_event(
+                db, "rate_limit_block",
+                actor_email=identifier,          # email for account scope, None for IP scope
+                target=f"scope:{scope}",
+                request=request,                 # captures ip + user_agent when present
+                detail={"scope": scope},
+            )
+        finally:
+            db.close()
+    except Exception:
+        pass  # never break the 429 path on an audit hiccup
+
+
 def rate_limit(max_calls: int, window_seconds: int, scope: str):
     """FastAPI dependency: at most `max_calls` per `window_seconds` per client IP.
 
@@ -152,6 +180,7 @@ def rate_limit(max_calls: int, window_seconds: int, scope: str):
         key = f"rl:{scope}:{_client_ip(request)}"
         allowed, retry_after = _hit(key, max_calls, window_seconds)
         if not allowed:
+            _audit_rate_block(request, scope)
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 detail="Demasiados intentos. Inténtalo de nuevo en unos momentos.",
@@ -160,14 +189,19 @@ def rate_limit(max_calls: int, window_seconds: int, scope: str):
     return dependency
 
 
-def account_throttle(identifier: str, max_calls: int, window_seconds: int, scope: str = "account") -> None:
+def account_throttle(identifier: str, max_calls: int, window_seconds: int,
+                     scope: str = "account", request: Optional[Request] = None) -> None:
     """Per-account throttle, independent of IP — call from inside a handler that
     knows the account id (e.g. login keys by submitted email). Raises 429 when the
     account exceeds the cap, blunting credential-stuffing that rotates source IPs
-    against a single account. Identifier is lowercased; never include a secret."""
+    against a single account. Identifier is lowercased; never include a secret.
+
+    Pass ``request`` to capture the source IP/user-agent on the audit row emitted
+    when the throttle trips (optional + best-effort; omitting it logs the email only)."""
     key = f"rl:{scope}:{(identifier or '').strip().lower()}"
     allowed, retry_after = _hit(key, max_calls, window_seconds)
     if not allowed:
+        _audit_rate_block(request, scope, identifier=(identifier or "").strip().lower() or None)
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail="Demasiados intentos para esta cuenta. Inténtalo de nuevo en unos minutos.",

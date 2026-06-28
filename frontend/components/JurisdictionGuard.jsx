@@ -70,6 +70,26 @@ export default function JurisdictionGuard({ children }) {
       })
       .then(async data => {
         if (!data) return            // ya redirigido arriba
+
+        // ── Platform admins (back-office) ──────────────────────────────────
+        // Superadmins operate the back-office across tenants; they have no
+        // company/country of their own, so the onboarding/country bounce below
+        // must NOT apply to them or they'd be trapped on /onboarding forever.
+        // They're also the only ones allowed under /admin — gate it here
+        // client-side (the server already 403s every /api/admin/* route).
+        const isSuper = !!data.is_superadmin
+        const onAdmin = pathname === '/admin' || pathname.startsWith('/admin/')
+
+        if (isSuper) {
+          setReady(true)              // exempt from country/onboarding + module gating
+          return
+        }
+        if (onAdmin) {
+          // Non-superadmin trying to reach the back-office → bounce to their app.
+          router.replace('/dashboard')
+          return
+        }
+
         if (!data.country) {
           router.replace('/onboarding')
           return                     // pantalla en blanco hasta redirigir
