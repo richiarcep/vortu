@@ -45,6 +45,10 @@ certifi==2026.5.20
 # ── Observability ───────────────────────────────────────────────────────────
 # Error tracking; activates only when SENTRY_DSN is set (no-op otherwise).
 sentry-sdk[fastapi]==2.40.0
+# Required by sentry-sdk's StarletteIntegration: it instruments Jinja2Templates at
+# init, so without jinja2 installed sentry_sdk.init() raises ("jinja2 must be
+# installed...") and Sentry silently never activates even with SENTRY_DSN set.
+jinja2==3.1.4
 
 # ── Auth / 2FA ──────────────────────────────────────────────────────────────
 pyotp==2.9.0
