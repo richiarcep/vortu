@@ -2,8 +2,11 @@ import hashlib
 import logging
 import secrets
 from datetime import datetime, timedelta
-from fastapi import APIRouter, Depends, HTTPException, status, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Response, UploadFile, File
 from fastapi.security import OAuth2PasswordRequestForm
+from fastapi.responses import FileResponse
+from pathlib import Path
+from core.files import enforce_upload_size
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from pydantic import BaseModel, EmailStr, field_validator
@@ -436,10 +439,16 @@ def get_me(db: Session = Depends(get_db),
     info = get_country_info(country) if country else None
     _allow = {e.strip().lower() for e in _os.getenv("SUPERADMIN_EMAILS", "").split(",") if e.strip()}
     _is_super = bool(getattr(user, "is_superadmin", False)) or (user.email or "").lower() in _allow
+    try:
+        _avatar = db.execute(text("SELECT avatar_url FROM users WHERE id = :id"), {"id": user.id}).scalar()
+    except Exception:
+        db.rollback()
+        _avatar = None
     return {
         "id": user.id,
         "email": user.email,
         "full_name": user.full_name,
+        "avatar_url": _avatar,
         "is_admin": user.is_admin,
         "is_superadmin": _is_super,
         "country": country,
@@ -447,6 +456,65 @@ def get_me(db: Session = Depends(get_db),
         "symbol": (info or {}).get("symbol"),
         "locale": (info or {}).get("language"),
     }
+
+
+# ── Profile avatar (upload + serve) ──────────────────────────────────────────
+_AVATAR_DIR = Path("uploads/avatars")
+_AVATAR_EXT = {"image/jpeg": "jpg", "image/jpg": "jpg", "image/png": "png",
+               "image/webp": "webp", "image/gif": "gif"}
+_AVATAR_MAX_MB = 3
+
+
+@router.post("/avatar", dependencies=[Depends(block_impersonation)])
+def upload_avatar(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Upload the current user's profile photo (JPG/PNG/WEBP/GIF, ≤3 MB). Saved as
+    uploads/avatars/<id>.<ext>; avatar_url is set to the public serve endpoint.
+    block_impersonation: a support session must not change a customer's avatar."""
+    ext = _AVATAR_EXT.get((file.content_type or "").lower())
+    if not ext:
+        raise HTTPException(status_code=415, detail="Formato no soportado (usa JPG, PNG, WEBP o GIF)")
+    enforce_upload_size(file, max_mb=_AVATAR_MAX_MB)
+    content = file.file.read(_AVATAR_MAX_MB * 1024 * 1024 + 1)
+    if len(content) > _AVATAR_MAX_MB * 1024 * 1024:
+        raise HTTPException(status_code=413, detail=f"Imagen demasiado grande (máx {_AVATAR_MAX_MB} MB)")
+    if not content:
+        raise HTTPException(status_code=400, detail="Archivo vacío")
+    _AVATAR_DIR.mkdir(parents=True, exist_ok=True)
+    # Drop any previous avatar (possibly a different extension) for this user.
+    for old in _AVATAR_DIR.glob(f"{current_user.id}.*"):
+        try:
+            old.unlink()
+        except OSError:
+            pass
+    (_AVATAR_DIR / f"{current_user.id}.{ext}").write_bytes(content)
+    url = f"/api/auth/avatar/{current_user.id}"
+    try:
+        db.execute(text("UPDATE users SET avatar_url = :u WHERE id = :id"),
+                   {"u": url, "id": current_user.id})
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="No se pudo guardar el avatar (falta la columna avatar_url; corre la migración).",
+        )
+    audit_event(db, "avatar_updated", actor_user_id=current_user.id,
+                actor_email=current_user.email, company_id=current_user.company_id)
+    return {"avatar_url": url}
+
+
+@router.get("/avatar/{user_id}")
+def get_avatar(user_id: int):
+    """Serve a user's avatar image. Public on purpose — avatars are non-sensitive
+    display data and an <img src> can't carry the bearer token."""
+    for f in _AVATAR_DIR.glob(f"{user_id}.*"):
+        return FileResponse(str(f))
+    raise HTTPException(status_code=404, detail="Sin avatar")
+
 
 @router.post("/set-country")
 def set_country(

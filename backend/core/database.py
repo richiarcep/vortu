@@ -491,6 +491,10 @@ def ensure_runtime_schema():
             conn.execute(text("ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'member'"))
         if user_cols is not None and "is_test_account" not in user_cols:
             conn.execute(text("ALTER TABLE users ADD COLUMN is_test_account BOOLEAN DEFAULT FALSE"))
+        # users.avatar_url — profile photo (served by /api/auth/avatar/<id>). Raw SQL
+        # only (not on the ORM model), read in get_me + written by the avatar upload.
+        if user_cols is not None and "avatar_url" not in user_cols:
+            conn.execute(text("ALTER TABLE users ADD COLUMN avatar_url TEXT"))
 
         company_cols = existing_columns(conn, "companies")
         if company_cols is not None and "plan" not in company_cols:
