@@ -188,6 +188,11 @@ def add_extra_user(db, user_id, subscription_id, quantity=1):
     return {"success": True}
 
 def handle_webhook(db, payload, sig_header):
+    # Mirror the Connect-webhook guard: with a blank secret, construct_event would
+    # accept events HMAC'd with the empty key (forgery risk) and reject every real
+    # Stripe event (silent billing outage). Fail loud instead (security review).
+    if not settings.STRIPE_WEBHOOK_SECRET:
+        return {"error": "STRIPE_WEBHOOK_SECRET not configured"}
     try:
         event = stripe.Webhook.construct_event(payload, sig_header, settings.STRIPE_WEBHOOK_SECRET)
     except Exception as e:
@@ -445,7 +450,14 @@ def _handle_checkout_completed(db, session):
     if not user_id:
         return
 
-    if checkout_type in ("license_and_subscription", "subscription_only"):
+    if checkout_type in ("license_and_subscription", "subscription_only", "subscription"):
+        # The plain "subscription" type is what create_subscription_checkout actually
+        # emits — previously it matched NO branch, so paid signups never activated
+        # (critical review finding). Activate only on a settled payment (or a $0 trial):
+        # never trust metadata alone, or a self-made Checkout Session / 100%-off promo
+        # could mint a paid plan for ~€0 (security review finding).
+        if session.get("payment_status") not in ("paid", "no_payment_required"):
+            return
         lic = db.query(License).filter(License.user_id == user_id).first()
         if checkout_type == "license_and_subscription":
             if not lic:
