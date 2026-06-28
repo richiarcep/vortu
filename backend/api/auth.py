@@ -278,12 +278,26 @@ def login(
     try:
         _ev = db.execute(text("SELECT email_verified FROM users WHERE id = :uid"),
                          {"uid": user.id}).scalar()
-    except Exception:
-        # Column not present yet (e.g. staging before the schema migration runs):
-        # do NOT break login — treat as verified. The gate self-activates once the
-        # email_verified column + backfill exist. db.rollback() un-poisons the txn.
+    except Exception as _gate_err:
+        # Distinguish "column not migrated yet" (legacy/pre-DDL → treat as verified so
+        # login isn't bricked; the gate self-activates after the migration) from ANY
+        # OTHER db error (lock, poisoned txn, transient connection), which must FAIL
+        # CLOSED — a security gate that waves everyone through on any error is not a
+        # gate (security review finding, 2026-06). db.rollback() un-poisons the txn.
         db.rollback()
-        _ev = True
+        _msg = str(_gate_err).lower()
+        _missing_column = "email_verified" in _msg and (
+            "no such column" in _msg or "does not exist" in _msg
+            or "undefinedcolumn" in type(_gate_err).__name__.lower()
+        )
+        if _missing_column:
+            _ev = True
+        else:
+            logger.error("email_verified gate read failed; failing closed: %s", _gate_err)
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="No se pudo verificar tu cuenta ahora mismo; inténtalo de nuevo.",
+            )
     if _ev is not True and _ev not in (1, "1", "t", "true", "TRUE"):
         audit_event(db, "login_unverified_email", actor_user_id=user.id,
                     actor_email=user.email, company_id=user.company_id, request=request)
@@ -501,6 +515,10 @@ def change_password(
     current_user.hashed_password = hash_password(data.new_password)
     # Invalida todos los access tokens vivos (tv) y revoca los refresh tokens.
     current_user.token_version = (getattr(current_user, "token_version", 0) or 0) + 1
+    # Reset the 15-day 2FA-skip window: a password change must force a fresh TOTP on
+    # the next login, so a leaked password can't ride an existing skip window into a
+    # full session (security review finding, 2026-06).
+    current_user.last_2fa_verified = None
     db.commit()
     try:
         refresh_service.revoke_all_for_user(db, current_user.id, reason="password_change")

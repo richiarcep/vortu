@@ -99,6 +99,10 @@ def disable_2fa(
         current_user.totp_enabled = False
         current_user.totp_secret = None
         current_user.totp_verified_at = None
+        # Clear the 15-day 2FA-skip window too: disabling 2FA must not leave a stale
+        # "recently verified" timestamp that would let a re-enrolled secret be skipped
+        # (security review finding, 2026-06).
+        current_user.last_2fa_verified = None
         db.commit()
         return {"enabled": False, "message": "2FA desactivado"}
     else:

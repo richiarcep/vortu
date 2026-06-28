@@ -480,17 +480,17 @@ def ensure_runtime_schema():
         # DEFAULT works on both Postgres and SQLite (SQLite stores 0/1).
         if user_cols is not None and "email_verified" not in user_cols:
             conn.execute(text("ALTER TABLE users ADD COLUMN email_verified BOOLEAN DEFAULT FALSE"))
+            # Backfill existing accounts as verified ONLY on the run that ADDS the
+            # column, so users created before email-verification existed aren't locked
+            # out. This MUST stay inside the column-add guard: running it on every boot
+            # would re-verify every unverified self-signup on each restart, silently
+            # defeating the login gate (security review finding, 2026-06). New signups
+            # are created FALSE and the verification flow flips them.
+            conn.execute(text("UPDATE users SET email_verified = TRUE WHERE email_verified IS NOT TRUE"))
         if user_cols is not None and "role" not in user_cols:
             conn.execute(text("ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'member'"))
         if user_cols is not None and "is_test_account" not in user_cols:
             conn.execute(text("ALTER TABLE users ADD COLUMN is_test_account BOOLEAN DEFAULT FALSE"))
-        # Backfill existing accounts as verified so the upcoming login gate never locks
-        # out users created before this column existed (the column defaults FALSE for
-        # NEW signups, which the verification flow will flip). Idempotent + portable:
-        # `IS NOT TRUE` covers both NULL (no default applied on some ALTER paths) and
-        # FALSE, and is valid SQL on Postgres and SQLite alike.
-        if user_cols is not None:
-            conn.execute(text("UPDATE users SET email_verified = TRUE WHERE email_verified IS NOT TRUE"))
 
         company_cols = existing_columns(conn, "companies")
         if company_cols is not None and "plan" not in company_cols:
