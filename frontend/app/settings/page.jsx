@@ -7,7 +7,7 @@ const API = API_BASE
 
 import Sidebar from '@/components/Sidebar'
 import { useT, useTheme } from '@/components/ui/tokens'
-import { PageHeader } from '@/components/ui/primitives'
+import { PageHeader, avatarColor } from '@/components/ui/primitives'
 import { useMoney } from '@/lib/money'
 
 const MODULE_ACCESS = [
@@ -694,6 +694,8 @@ function SettingsInner(){
     {id:'business',name:'Business',monthly:119,users:10,modules:['Dashboard','Contabilidad','Finanzas','Ventas','RRHH','Proyectos','Clientes','Documentos','Agente IA','Marketing IA'],moduleCount:10,ai:-1,docs:-1,color:'#3D2BFF'},
   ]
   const [notifPrefs,setNotifPrefs]=useState({stock_bajo:true,clientes_riesgo:true,proyectos_urgentes:true,mensajes_pendientes:true,alertas_contabilidad:true,informe_semanal:true,email_digest:false,push:true})
+  const [avatarUploading,setAvatarUploading]=useState(false)
+  const [avatarBust,setAvatarBust]=useState(0)
 
   useEffect(()=>{
     const t=localStorage.getItem('vela_token')
@@ -701,7 +703,25 @@ function SettingsInner(){
     setToken(t)
     try{const p=JSON.parse(atob(t.split('.')[1]));setUser({email:p.sub||'',name:p.name||p.sub||'Usuario',is_admin:p.is_admin})}
     catch{setUser({email:'',name:'Usuario'})}
+    // Authoritative profile (real name/email + avatar) from /me — the JWT alone has no avatar.
+    fetch(`${API}/api/auth/me`,{headers:{Authorization:`Bearer ${t}`}})
+      .then(r=>r.ok?r.json():null)
+      .then(d=>{if(d)setUser(u=>({...(u||{}),name:d.full_name||u?.name,email:d.email||u?.email,avatar_url:d.avatar_url,is_admin:d.is_admin}))})
+      .catch(()=>{})
   },[])
+
+  async function onAvatarChange(e){
+    const f=e.target.files?.[0]; if(!f)return
+    setAvatarUploading(true)
+    try{
+      const fd=new FormData(); fd.append('file',f)
+      const r=await fetch(`${API}/api/auth/avatar`,{method:'POST',headers:{Authorization:`Bearer ${token}`},body:fd})
+      const d=await r.json().catch(()=>({}))
+      if(r.ok){setUser(u=>({...(u||{}),avatar_url:d.avatar_url}));setAvatarBust(Date.now())}
+      else alert(d.detail||'No se pudo subir la foto')
+    }catch{alert('Error de conexión')}
+    finally{setAvatarUploading(false); e.target.value=''}
+  }
 
   useEffect(()=>{
     if(token&&(tab==='subscription'||tab==='team')){loadBillingStatus();loadTeam()}
@@ -849,6 +869,21 @@ function SettingsInner(){
 
         <div style={{flex:1,overflowY:'auto'}}>
           <div style={{padding:'24px 28px',maxWidth:860,margin:'0 auto',paddingTop:28}}>
+
+            {/* PERFIL — avatar + nombre (siempre visible) */}
+            <Card style={{marginBottom:14,display:'flex',alignItems:'center',gap:16}}>
+              {user?.avatar_url
+                ? <img src={`${API}${user.avatar_url}${avatarBust?`?t=${avatarBust}`:''}`} alt="" style={{width:64,height:64,borderRadius:'50%',objectFit:'cover',border:`1px solid ${T.hairline}`,flexShrink:0}}/>
+                : <div style={{width:64,height:64,borderRadius:'50%',background:avatarColor(user?.name||''),color:'#fff',display:'grid',placeItems:'center',fontSize:22,fontWeight:700,flexShrink:0}}>{initials}</div>}
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:15.5,fontWeight:600,color:T.text,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{user?.name||'Usuario'}</div>
+                <div style={{fontSize:13,color:T.text3,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{user?.email||''}</div>
+              </div>
+              <label style={{padding:'9px 16px',borderRadius:10,border:`.5px solid ${T.hairline}`,background:T.bg,color:T.text,fontSize:13,fontWeight:600,cursor:avatarUploading?'default':'pointer',whiteSpace:'nowrap',opacity:avatarUploading?.6:1}}>
+                {avatarUploading?'Subiendo…':'Cambiar foto'}
+                <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" style={{display:'none'}} onChange={onAvatarChange} disabled={avatarUploading}/>
+              </label>
+            </Card>
 
             {/* APARIENCIA */}
             {tab==='apariencia'&&(
