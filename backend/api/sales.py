@@ -502,6 +502,28 @@ def persist_sale(db, cid: int, data: SaleCreate, status: str = "completed"):
     except Exception:
         pass
 
+    # Postear el ingreso al libro mayor: las ventas TPV NUNCA se contabilizaban, así
+    # que journal_entries no reflejaba los ingresos (hallazgo crítico del review).
+    # Best-effort como el sync del grafo — la venta ya está confirmada; un fallo de
+    # posteo no debe tumbarla. registrar_ingreso escribe un asiento BALANCEADO y
+    # country-aware (DEBE caja · HABER ingresos + IVA repercutido). La idempotencia
+    # de la venta (arriba) evita doble-posteo en reintentos.
+    try:
+        if sale.total and float(sale.total) > 0:
+            from modules.accounting.revenue_register import registrar_ingreso
+            _eff_iva = round((float(sale.iva_amount) / float(sale.subtotal)) * 100, 2) if sale.subtotal else 0.0
+            registrar_ingreso(db, cid, sale.sale_date, "Ventas",
+                              f"Venta TPV #{sale.id}", float(sale.total),
+                              referencia=f"sale:{sale.id}", iva_rate=_eff_iva)
+    except Exception as _post_err:
+        import logging as _lg
+        try:
+            db.rollback()
+        except Exception:
+            pass
+        _lg.getLogger("vela.sales").warning(
+            "No se pudo postear la venta #%s al ledger: %s", sale.id, _post_err)
+
     return serialize_sale(sale)
 
 
