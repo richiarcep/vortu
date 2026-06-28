@@ -11,7 +11,7 @@ from sqlalchemy import text
 import json
 
 from core.database import get_db
-from core.security import get_current_user
+from core.security import get_current_user, _is_platform_admin
 from models.user import User
 
 router = APIRouter(prefix="/api/admin/doc-templates", tags=["Doc Templates Admin"])
@@ -20,7 +20,7 @@ router = APIRouter(prefix="/api/admin/doc-templates", tags=["Doc Templates Admin
 def _check_admin(user: User):
     # Platform-wide extraction templates: gate on superadmin only.
     # (The old `is_super_admin` check was a dead branch — real column is `is_superadmin`.)
-    if not getattr(user, "is_superadmin", False):
+    if not _is_platform_admin(user):
         raise HTTPException(403, "Solo administradores de plataforma")
 
 

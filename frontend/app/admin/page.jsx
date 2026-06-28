@@ -1493,7 +1493,7 @@ function ProfitOptimizerTab({ token, API }) {
 
 export default function AdminPage() {
   const T = useT()
-  const { theme } = useTheme()
+  const { theme, toggle } = useTheme()
   const router = useRouter()
   const [token, setToken] = useState(null)
   const [tab, setTab] = useState('overview')
@@ -1693,6 +1693,16 @@ export default function AdminPage() {
 
         {/* CONTENT */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '28px 32px' }}>
+
+          {/* Toggle de tema (el back-office no tenía ningún setting). Persiste en
+              vela_theme, así que un clic deja TODA la app en claro/oscuro. */}
+          <button onClick={toggle} title={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+            aria-label="Cambiar tema"
+            style={{ position: 'fixed', top: 14, right: 20, zIndex: 60, width: 38, height: 38, borderRadius: 10,
+              border: `.5px solid ${T.hairline}`, background: T.card, color: T.text2, cursor: 'pointer',
+              display: 'grid', placeItems: 'center', fontSize: 17, boxShadow: '0 1px 4px rgba(0,0,0,.1)' }}>
+            {theme === 'dark' ? '☀️' : '🌙'}
+          </button>
 
           {/* ── OVERVIEW ── */}
           {tab === 'overview' && (

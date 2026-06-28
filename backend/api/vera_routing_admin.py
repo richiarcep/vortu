@@ -11,7 +11,7 @@ from typing import Optional, List
 import json
 
 from core.database import get_db
-from core.security import get_current_user, get_admin_db
+from core.security import get_current_user, get_admin_db, _is_platform_admin
 from core.pagination import LimitQuery
 from models.user import User
 
@@ -21,7 +21,7 @@ router = APIRouter(prefix="/api/backoffice/vera-routing", tags=["Backoffice Vera
 def require_admin(user: User = Depends(get_current_user)):
     # Platform backoffice (LLM routing rules + global provider API keys):
     # must be a platform superadmin, NOT a per-company admin.
-    if not getattr(user, "is_superadmin", False):
+    if not _is_platform_admin(user):
         raise HTTPException(status_code=403, detail="Solo administradores de plataforma")
     return user
 

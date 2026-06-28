@@ -8,7 +8,7 @@ from sqlalchemy import text
 from pydantic import BaseModel
 from typing import Optional
 from core.database import get_db
-from core.security import get_current_user
+from core.security import get_current_user, _is_platform_admin
 from models.user import User
 from datetime import datetime
 
@@ -17,7 +17,7 @@ router = APIRouter(prefix="/api/backoffice/prompts", tags=["Backoffice"])
 
 def require_admin(current_user: User = Depends(get_current_user)):
     # Global Vera prompts are platform-wide: gate on superadmin, not company admin.
-    if not getattr(current_user, "is_superadmin", False):
+    if not _is_platform_admin(current_user):
         raise HTTPException(status_code=403, detail="Solo administradores de plataforma")
     return current_user
 

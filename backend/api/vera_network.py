@@ -9,7 +9,7 @@ from typing import Optional, List
 import json
 
 from core.database import get_db
-from core.security import get_current_user, get_admin_db
+from core.security import get_current_user, get_admin_db, _is_platform_admin
 from core.pagination import LimitQuery
 from core.rate_limit import rate_limit
 from models.user import User
@@ -24,7 +24,7 @@ def require_superadmin(current_user: User = Depends(get_current_user)) -> User:
     """Solo usuarios con is_superadmin = 1 acceden."""
     is_super = False
     try:
-        is_super = bool(getattr(current_user, 'is_superadmin', False))
+        is_super = _is_platform_admin(current_user)
     except Exception:
         pass
     if not is_super:

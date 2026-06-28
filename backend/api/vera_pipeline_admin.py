@@ -10,7 +10,7 @@ from datetime import datetime
 import json
 
 from core.database import get_db
-from core.security import get_current_user
+from core.security import get_current_user, _is_platform_admin
 from models.user import User
 
 router = APIRouter(prefix="/api/admin/vera-pipeline", tags=["Vera Pipeline Admin"])
@@ -20,7 +20,7 @@ def _check_admin(user: User):
     """Solo super-admins pueden tocar pipelines."""
     # Real column is `is_superadmin`; the old `is_super_admin` OR-ed with `is_admin`
     # left this open to any per-company admin (i.e. every customer).
-    if not getattr(user, "is_superadmin", False):
+    if not _is_platform_admin(user):
         raise HTTPException(403, "Solo administradores de plataforma")
 
 

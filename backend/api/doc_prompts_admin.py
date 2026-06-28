@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 
 from core.database import get_db
-from core.security import get_current_user, get_admin_db
+from core.security import get_current_user, get_admin_db, _is_platform_admin
 from models.user import User
 
 router = APIRouter(prefix="/api/admin/doc-prompts", tags=["Doc Prompts Admin"])
@@ -19,7 +19,7 @@ def _check_admin(user: User):
     # Platform-wide doc prompts: gate on superadmin only.
     # (Note: the column is `is_superadmin` — the old `is_super_admin` check was a
     # permanently-dead branch that silently collapsed the gate to any is_admin user.)
-    if not getattr(user, "is_superadmin", False):
+    if not _is_platform_admin(user):
         raise HTTPException(403, "Solo administradores de plataforma")
 
 
