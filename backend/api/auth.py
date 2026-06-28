@@ -341,7 +341,7 @@ def login(
     sub = db.query(Subscription).filter(Subscription.user_id == user.id).first()
     plan_id = sub.plan_id if sub else "starter"
     token = create_access_token(data={"sub": str(user.id), "is_admin": user.is_admin, "plan_id": plan_id,
-                                       "tv": getattr(user, "token_version", 0) or 0})
+                                       "name": user.full_name, "tv": getattr(user, "token_version", 0) or 0})
     # Issue a rotating refresh token in an HttpOnly cookie (prod) ALONGSIDE the
     # body access token (which the bearer/localStorage dev flow keeps using).
     _rt = refresh_service.issue(db, user, request=request)
@@ -401,7 +401,7 @@ def refresh(request: Request, response: Response, db: Session = Depends(get_db))
     sub = db.query(Subscription).filter(Subscription.user_id == user.id).first()
     plan_id = sub.plan_id if sub else "starter"
     token = create_access_token(data={"sub": str(user.id), "is_admin": user.is_admin, "plan_id": plan_id,
-                                       "tv": getattr(user, "token_version", 0) or 0})
+                                       "name": user.full_name, "tv": getattr(user, "token_version", 0) or 0})
     audit_event(db, "refresh_success", actor_user_id=user.id, actor_email=user.email,
                 company_id=user.company_id, request=request)
     return {"access_token": token, "token_type": "bearer", "requires_2fa": False}

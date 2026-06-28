@@ -30,7 +30,7 @@ TS=$(date +%Y%m%d-%H%M%S)
 OUT="backups/vela-${TS}.sql.gz"
 
 # --no-owner so the dump can be restored under any role; gzip inline to save disk.
-$COMPOSE exec -T postgres pg_dump -U "$PGUSER" -d "$PGDB" --no-owner --clean --if-exists \
+$COMPOSE exec -T postgres pg_dump -U "$PGUSER" -d "$PGDB" --no-owner --clean --if-exists < /dev/null \
   | gzip > "$OUT"
 
 SIZE=$(du -h "$OUT" | cut -f1)

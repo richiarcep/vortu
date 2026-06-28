@@ -153,7 +153,7 @@ def verify_login_2fa(
         sub = db.query(Subscription).filter(Subscription.user_id == user.id).first()
         plan_id = sub.plan_id if sub else "starter"
         full_token = create_access_token(data={"sub": str(user.id), "is_admin": user.is_admin, "plan_id": plan_id,
-                                                "tv": getattr(user, "token_version", 0) or 0})
+                                                "name": user.full_name, "tv": getattr(user, "token_version", 0) or 0})
         _rt = refresh_service.issue(db, user, request=request)
         set_refresh_cookie(response, _rt, request=request)
         audit_event(db, "login_success", actor_user_id=user.id, actor_email=user.email,
