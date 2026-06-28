@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useT, useTheme } from '@/components/ui/tokens'
-import { API_BASE } from '@/lib/api'
+import { API_BASE, getMe } from '@/lib/api'
 import BrandLogo from '@/components/ui/BrandLogo'
 
 export default function LoginPage() {
@@ -18,6 +18,19 @@ export default function LoginPage() {
   const [tempToken, setTempToken] = useState(null)
   const [totpCode, setTotpCode] = useState('')
   const [verifying2FA, setVerifying2FA] = useState(false)
+
+  // After a successful login the token is already stored. Ask the backend who we
+  // are: platform admins land on the back-office (/admin), everyone else on the
+  // app dashboard. getMe() reads is_superadmin from /api/auth/me (server-derived
+  // from the is_superadmin column OR the SUPERADMIN_EMAILS allowlist).
+  async function routeAfterLogin() {
+    try {
+      const me = await getMe()
+      router.push(me?.is_superadmin ? '/admin' : '/dashboard')
+    } catch {
+      router.push('/dashboard')
+    }
+  }
 
   async function handleLogin(e) {
     e.preventDefault()
@@ -42,7 +55,7 @@ export default function LoginPage() {
         return
       }
       localStorage.setItem('vela_token', data.access_token)
-      router.push('/dashboard')
+      await routeAfterLogin()
     } catch {
       setError('Error de conexión. Verifica que el servidor esté activo.')
     } finally {
@@ -66,7 +79,7 @@ export default function LoginPage() {
       const data = await res.json()
       if (!res.ok) { setError(data.detail || 'Codigo incorrecto'); return }
       localStorage.setItem('vela_token', data.access_token)
-      router.push('/dashboard')
+      await routeAfterLogin()
     } catch {
       setError('Error de conexion')
     } finally {
@@ -83,8 +96,8 @@ export default function LoginPage() {
         body { font-family: 'Inter', system-ui, sans-serif; }
 
         .login-root {
-          height: 100dvh;
-          overflow: hidden;
+          min-height: 100dvh;
+          overflow: auto;
           display: flex;
           background: ${theme === 'dark' ? T.bg : '#f4f6fb'};
           font-family: 'Inter', system-ui, sans-serif;

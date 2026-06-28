@@ -1,4 +1,7 @@
+import hashlib
 import logging
+import secrets
+from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, status, Request, Response
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
@@ -6,7 +9,7 @@ from sqlalchemy import text
 from pydantic import BaseModel, EmailStr, field_validator
 from typing import Optional
 from core.database import get_db
-from core.security import hash_password, verify_password, create_access_token, get_tenant_db, set_tenant_context, get_current_user
+from core.security import hash_password, verify_password, create_access_token, get_tenant_db, set_tenant_context, get_current_user, block_impersonation
 from core.rate_limit import rate_limit, account_throttle
 from core.audit import audit_event
 from core import refresh as refresh_service
@@ -14,6 +17,62 @@ from core.cookies import set_refresh_cookie, clear_refresh_cookie, REFRESH_COOKI
 from models.user import User, Company
 
 logger = logging.getLogger("vera.auth")
+
+# Email-verification token lifetime. The plaintext token goes in the verify link;
+# only its sha256 is stored, so a DB leak can't be replayed into a verification.
+VERIFICATION_TTL_HOURS = 24
+
+
+def _hash_token(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def _send_verification_email(db: Session, user: User) -> bool:
+    """Mint a single-use email-verification token for `user`, persist its hash
+    (invalidating any prior unused token for the same purpose), and email the
+    plaintext link. Best-effort: a mailer failure is logged, never raised — the
+    caller's flow (register/resend) must not 500 because email is down."""
+    from core.config import get_settings
+    settings = get_settings()
+
+    token = secrets.token_urlsafe(32)
+    now = datetime.utcnow()
+    expires_at = now + timedelta(hours=VERIFICATION_TTL_HOURS)
+    # Invalidate any prior unused email-verify token so only the newest link works.
+    db.execute(text(
+        "UPDATE verification_tokens SET used_at = :now "
+        "WHERE user_id = :uid AND purpose = 'email_verify' AND used_at IS NULL"
+    ), {"now": now.isoformat(), "uid": user.id})
+    db.execute(text(
+        "INSERT INTO verification_tokens (user_id, token_hash, purpose, expires_at, used_at, created_at) "
+        "VALUES (:uid, :th, 'email_verify', :exp, NULL, :now)"
+    ), {"uid": user.id, "th": _hash_token(token), "exp": expires_at.isoformat(), "now": now.isoformat()})
+    db.commit()
+
+    verify_url = f"{settings.FRONTEND_URL.rstrip('/')}/verify-email?token={token}"
+    html = f"""
+        <div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;max-width:480px;margin:0 auto">
+          <h2 style="color:#111">Verifica tu correo</h2>
+          <p>Hola{(' ' + user.full_name) if user.full_name else ''}, confirma tu dirección de correo
+             para activar tu cuenta de Vela.</p>
+          <p style="margin:28px 0">
+            <a href="{verify_url}"
+               style="background:#111;color:#fff;padding:12px 22px;border-radius:8px;text-decoration:none">
+               Verificar correo</a>
+          </p>
+          <p style="color:#666;font-size:13px">O copia este enlace:<br>{verify_url}</p>
+          <p style="color:#999;font-size:12px">El enlace caduca en {VERIFICATION_TTL_HOURS} horas.</p>
+        </div>
+    """
+    try:
+        from core.mailer import send_system_email
+        sent = send_system_email(user.email, "Verifica tu correo · Vela", html)
+    except Exception as e:
+        logger.warning("Verification email send raised for user %s: %s", user.id, e)
+        sent = False
+    if not sent:
+        logger.warning("Verification email NOT sent for user %s (mailer unavailable/unconfigured)", user.id)
+    return sent
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
@@ -116,6 +175,11 @@ def register(data: RegisterRequest, db: Session = Depends(get_db)):
         )
         wdb.add(user)
         wdb.flush()
+        # A self-service signup starts UNVERIFIED: the login gate (see login()) blocks
+        # sign-in until the emailed link is clicked. `email_verified` is a raw column
+        # (not on the ORM model) → set it explicitly via SQL. Provisioned accounts
+        # (invited team members, test accounts, superadmins) are created verified
+        # elsewhere; this self-service path is always email_verified=False.
         from models.billing import Subscription, License
         sub = Subscription(user_id=user.id, plan_id="starter", status="none", fase="beta", license_paid=False)
         lic = License(user_id=user.id, plan_id="starter", status="pending", amount_paid=0)
@@ -124,6 +188,22 @@ def register(data: RegisterRequest, db: Session = Depends(get_db)):
         wdb.commit()
         wdb.refresh(user)
         wdb.refresh(company)
+
+        # Mark the self-service signup UNVERIFIED in a SEPARATE txn, so a missing
+        # email_verified column (staging before the schema migration) can't poison or
+        # roll back the just-committed account. The login gate is also guarded.
+        try:
+            wdb.execute(text("UPDATE users SET email_verified = FALSE WHERE id = :uid"), {"uid": user.id})
+            wdb.commit()
+        except Exception:
+            wdb.rollback()
+
+        # Send the verification email (best-effort; never blocks registration).
+        try:
+            _send_verification_email(wdb, user)
+        except Exception as e:
+            wdb.rollback()   # un-poison the txn (e.g. verification_tokens not migrated yet)
+            logger.warning("Could not send verification email for user %s: %s", user.id, e)
 
         result = {
             "id": user.id,
@@ -186,6 +266,30 @@ def login(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Account is disabled"
+        )
+
+    # ── EMAIL-VERIFICATION LOGIN GATE (server-side, the key fix) ────────────────
+    # Credentials are correct, but a self-service account that hasn't confirmed its
+    # email cannot sign in. Read the raw `email_verified` column (not on the ORM
+    # model). Existing accounts were backfilled to TRUE in ensure_runtime_schema, so
+    # this never locks out anyone who predates the column. `IS NOT TRUE` treats NULL
+    # as unverified (fail-closed). Provisioned/invited/test accounts are created
+    # verified, so they pass straight through.
+    try:
+        _ev = db.execute(text("SELECT email_verified FROM users WHERE id = :uid"),
+                         {"uid": user.id}).scalar()
+    except Exception:
+        # Column not present yet (e.g. staging before the schema migration runs):
+        # do NOT break login — treat as verified. The gate self-activates once the
+        # email_verified column + backfill exist. db.rollback() un-poisons the txn.
+        db.rollback()
+        _ev = True
+    if _ev is not True and _ev not in (1, "1", "t", "true", "TRUE"):
+        audit_event(db, "login_unverified_email", actor_user_id=user.id,
+                    actor_email=user.email, company_id=user.company_id, request=request)
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Verifica tu email antes de iniciar sesión",
         )
 
     # Transparently upgrade legacy bcrypt hashes to argon2 on successful login.
@@ -374,13 +478,16 @@ class ChangePasswordRequest(BaseModel):
         return v
 
 
-@router.post("/change-password", dependencies=[Depends(rate_limit(5, 300, "change-password"))])
+@router.post("/change-password",
+             dependencies=[Depends(rate_limit(5, 300, "change-password")), Depends(block_impersonation)])
 def change_password(
     data: ChangePasswordRequest,
     request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    # block_impersonation: changing the password (and bumping token_version below) is
+    # security-critical — a support session must never be able to take over an account.
     """Cambia la contraseña del usuario autenticado: verifica la actual, valida la
     nueva (misma política), re-hashea, y bumpea token_version + revoca los refresh
     tokens para cerrar todas las sesiones existentes. Antes este flujo NO existía
@@ -402,3 +509,78 @@ def change_password(
     audit_event(db, "password_changed", actor_user_id=current_user.id,
                 actor_email=current_user.email, company_id=current_user.company_id, request=request)
     return {"ok": True, "mensaje": "Contraseña actualizada. Vuelve a iniciar sesión."}
+
+
+# ── Email verification ──────────────────────────────────────────────────────────
+
+class VerifyEmailRequest(BaseModel):
+    token: str
+
+
+@router.post("/verify-email", dependencies=[Depends(rate_limit(10, 300, "verify-email"))])
+def verify_email(data: VerifyEmailRequest, request: Request, db: Session = Depends(get_db)):
+    """Consume an email-verification token: hash the plaintext, find the matching
+    unused + unexpired row, mark the user verified and the token used. Single-use —
+    a token works exactly once, and only before it expires."""
+    token = (data.token or "").strip()
+    if not token:
+        raise HTTPException(status_code=400, detail="Token requerido")
+    th = _hash_token(token)
+    now = datetime.utcnow()
+    row = db.execute(text(
+        "SELECT id, user_id, expires_at, used_at FROM verification_tokens "
+        "WHERE token_hash = :th AND purpose = 'email_verify'"
+    ), {"th": th}).fetchone()
+    if row is None or row[3] is not None:
+        # Unknown OR already-used token. Don't distinguish (avoids token-probing).
+        raise HTTPException(status_code=400, detail="Enlace de verificación inválido o ya utilizado")
+    # Expiry check (stored ISO string).
+    try:
+        if row[2] and datetime.fromisoformat(str(row[2])) <= now:
+            raise HTTPException(status_code=400, detail="El enlace de verificación ha caducado")
+    except HTTPException:
+        raise
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=400, detail="El enlace de verificación ha caducado")
+
+    user = db.query(User).filter(User.id == row[1]).first()
+    if user is None:
+        raise HTTPException(status_code=400, detail="Usuario no encontrado")
+
+    db.execute(text("UPDATE users SET email_verified = TRUE WHERE id = :uid"), {"uid": user.id})
+    db.execute(text("UPDATE verification_tokens SET used_at = :now WHERE id = :rid"),
+               {"now": now.isoformat(), "rid": row[0]})
+    db.commit()
+    audit_event(db, "email_verified", actor_user_id=user.id, actor_email=user.email,
+                company_id=user.company_id, request=request)
+    return {"ok": True, "verified": True, "mensaje": "Correo verificado. Ya puedes iniciar sesión."}
+
+
+class ResendVerificationRequest(BaseModel):
+    email: EmailStr
+
+
+@router.post("/resend-verification", dependencies=[Depends(rate_limit(3, 3600, "resend-verification"))])
+def resend_verification(data: ResendVerificationRequest, request: Request, db: Session = Depends(get_db)):
+    """Re-send the verification email (rate-limited ~3/hour). Mints a fresh token,
+    invalidating any prior one. Always returns a generic OK — it never reveals
+    whether the email exists or is already verified (account-enumeration safe)."""
+    generic = {"ok": True, "mensaje": "Si la cuenta existe y no está verificada, te enviamos un nuevo enlace."}
+    # Per-account throttle on top of the IP limiter: blunts using resend to spam a
+    # specific address from many IPs.
+    account_throttle(data.email, max_calls=3, window_seconds=3600, scope="resend-verif-acct", request=request)
+
+    user = db.query(User).filter(User.email == data.email).first()
+    if user is None:
+        return generic
+    ev = db.execute(text("SELECT email_verified FROM users WHERE id = :uid"), {"uid": user.id}).scalar()
+    if ev is True or ev in (1, "1", "t", "true", "TRUE"):
+        # Already verified — nothing to do, but don't disclose that.
+        return generic
+    try:
+        _send_verification_email(db, user)
+    except Exception as e:
+        logger.warning("resend-verification send failed for user %s: %s", user.id, e)
+    audit_event(db, "verification_resent", actor_user_id=user.id, actor_email=user.email,
+                company_id=user.company_id, request=request)
+    return generic

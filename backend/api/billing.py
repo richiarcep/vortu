@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 
 from core.database import get_db
-from core.security import get_current_user
+from core.security import get_current_user, block_impersonation
 from models.user import User
 from models.billing import PLANS, Subscription, License, TeamMember
 from modules.billing.stripe_service import (
@@ -133,9 +133,13 @@ async def cancel(body: CancelRequest, db: Session = Depends(get_db), current_use
 
 # ── Fases ─────────────────────────────────────────────────────────────────────
 
-@router.post("/admin/phase")
+@router.post("/admin/phase", dependencies=[Depends(block_impersonation)])
 async def set_phase(body: PhaseRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    """Switch de fase global — solo superadmins. Actualiza TODAS las suscripciones."""
+    """Switch de fase global — solo superadmins. Actualiza TODAS las suscripciones.
+
+    block_impersonation: a platform-wide, security-relevant mutation that must never
+    run under impersonation (even write-mode), as belt-and-suspenders over the
+    is_superadmin gate below."""
     # Platform-wide: flips every tenant's billing phase. Must be a platform
     # superadmin, not any per-company admin.
     if not getattr(current_user, "is_superadmin", False):
@@ -240,8 +244,10 @@ async def get_billing_notifications(db: Session = Depends(get_db), current_user:
 
 # ── Team ──────────────────────────────────────────────────────────────────────
 
-@router.post("/users/add")
+@router.post("/users/add", dependencies=[Depends(block_impersonation)])
 async def add_user(body: AddUserRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    # block_impersonation: inviting a team member assigns a role → a security-relevant
+    # mutation that must not be performed while acting as the customer (even write-mode).
     sub = db.query(Subscription).filter(Subscription.user_id == current_user.id).first()
     if not sub or sub.status not in ("active", "trialing"):
         raise HTTPException(status_code=400, detail="No hay suscripcion activa")
@@ -254,8 +260,10 @@ async def add_user(body: AddUserRequest, db: Session = Depends(get_db), current_
     invite_url = f"{settings.FRONTEND_URL}/invite/{token}"
     return {"success": True, "message": f"Invitacion enviada a {body.email}", "invite_url": invite_url}
 
-@router.post("/users/remove")
+@router.post("/users/remove", dependencies=[Depends(block_impersonation)])
 async def remove_user(body: RemoveUserRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    # block_impersonation: removing a team member is a security-relevant membership
+    # change — never performable while acting as the customer.
     member = db.query(TeamMember).filter(TeamMember.owner_user_id == current_user.id, TeamMember.member_user_id == body.member_user_id).first()
     if not member:
         raise HTTPException(status_code=404, detail="Miembro no encontrado")

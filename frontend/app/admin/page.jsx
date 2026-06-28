@@ -4,7 +4,8 @@ import { useRouter } from 'next/navigation'
 import VeraStudio from '@/components/admin/VeraStudio'
 import VeraNetwork from '@/components/admin/VeraNetwork'
 import { FONT, I, useT, useTheme } from '@/components/ui/tokens'
-import { API_BASE } from '@/lib/api'
+import { API_BASE, apiFetch, authHeaders } from '@/lib/api'
+import ImpersonatePanel from '@/components/ImpersonatePanel'
 
 // Iconos SVG inline (Lucide-style, stroke currentColor) para reemplazar emojis.
 const Svg = ({ children, size = 16, sw = 1.8, style }) => (
@@ -64,6 +65,7 @@ function AdminSidebar({ active }) {
     { label: 'Overview',      href: '/admin',                icon: '◇' },
     { label: 'Empresas',      href: '/admin?tab=companies',  icon: '◻' },
     { label: 'Usuarios',      href: '/admin?tab=users',      icon: '○' },
+    { label: 'Seguridad',     href: '/admin?tab=security',   icon: '⛨' },
     { label: 'Snapshots',     href: '/admin?tab=snapshots',  icon: '▣' },
     { label: 'Prompts IA',    href: '/admin?tab=prompts',    icon: '◆' },
     { label: 'Memoria IA',    href: '/admin?tab=memory',     icon: '◈' },
@@ -574,6 +576,194 @@ function BillingTab({ token, API }) {
             <div>Sin empresas todavía</div>
           </div>
         )}
+      </div>
+    </div>
+  )
+}
+
+// ── Security Tab (read-only) ────────────────────────────────────────────────────
+// Consumes GET /api/admin/security/threats (BYPASSRLS, superadmin-only). Shows the
+// scored threat_level, the summary KPI strip, each indicator with its offenders,
+// and a flattened "most recent suspicious events" feed derived from offenders.
+function SecurityTab({ threats, loading, onRefresh }) {
+  const T = useT()
+  const NAVY = '#0B0D2B', GREEN = '#059669', AMBER = '#d97706', RED = '#dc2626', BLUE = '#3D2BFF'
+
+  // level/severity → soft-token color pair (reuses the existing palette)
+  const levelStyle = (lvl) => ({
+    tranquilo:   { color: GREEN, bg: T.greenSoft },
+    vigilancia:  { color: AMBER, bg: T.amberSoft },
+    elevado:     { color: AMBER, bg: T.amberSoft },
+    crítico:     { color: RED,   bg: T.redSoft },
+    critico:     { color: RED,   bg: T.redSoft },
+  }[lvl] || { color: T.text4, bg: T.soft })
+  // severity → top-border accent color for indicator cards
+  const sevColor = (sev) => ({
+    ok: T.text4, vigilancia: AMBER, elevado: AMBER, crítico: RED, critico: RED,
+  }[sev] || T.text4)
+  const sevLabel = (sev) => ({
+    ok: 'OK', vigilancia: 'Vigilancia', elevado: 'Elevado', crítico: 'Crítico', critico: 'Crítico',
+  }[sev] || sev)
+  const fmtTs = (ts) => (ts ? String(ts).substring(0, 16).replace('T', ' ') : '—')
+
+  const card = { background: T.card, borderRadius: '14px', border: `0.5px solid ${T.hairline}` }
+  const pill = (s) => ({ padding: '6px 14px', borderRadius: '8px', fontWeight: '700', fontSize: '13px', border: `1px solid ${s.bg}`, color: s.color, background: s.bg, display: 'inline-block' })
+  const badge = (s) => ({ padding: '2px 10px', borderRadius: '8px', fontWeight: '700', fontSize: '11px', border: `1px solid ${s.bg}`, color: s.color, background: s.bg, display: 'inline-block' })
+  const btn = { padding: '9px 18px', borderRadius: '9px', background: NAVY, color: 'white', fontWeight: '700', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: '13px' }
+
+  if (loading) return <div style={{ textAlign: 'center', padding: '60px', color: T.text4 }}>Cargando seguridad...</div>
+
+  if (!threats) {
+    return (
+      <div style={{ animation: 'fadeUp 0.3s ease' }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
+          <button style={btn} onClick={onRefresh}>Actualizar</button>
+        </div>
+        <div style={{ ...card, padding: '48px', textAlign: 'center', color: T.text4 }}>
+          Sin actividad sospechosa en la ventana seleccionada
+        </div>
+      </div>
+    )
+  }
+
+  const s = threats.summary || {}
+  const indicators = threats.indicators || []
+  const level = threats.threat_level || 'tranquilo'
+  const ls = levelStyle(level)
+
+  // which summary KPIs go "red": value is non-zero AND a related indicator triggered
+  const triggered = (key) => indicators.some(i => i.key === key && i.triggered)
+  const kpis = [
+    { label: 'Logins fallidos 24h', value: s.failed_logins_24h ?? 0, hot: triggered('credential_stuffing') || triggered('brute_force_account') },
+    { label: 'Logins fallidos 15m', value: s.failed_logins_15m ?? 0, hot: triggered('brute_force_ip') || triggered('brute_force_account') },
+    { label: 'Fallos 2FA 24h',      value: s.twofa_failures_24h ?? 0, hot: triggered('twofa_spike') },
+    { label: 'IPs atacantes 24h',   value: s.distinct_attacker_ips_24h ?? 0, hot: triggered('brute_force_ip') || triggered('credential_stuffing') },
+    { label: 'Cuentas deshabilitadas 24h', value: s.account_disables_24h ?? 0, hot: triggered('account_lockouts') },
+    { label: 'Bloqueos 429 24h',    value: s.rate_limit_blocks_24h ?? 0, hot: triggered('rate_limit_blocks') },
+  ]
+
+  // Flatten offenders across indicators → a "most recent suspicious events" feed
+  // (ip · email · event · time), sorted by last_ts desc, capped. Read-only derivation.
+  const recent = []
+  indicators.forEach(ind => {
+    (ind.offenders || []).forEach(o => {
+      recent.push({
+        ip: o.ip || '—',
+        email: o.email || o.actor_email || '—',
+        event: ind.label || ind.key,
+        count: o.count ?? null,
+        last_ts: o.last_ts || null,
+      })
+    })
+  })
+  recent.sort((a, b) => String(b.last_ts || '').localeCompare(String(a.last_ts || '')))
+  const recentTop = recent.slice(0, 15)
+
+  return (
+    <div style={{ animation: 'fadeUp 0.3s ease' }}>
+
+      {/* Threat-level banner + actions */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', marginBottom: '18px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '12px', color: T.text4, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: '700' }}>Nivel de amenaza</span>
+          <span style={pill(ls)}>{String(level).toUpperCase()}</span>
+          <span style={{ fontSize: '11px', color: T.text4 }}>
+            Ventana {threats.window?.hours ?? 24}h · reciente {threats.window?.recent_minutes ?? 15}m
+            {threats.generated_at ? ` · ${fmtTs(threats.generated_at)}` : ''}
+          </span>
+        </div>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button style={btn} onClick={onRefresh}>Actualizar</button>
+          <a href="/admin?tab=security" onClick={(e) => { e.preventDefault(); onRefresh && onRefresh() }} style={{ ...btn, background: T.card, color: T.text3, border: `0.5px solid ${T.hairline}`, textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>Ver registro completo</a>
+        </div>
+      </div>
+
+      {/* KPI strip */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px,1fr))', gap: '12px', marginBottom: '20px' }}>
+        {kpis.map(k => (
+          <div key={k.label} style={{ ...card, padding: '14px 16px' }}>
+            <div style={{ fontSize: '10px', color: T.text4, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>{k.label}</div>
+            <div style={{ fontSize: '28px', fontWeight: '800', color: k.hot ? RED : T.text }}>{k.value}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Indicators */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px,1fr))', gap: '14px', marginBottom: '20px' }}>
+        {indicators.map(ind => {
+          const sc = sevColor(ind.severity)
+          const bs = levelStyle(ind.severity === 'ok' ? '' : ind.severity)
+          const offenders = ind.offenders || []
+          const unavailable = ind.available === false
+          return (
+            <div key={ind.key} style={{ ...card, padding: '20px', borderTop: `3px solid ${sc}` }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '6px' }}>
+                <div style={{ fontSize: '14px', fontWeight: '700', color: T.text }}>{ind.label}</div>
+                <span style={badge(ind.severity === 'ok' ? { color: T.text4, bg: T.soft } : bs)}>{sevLabel(ind.severity)}</span>
+              </div>
+              <div style={{ fontSize: '12px', color: T.text3, marginBottom: '12px' }}>
+                Umbral {ind.threshold} · ventana {ind.window}
+                {ind.triggered ? <span style={{ color: RED, fontWeight: '700' }}> · activado</span> : ''}
+                {unavailable ? <span style={{ color: T.text4 }}> · no disponible aún</span> : ''}
+              </div>
+
+              {unavailable ? (
+                <div style={{ fontSize: '12px', color: T.text4, padding: '8px 0' }}>
+                  Pendiente del hook de auditoría de rate-limit.
+                </div>
+              ) : offenders.length === 0 ? (
+                <div style={{ fontSize: '12px', color: T.text4, padding: '8px 0' }}>Sin coincidencias.</div>
+              ) : (
+                <div style={{ borderRadius: '10px', overflow: 'hidden', border: `0.5px solid ${T.hairline}` }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 0.6fr 0.8fr 1.1fr', gap: '8px', padding: '7px 10px', background: '#0f1729' }}>
+                    {['Origen', 'Hits', 'Distintos', 'Último'].map(hd => (
+                      <div key={hd} style={{ fontSize: '10px', fontWeight: '700', color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{hd}</div>
+                    ))}
+                  </div>
+                  {offenders.map((o, i) => (
+                    <div key={i} style={{ display: 'grid', gridTemplateColumns: '1.6fr 0.6fr 0.8fr 1.1fr', gap: '8px', padding: '7px 10px', alignItems: 'center', background: i % 2 ? T.soft : T.card, borderBottom: i < offenders.length - 1 ? `1px solid ${T.hairline}` : 'none' }}>
+                      <div style={{ fontSize: '12px', fontWeight: '600', color: T.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {o.ip || o.email || o.actor_email || '—'}
+                      </div>
+                      <div style={{ fontSize: '12px', fontWeight: '700', color: ind.triggered ? RED : T.text2 }}>{o.count ?? '—'}</div>
+                      <div style={{ fontSize: '11px', color: T.text3 }}>
+                        {o.distinct_emails != null ? `${o.distinct_emails} emails`
+                          : o.distinct_ips != null ? `${o.distinct_ips} IPs`
+                          : o.target ? o.target : '—'}
+                      </div>
+                      <div style={{ fontSize: '11px', color: T.text3 }}>{fmtTs(o.last_ts)}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Most recent suspicious events */}
+      <div style={{ ...card, borderRadius: '16px', overflow: 'hidden' }}>
+        <div style={{ padding: '12px 16px', borderBottom: `0.5px solid ${T.hairline}`, fontSize: '13px', fontWeight: '700', color: T.text }}>
+          Eventos sospechosos recientes
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 1.7fr 1.6fr 0.5fr 1.1fr', gap: '10px', padding: '8px 16px', background: '#0f1729' }}>
+          {['IP', 'Email', 'Evento', 'Hits', 'Hora'].map(hd => (
+            <div key={hd} style={{ fontSize: '10px', fontWeight: '700', color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{hd}</div>
+          ))}
+        </div>
+        {recentTop.length === 0 ? (
+          <div style={{ padding: '40px', textAlign: 'center', color: T.text4, fontSize: '13px' }}>
+            Sin actividad sospechosa en la ventana seleccionada
+          </div>
+        ) : recentTop.map((ev, i) => (
+          <div key={i} style={{ display: 'grid', gridTemplateColumns: '1.3fr 1.7fr 1.6fr 0.5fr 1.1fr', gap: '10px', padding: '9px 16px', alignItems: 'center', background: i % 2 ? T.soft : T.card, borderBottom: i < recentTop.length - 1 ? `1px solid ${T.hairline}` : 'none' }}>
+            <div style={{ fontSize: '12px', fontWeight: '600', color: T.text2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.ip}</div>
+            <div style={{ fontSize: '12px', color: T.text3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.email}</div>
+            <div style={{ fontSize: '12px', color: T.text2 }}>{ev.event}</div>
+            <div style={{ fontSize: '12px', fontWeight: '700', color: T.text3 }}>{ev.count ?? '—'}</div>
+            <div style={{ fontSize: '11px', color: T.text4 }}>{fmtTs(ev.last_ts)}</div>
+          </div>
+        ))}
       </div>
     </div>
   )
@@ -1313,6 +1503,7 @@ export default function AdminPage() {
   const [companies, setCompanies] = useState([])
   const [users, setUsers] = useState([])
   const [snapshots, setSnapshots] = useState([])
+  const [threats, setThreats] = useState(null)
   const [prompts, setPrompts] = useState([])
   const [selectedPrompt, setSelectedPrompt] = useState(null)
   const [editingPrompt, setEditingPrompt] = useState('')
@@ -1345,6 +1536,7 @@ export default function AdminPage() {
     if (tab === 'companies') loadCompanies()
     if (tab === 'users') loadUsers()
     if (tab === 'snapshots') loadSnapshots()
+    if (tab === 'security') loadThreats()
     if (tab === 'prospector') {}
     if (tab === 'memory') loadCompanies()
     if (tab === 'billing') loadCompanies()
@@ -1372,6 +1564,10 @@ export default function AdminPage() {
   async function loadPrompts() {
     setLoading(true)
     try { const r = await fetch(`${API}/api/admin/prompts`, { headers: h() }); if (r.ok) { const d = await r.json(); setPrompts(d.prompts || []) } } catch {} finally { setLoading(false) }
+  }
+  async function loadThreats() {
+    setLoading(true)
+    try { const r = await apiFetch('/api/admin/security/threats', { headers: authHeaders() }); if (r.ok) setThreats(await r.json()) } catch {} finally { setLoading(false) }
   }
   async function loadCompanyDetail(id) {
     try { const r = await fetch(`${API}/api/admin/companies/${id}`, { headers: h() }); if (r.ok) { const d = await r.json(); setCompanyDetail(d); setMemoryEdit({ manual_training: d.memory?.manual_training || '', business_personality: d.memory?.business_personality || '', business_goals: d.memory?.business_goals || '' }) } } catch {}
@@ -1657,6 +1853,7 @@ export default function AdminPage() {
           {/* ── USERS ── */}
           {tab === 'users' && (
             <div style={{ animation: 'fadeUp 0.3s ease' }}>
+              <ImpersonatePanel T={T} />
               <div style={{ marginBottom: '16px', display: 'flex', gap: '12px', alignItems: 'center' }}>
                 <input value={searchQ} onChange={e => setSearchQ(e.target.value)} placeholder="Buscar usuario..." style={{ ...input, maxWidth: '300px' }} />
                 <span style={{ fontSize: '13px', color: T.text3 }}>{users.length} usuarios</span>
@@ -1844,6 +2041,11 @@ export default function AdminPage() {
               token={token}
               API={API}
             />
+          )}
+
+          {/* ── SECURITY ── */}
+          {tab === 'security' && (
+            <SecurityTab threats={threats} loading={loading} onRefresh={loadThreats} />
           )}
 
           {/* ── BILLING ── */}

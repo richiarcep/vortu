@@ -367,6 +367,50 @@ def ensure_runtime_schema():
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_refresh_family ON refresh_tokens (family_id)"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_refresh_hash ON refresh_tokens (token_hash)"))
 
+        # Admin impersonation sessions: an audited, time-boxed, revocable grant for a
+        # super-admin to act as a target user/company (read-only by default). jti ties
+        # it to the issued impersonation JWT so it can be revoked/ended server-side.
+        # Raw SQL only (no ORM model); portable SERIAL/AUTOINCREMENT PK.
+        _imp_pk = "id SERIAL PRIMARY KEY" if engine.dialect.name == "postgresql" else "id INTEGER PRIMARY KEY AUTOINCREMENT"
+        conn.execute(text(f"""
+            CREATE TABLE IF NOT EXISTS impersonation_session (
+                {_imp_pk},
+                jti TEXT UNIQUE,
+                admin_user_id INTEGER,
+                target_user_id INTEGER,
+                company_id INTEGER,
+                reason TEXT,
+                mode TEXT DEFAULT 'read',
+                issued_at TEXT,
+                expires_at TEXT,
+                revoked_at TEXT,
+                ended_at TEXT,
+                ip TEXT,
+                user_agent TEXT
+            )
+        """))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_impersonation_admin ON impersonation_session (admin_user_id)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_impersonation_target ON impersonation_session (target_user_id)"))
+
+        # Single-use, hashed verification tokens (email verification, password reset,
+        # etc. — disambiguated by `purpose`). Stored as a hash so a DB leak can't be
+        # replayed; used_at marks consumption, expires_at bounds the window. Raw SQL
+        # only; portable PK.
+        _vt_pk = "id SERIAL PRIMARY KEY" if engine.dialect.name == "postgresql" else "id INTEGER PRIMARY KEY AUTOINCREMENT"
+        conn.execute(text(f"""
+            CREATE TABLE IF NOT EXISTS verification_tokens (
+                {_vt_pk},
+                user_id INTEGER,
+                token_hash TEXT,
+                purpose TEXT DEFAULT 'email_verify',
+                expires_at TEXT,
+                used_at TEXT,
+                created_at TEXT
+            )
+        """))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_verification_tokens_user ON verification_tokens (user_id)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_verification_tokens_hash ON verification_tokens (token_hash)"))
+
         # Estado temporal del flujo documentos analyze→confirm. Antes vivía en un
         # dict global en memoria (se rompía con >1 worker: /confirm caía en otro
         # proceso → "documento caducado"). Persistido aquí (portable SQLite/PG).
@@ -430,6 +474,23 @@ def ensure_runtime_schema():
         user_cols = existing_columns(conn, "users")
         if user_cols is not None and "token_version" not in user_cols:
             conn.execute(text("ALTER TABLE users ADD COLUMN token_version INTEGER NOT NULL DEFAULT 0"))
+        # Auth/identity flags consumed only by raw SQL (login email-verification gate,
+        # role-based admin/impersonation, test-account exclusion from billing/metrics).
+        # Never declared on the User model → add idempotently here. Portable: BOOLEAN
+        # DEFAULT works on both Postgres and SQLite (SQLite stores 0/1).
+        if user_cols is not None and "email_verified" not in user_cols:
+            conn.execute(text("ALTER TABLE users ADD COLUMN email_verified BOOLEAN DEFAULT FALSE"))
+        if user_cols is not None and "role" not in user_cols:
+            conn.execute(text("ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'member'"))
+        if user_cols is not None and "is_test_account" not in user_cols:
+            conn.execute(text("ALTER TABLE users ADD COLUMN is_test_account BOOLEAN DEFAULT FALSE"))
+        # Backfill existing accounts as verified so the upcoming login gate never locks
+        # out users created before this column existed (the column defaults FALSE for
+        # NEW signups, which the verification flow will flip). Idempotent + portable:
+        # `IS NOT TRUE` covers both NULL (no default applied on some ALTER paths) and
+        # FALSE, and is valid SQL on Postgres and SQLite alike.
+        if user_cols is not None:
+            conn.execute(text("UPDATE users SET email_verified = TRUE WHERE email_verified IS NOT TRUE"))
 
         company_cols = existing_columns(conn, "companies")
         if company_cols is not None and "plan" not in company_cols:

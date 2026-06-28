@@ -1,9 +1,10 @@
+import os
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 import argon2
 import bcrypt as _bcrypt
 from jose import JWTError, jwt
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -13,6 +14,21 @@ from core.database import get_db
 settings = get_settings()
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
+
+
+def _superadmin_emails() -> set:
+    """Lowercased SUPERADMIN_EMAILS allowlist (env, comma-separated). The platform
+    operator set — these accounts are super-admins without a DB column, and are
+    NEVER a valid impersonation target."""
+    return {e.strip().lower() for e in os.getenv("SUPERADMIN_EMAILS", "").split(",") if e.strip()}
+
+
+def _is_platform_admin(user) -> bool:
+    """True if the user is a Vela PLATFORM operator: is_superadmin column OR email in
+    the SUPERADMIN_EMAILS allowlist. (NOT is_admin — that is company-level.)"""
+    if user is None:
+        return False
+    return bool(getattr(user, "is_superadmin", False)) or (user.email or "").lower() in _superadmin_emails()
 
 # Argon2id is the primary password-hashing scheme (OWASP-recommended). Legacy
 # bcrypt hashes ($2a/$2b/$2y) still verify and are transparently upgraded to
@@ -102,6 +118,17 @@ def get_current_user(
             detail="Second factor required",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    # ── IMPERSONATION BRANCH ──────────────────────────────────────────────────
+    # An impersonation access token carries act_as (target id) + imp (admin id). It
+    # is minted SHORT (15 min) by /api/admin/impersonate and lets a platform admin
+    # act *as* a target user (RLS/company_id then "just work" off target.company_id).
+    # This branch runs BEFORE the normal load so an impersonation token is never
+    # mistaken for a plain session, and it re-verifies BOTH ends on every request so
+    # the grant dies the instant the admin is demoted/logged-out or the session is
+    # revoked/ended/expired. A normal (non-impersonated) token has no act_as/imp →
+    # falls through untouched.
+    if payload.get("act_as") is not None or payload.get("imp") is not None:
+        return _load_impersonated_user(payload, db)
     user_id: int = payload.get("sub")
     if user_id is None:
         raise HTTPException(
@@ -126,6 +153,128 @@ def get_current_user(
     if payload.get("tv", 0) != (getattr(user, "token_version", 0) or 0):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has been revoked")
     return user
+
+
+def _load_impersonated_user(payload: dict, db: Session):
+    """Resolve + RE-VERIFY an impersonation token into the target User, attaching the
+    impersonation context (_impersonator_id/_email, _act_as, _readonly, _imp_jti).
+
+    Every check is re-run on EVERY request (not just at mint) so the grant is live:
+      (a) the impersonation_session row must exist and be neither revoked, ended,
+          nor expired (read on a BYPASSRLS worker session — the row is platform data);
+      (b) the impersonator must STILL be an active platform admin at this token_version
+          (kills the session the instant the admin is demoted / logged out / rotated);
+      (c) the target loads by sub with the usual token_version check; and
+      (d) the target is re-asserted to NOT be a superadmin / allowlisted operator
+          (defence in depth — privilege escalation via impersonation is impossible).
+    """
+    from models.user import User
+    from core.database import worker_session
+
+    imp_jti = payload.get("imp_jti")
+    imp_id = payload.get("imp")
+    act_as = payload.get("act_as")
+    if not imp_jti or imp_id is None or act_as is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid impersonation token")
+
+    # (a) Session row — must be live. Read cross-tenant on the BYPASSRLS worker session.
+    wdb = worker_session()
+    try:
+        row = wdb.execute(text(
+            "SELECT revoked_at, ended_at, expires_at, admin_user_id, target_user_id "
+            "FROM impersonation_session WHERE jti = :jti"
+        ), {"jti": imp_jti}).fetchone()
+    finally:
+        wdb.close()
+    if row is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Impersonation session not found")
+    revoked_at, ended_at, expires_at = row[0], row[1], row[2]
+    if revoked_at or ended_at:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Impersonation session ended")
+    if expires_at:
+        try:
+            if datetime.fromisoformat(str(expires_at)) <= datetime.utcnow():
+                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Impersonation session expired")
+        except HTTPException:
+            raise
+        except (ValueError, TypeError):
+            # Unparseable expiry → fail-closed (the 15-min JWT exp already bounds it).
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Impersonation session expired")
+
+    # (b) Impersonator — must STILL be an active platform admin at the minted token_version.
+    impersonator = db.query(User).filter(User.id == int(imp_id)).first()
+    if (impersonator is None or not getattr(impersonator, "is_active", True)
+            or not _is_platform_admin(impersonator)
+            or payload.get("imp_tv", 0) != (getattr(impersonator, "token_version", 0) or 0)):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Impersonation revoked")
+
+    # (c) Target — load by sub, keep the normal token_version check.
+    sub = payload.get("sub")
+    if str(sub).isdigit():
+        target = db.query(User).filter(User.id == int(sub)).first()
+    else:
+        target = db.query(User).filter(User.email == str(sub)).first()
+    if target is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+    if not getattr(target, "is_active", True):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Account is disabled")
+    if payload.get("tv", 0) != (getattr(target, "token_version", 0) or 0):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has been revoked")
+
+    # (d) Re-assert the target is NOT a platform operator — escalation is impossible.
+    if _is_platform_admin(target):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot impersonate a platform admin")
+
+    # (e) Attach impersonation context. RLS/company_id then key off target.company_id.
+    target._impersonator_id = impersonator.id
+    target._impersonator_email = impersonator.email
+    target._act_as = target.id
+    target._readonly = bool(payload.get("imp_ro", True))
+    target._imp_jti = imp_jti
+    return target
+
+
+def get_actor(current_user):
+    """Re-attribution helper for audit: returns the (id, email) of the REAL actor.
+
+    Under impersonation the meaningful actor is the platform admin, not the target —
+    so audit rows are attributed to whoever actually performed the action. Returns
+    (impersonator_id, impersonator_email) when the user is impersonated, else the
+    user's own (id, email)."""
+    imp_id = getattr(current_user, "_impersonator_id", None)
+    if imp_id is not None:
+        return imp_id, getattr(current_user, "_impersonator_email", None)
+    return current_user.id, current_user.email
+
+
+def block_impersonation(current_user=Depends(get_current_user)):
+    """Dependency: REFUSE entirely under impersonation (any mode), even write-mode.
+
+    For the few actions that must never be performable while "acting as" a customer
+    regardless of mode — mutating roles/admin flags/security-critical settings. This
+    is belt-and-suspenders: such endpoints often gate on `is_admin`, which the TARGET
+    user may legitimately have, so the read-only write-block alone wouldn't catch a
+    write-mode impersonation. 403s the moment `_act_as` is set on the resolved user."""
+    if getattr(current_user, "_act_as", None) is not None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Esta acción no está permitida durante una sesión de soporte (impersonación).",
+        )
+    return current_user
+
+
+def block_impersonated_writes(request: Request, current_user=Depends(get_current_user)):
+    """Dependency: in a READ-ONLY impersonation session, reject any state-changing
+    method (anything but GET/HEAD/OPTIONS) with 403. Wire onto tenant routers so a
+    platform admin acting as a customer in the default 'read' mode physically cannot
+    mutate that customer's data. No-op for normal sessions and for 'write'-mode
+    impersonation."""
+    if getattr(current_user, "_readonly", False) and request.method not in ("GET", "HEAD", "OPTIONS"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Esta es una sesión de soporte en modo solo lectura; no puede modificar datos.",
+        )
+    return current_user
 
 def get_tenant_db(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     """Tenant-scoped DB session: binds the caller's company_id to the Postgres
@@ -214,12 +363,14 @@ def get_admin_user(
     # Super-admin = columna is_superadmin O email en la allowlist por env
     # (SUPERADMIN_EMAILS, separados por coma): concede acceso de operador de
     # plataforma sin escribir en la DB. Esta es la ÚNICA puerta al back-office.
-    import os as _os
-    _allow = {e.strip().lower() for e in _os.getenv("SUPERADMIN_EMAILS", "").split(",") if e.strip()}
-    _is_super = user is not None and (
-        bool(getattr(user, "is_superadmin", False)) or (user.email or "").lower() in _allow)
-    if not _is_super:
+    if not _is_platform_admin(user):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acceso solo para administradores de plataforma de Vela")
+    # An impersonation token must NEVER unlock the platform back-office: even though
+    # the impersonator is a real admin, the resolved `sub`/user here is the TARGET.
+    # get_admin_user does its own decode (it doesn't route through get_current_user),
+    # so reject any token that carries impersonation claims outright.
+    if payload.get("act_as") is not None or payload.get("imp") is not None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No disponible durante una sesión de impersonación")
     return user
 
 

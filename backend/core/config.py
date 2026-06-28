@@ -75,6 +75,16 @@ class Settings(BaseSettings):
     VERA_EXTRACTION_MODE: str = "internal"       # "internal" (current behaviour) | "vera" (API primary + internal fallback)
     VERA_TRAIN_ENABLED: bool = False             # POST human corrections to Vera /v1/train (the learning flywheel)
     VERA_API_TIMEOUT_S: float = 30.0             # per-call timeout for the Vera API
+    # ── Platform mailer (system email: verification, password reset, …) ──────────
+    # Provider precedence in core.mailer: Resend HTTP API first (RESEND_API_KEY),
+    # then stdlib SMTP (SMTP_HOST). With NO provider configured the mailer logs and
+    # returns False — it never raises — so flows like signup keep working in dev.
+    RESEND_API_KEY: str = ""                     # Resend HTTP API key (re_…); empty → provider disabled
+    EMAIL_FROM: str = ""                          # From address, e.g. "Vela <no-reply@vela.app>"
+    SMTP_HOST: str = ""                           # SMTP fallback host; empty → SMTP disabled
+    SMTP_PORT: int = 587                          # SMTP port (587 STARTTLS / 465 SSL)
+    SMTP_USER: str = ""                           # SMTP auth username (empty → no auth)
+    SMTP_PASSWORD: str = ""                       # SMTP auth password
     model_config = {"env_file": ".env", "extra": "ignore"}
 
     @field_validator("SECRET_KEY")

@@ -35,7 +35,12 @@ _counter = {"n": 0}
 
 
 def _register(country="ES"):
-    """Register a fresh company/user and return (email, password)."""
+    """Register a fresh company/user and return (email, password).
+
+    Self-service signups now start email_verified=False (the login gate blocks
+    sign-in until the emailed link is clicked). These security tests aren't testing
+    the verification flow itself, so mark the new account verified here — equivalent
+    to the user having followed the link — so login() proceeds as before."""
     _counter["n"] += 1
     email = f"user{_counter['n']}@example.com"
     pw = "Sup3rSecret!pw"
@@ -44,6 +49,12 @@ def _register(country="ES"):
         "company_name": f"Co{_counter['n']}", "country": country,
     })
     assert r.status_code in (200, 201), r.text
+    _db = SessionLocal()
+    try:
+        _db.execute(text("UPDATE users SET email_verified = TRUE WHERE email = :e"), {"e": email})
+        _db.commit()
+    finally:
+        _db.close()
     return email, pw
 
 

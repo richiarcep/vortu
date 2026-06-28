@@ -5,6 +5,7 @@ import TokenRefresher from "@/components/TokenRefresher";
 import DemoBadge from "@/components/DemoBadge";
 import { ThemeProvider } from "@/components/ui/tokens";
 import { CompanyProvider } from "@/components/CompanyProvider";
+import ImpersonationBanner from "@/components/ImpersonationBanner";
 
 export const metadata: Metadata = {
   title: "Vela",
@@ -35,6 +36,7 @@ export default function RootLayout({
         <a href="#main-content" className="skip-link">Saltar al contenido</a>
         <ThemeProvider>
           <CompanyProvider>
+            <ImpersonationBanner />
             <TokenRefresher />
             <JurisdictionGuard>
               {children}

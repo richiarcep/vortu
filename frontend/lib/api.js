@@ -8,11 +8,70 @@
 export const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
 const TOKEN_KEY = 'vela_token'
+// While impersonating, the admin's OWN access token is stashed here so the
+// "Salir" action in the impersonation banner can restore it. Its presence is
+// also a cheap client-side signal that an impersonation session is in progress.
+const ADMIN_TOKEN_KEY = 'vela_admin_token'
 
 /** Read the auth token (browser only; returns null during SSR). */
 export function getToken() {
   if (typeof window === 'undefined') return null
   return localStorage.getItem(TOKEN_KEY)
+}
+
+/** Decode a JWT payload WITHOUT verifying it (browser only). The signature is
+ *  never trusted client-side — every claim here is also enforced server-side.
+ *  We only read it to drive UI (e.g. the impersonation banner). Returns {} on
+ *  any malformed token so callers never have to try/catch. */
+export function decodeJwt(token) {
+  try {
+    const part = (token || '').split('.')[1]
+    if (!part) return {}
+    const b64 = part.replace(/-/g, '+').replace(/_/g, '/')
+    const json = decodeURIComponent(
+      atob(b64)
+        .split('')
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    )
+    return JSON.parse(json) || {}
+  } catch {
+    return {}
+  }
+}
+
+/** Stash the admin's own token before swapping to an impersonation token. */
+export function stashAdminToken(adminToken) {
+  if (typeof window === 'undefined') return
+  if (adminToken) localStorage.setItem(ADMIN_TOKEN_KEY, adminToken)
+}
+
+/** The stashed admin token (present only while impersonating). */
+export function getStashedAdminToken() {
+  if (typeof window === 'undefined') return null
+  return localStorage.getItem(ADMIN_TOKEN_KEY)
+}
+
+/** Remove the stashed admin token (after restoring it or on hard logout). */
+export function clearStashedAdminToken() {
+  if (typeof window === 'undefined') return
+  localStorage.removeItem(ADMIN_TOKEN_KEY)
+}
+
+/** Read the active impersonation context from the CURRENT access token, if any.
+ *  An impersonation token (minted by /api/admin/impersonate) carries act_as /
+ *  imp / imp_email / imp_ro claims; a normal token has none. Returns null when
+ *  not impersonating. `readonly` defaults to true (server default) when absent. */
+export function getImpersonation(token = getToken()) {
+  const p = decodeJwt(token)
+  if (p.act_as == null && p.imp == null) return null
+  return {
+    actAs: p.act_as ?? null,        // target user id being acted as
+    adminId: p.imp ?? null,         // platform admin doing the impersonation
+    adminEmail: p.imp_email || null,
+    readonly: p.imp_ro !== false,   // default read-only unless explicitly false
+    exp: p.exp || null,
+  }
 }
 
 /** Persist the auth token. */
@@ -52,6 +111,11 @@ export function handleUnauthorized() {
 // logout path — identical to today's behaviour, no regression.
 let _refreshPromise = null
 export async function refreshAccessToken() {
+  // Never refresh while impersonating: the refresh cookie belongs to the admin,
+  // so a refresh would silently swap the short-lived act_as token for a normal
+  // admin token and break the support session. The impersonation token is
+  // intentionally non-refreshable (body-only mint, no cookie) — honour that.
+  if (getImpersonation()) return false
   if (!_refreshPromise) {
     _refreshPromise = (async () => {
       try {
@@ -79,6 +143,7 @@ export async function logout() {
     })
   } catch { /* proceed with local logout regardless */ }
   clearToken()
+  clearStashedAdminToken()
   if (typeof window !== 'undefined') window.location.href = '/login'
 }
 

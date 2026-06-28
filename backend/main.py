@@ -18,7 +18,7 @@ if os.path.exists('/tmp/cacert.pem'):
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from core.security import require_module
+from core.security import require_module, block_impersonated_writes
 from apscheduler.schedulers.background import BackgroundScheduler
 from core.config import get_settings
 from core.database import create_tables, ensure_runtime_schema
@@ -44,6 +44,7 @@ from api.marketing import router as marketing_router
 from api.billing import router as billing_router
 from api.analytics import router as analytics_router
 from api.admin import router as admin_router
+from api.impersonation_admin import router as impersonation_admin_router
 from api.prospector import router as prospector_router
 from api.costs import router as costs_router
 from api.costes import router as costes_router
@@ -264,37 +265,59 @@ app.add_middleware(
 
 # ── Routers ───────────────────────────────────────────────────────────────────
 app.include_router(auth_router)
-app.include_router(privacy_router)  # GDPR export/erasure (Art.15/17/20)
-app.include_router(connect_router)  # Stripe Connect (company merchant accounts)
-app.include_router(upload_router)
+# privacy: GDPR export/erasure (Art.15/17/20). The erasure (write) routes are
+# destructive → guard them behind the read-only impersonation block so a support
+# session can never erase the customer's account/contacts/employees.
+app.include_router(privacy_router, dependencies=[Depends(block_impersonated_writes)])
+app.include_router(connect_router, dependencies=[Depends(block_impersonated_writes)])  # Stripe Connect (company merchant accounts)
+app.include_router(upload_router, dependencies=[Depends(block_impersonated_writes)])
 # ── Per-plan module gating (server-side entitlement; UX-only in the frontend) ──
 # Beta/superadmin get the full module set, so nothing is blocked until the billing
 # phase flips to paid. Dashboard-aggregation routers (agent /resumen, analytics,
 # vera-insights) are intentionally NOT gated so the dashboard works on every plan.
-app.include_router(documentos_router, dependencies=[Depends(require_module("documentos"))])
-app.include_router(finance_router, dependencies=[Depends(require_module("finanzas"))])
-app.include_router(hr_router, dependencies=[Depends(require_module("hr"))])
-app.include_router(accounting_router, dependencies=[Depends(require_module("contabilidad"))])
-app.include_router(fiscal_router)
-app.include_router(agent_router)
+# ── Read-only impersonation guard on the tenant routers ──────────────────────
+# block_impersonated_writes 403s any non-GET/HEAD/OPTIONS request made under a
+# READ-ONLY impersonation session, so a platform admin "acting as" a customer in
+# the default mode physically cannot mutate that customer's tenant data. No-op for
+# normal sessions and for write-mode impersonation. Attached to every tenant
+# (customer-data) router below.
+# _block_imp is listed FIRST so the read-only invariant is evaluated before the
+# plan-entitlement gate — a support session is refused a write regardless of the
+# target's plan.
+_block_imp = Depends(block_impersonated_writes)
+app.include_router(documentos_router, dependencies=[_block_imp, Depends(require_module("documentos"))])
+app.include_router(finance_router, dependencies=[_block_imp, Depends(require_module("finanzas"))])
+app.include_router(hr_router, dependencies=[_block_imp, Depends(require_module("hr"))])
+app.include_router(accounting_router, dependencies=[_block_imp, Depends(require_module("contabilidad"))])
+app.include_router(fiscal_router, dependencies=[_block_imp])
+app.include_router(agent_router, dependencies=[_block_imp])
 app.include_router(prompts_router)
-app.include_router(projects_router, dependencies=[Depends(require_module("proyectos"))])
-app.include_router(customers_router, dependencies=[Depends(require_module("clientes"))])
-app.include_router(sales_router, dependencies=[Depends(require_module("ventas"))])
-app.include_router(marketing_router, dependencies=[Depends(require_module("marketing"))])
+app.include_router(projects_router, dependencies=[_block_imp, Depends(require_module("proyectos"))])
+app.include_router(customers_router, dependencies=[_block_imp, Depends(require_module("clientes"))])
+app.include_router(sales_router, dependencies=[_block_imp, Depends(require_module("ventas"))])
+app.include_router(marketing_router, dependencies=[_block_imp, Depends(require_module("marketing"))])
 app.include_router(billing_router)
-app.include_router(analytics_router)
+app.include_router(analytics_router, dependencies=[_block_imp])
 app.include_router(admin_router)
+app.include_router(impersonation_admin_router)  # /api/admin/impersonate/* (start/stop)
 app.include_router(prospector_router)
-app.include_router(costs_router, dependencies=[Depends(require_module("finanzas"))])
-app.include_router(costes_router, dependencies=[Depends(require_module("finanzas"))])
+app.include_router(costs_router, dependencies=[_block_imp, Depends(require_module("finanzas"))])
+app.include_router(costes_router, dependencies=[_block_imp, Depends(require_module("finanzas"))])
 app.include_router(two_factor_router)
-app.include_router(profit_optimizer_router)
-app.include_router(vera_router)
-app.include_router(vera_route_api_router)
+# These Vera / profit-optimizer routers authenticate with get_current_user (so an
+# impersonation token resolves to the TARGET and reaches them) and expose
+# state-changing endpoints that write the customer's tenant data (Vera
+# conversations/chat/quota, Vera-Plus requests, profit-optimizer lines/products/
+# inputs/run). They MUST carry the read-only impersonation write-block so a default
+# 'read' support session physically cannot mutate the customer's data through them.
+# (admin-gated routers below use get_admin_user, which rejects impersonation tokens
+# outright, so they need no _block_imp.)
+app.include_router(profit_optimizer_router, dependencies=[_block_imp])
+app.include_router(vera_router, dependencies=[_block_imp])
+app.include_router(vera_route_api_router, dependencies=[_block_imp])
 app.include_router(vera_routing_admin_router)
-app.include_router(vera_v2_router)
-app.include_router(vera_plus_router)
+app.include_router(vera_v2_router, dependencies=[_block_imp])
+app.include_router(vera_plus_router, dependencies=[_block_imp])
 app.include_router(vera_insights_router)
 app.include_router(vera_pipeline_admin_router)
 app.include_router(doc_templates_admin_router)
