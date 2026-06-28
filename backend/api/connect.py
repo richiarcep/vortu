@@ -139,23 +139,49 @@ def connect_refund_sale(sale_id: int, body: RefundRequest, request: Request,
     if not CS.enabled():
         raise HTTPException(status_code=400, detail="Pagos no configurados todavía.")
     from sqlalchemy import text
+    cid = current_user.company_id
     row = db.execute(text(
-        "SELECT stripe_payment_intent, total FROM sales WHERE id=:s AND company_id=:c"
-    ), {"s": sale_id, "c": current_user.company_id}).mappings().first()
+        "SELECT stripe_payment_intent, total, COALESCE(refunded_amount,0) AS refunded "
+        "FROM sales WHERE id=:s AND company_id=:c"
+    ), {"s": sale_id, "c": cid}).mappings().first()
     if not row:
         raise HTTPException(status_code=404, detail="Venta no encontrada")
     if not row["stripe_payment_intent"]:
         raise HTTPException(status_code=400, detail="Esta venta no se cobró con tarjeta vía Vela; no hay cobro que reembolsar.")
+    total = float(row["total"] or 0)
+    already = float(row["refunded"] or 0)
+    refund_amount = round(float(body.amount) if body.amount is not None else (total - already), 2)
+    if refund_amount <= 0:
+        raise HTTPException(status_code=400, detail="Importe inválido o la venta ya está reembolsada por completo.")
+    # Reservar el importe de forma ATÓMICA antes de llamar a Stripe: el UPDATE
+    # condicional solo aplica si cabe en lo reembolsable, así dos reembolsos
+    # concurrentes (o un doble-clic) no pueden devolver más que el total ni reembolsar
+    # dos veces (antes: sin tope ni registro → doble-refund / over-refund). Si Stripe
+    # falla, se revierte la reserva.
+    reserved = db.execute(text(
+        "UPDATE sales SET refunded_amount = COALESCE(refunded_amount,0) + :amt "
+        "WHERE id=:s AND company_id=:c AND COALESCE(refunded_amount,0) + :amt <= total + 0.001 "
+        "RETURNING id"
+    ), {"amt": refund_amount, "s": sale_id, "c": cid}).fetchone()
+    db.commit()
+    if not reserved:
+        raise HTTPException(status_code=400,
+                            detail=f"El reembolso (€{refund_amount:.2f}) supera lo reembolsable: quedan €{round(total-already,2):.2f} de €{total:.2f}.")
     company = _company(db, current_user)
     try:
-        result = CS.refund_payment(company.stripe_connect_id, row["stripe_payment_intent"], amount=body.amount)
-    except CS.ConnectError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        result = CS.refund_payment(company.stripe_connect_id, row["stripe_payment_intent"], amount=refund_amount)
     except Exception as e:
+        # El reembolso no se realizó → revertir la reserva para no dejar la venta como
+        # reembolsada sin haberlo sido.
+        db.execute(text("UPDATE sales SET refunded_amount = COALESCE(refunded_amount,0) - :amt "
+                        "WHERE id=:s AND company_id=:c"), {"amt": refund_amount, "s": sale_id, "c": cid})
+        db.commit()
+        if isinstance(e, CS.ConnectError):
+            raise HTTPException(status_code=400, detail=str(e))
         raise HTTPException(status_code=502, detail=f"Stripe: {e}")
     audit_event(db, "connect_refund", actor_user_id=current_user.id, actor_email=current_user.email,
-                target=f"sale:{sale_id}", company_id=current_user.company_id, request=request,
-                detail={"amount": result.get("amount"), "status": result.get("status")})
+                target=f"sale:{sale_id}", company_id=cid, request=request,
+                detail={"amount": result.get("amount"), "status": result.get("status"), "refund_eur": refund_amount})
     return result
 
 
