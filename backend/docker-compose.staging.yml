@@ -9,6 +9,14 @@
 # Bring up:  docker compose -f docker-compose.staging.yml up -d --build
 # Values come from ./.env (you create it on the server from .env.example).
 
+# Cap every container's logs so they can't fill the box's disk (Docker's default
+# json-file driver is UNBOUNDED). 10MB × 3 files per container.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -30,12 +38,16 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    logging: *default-logging
     restart: unless-stopped
 
   redis:
     image: redis:7-alpine
     # No host port mapping → reachable only as "redis" on the compose network.
-    command: ["redis-server", "--appendonly", "yes"]
+    # maxmemory caps Redis so it can't grow unbounded and OOM the 4GB box; allkeys-lru
+    # evicts least-recently-used keys (this data is cache/rate-limit/AI-budget — safe).
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+    logging: *default-logging
     volumes:
       - redisdata:/data
     healthcheck:
@@ -61,6 +73,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    logging: *default-logging
     restart: unless-stopped
 
   # Frontend (Next.js 16 standalone). Built from the synced ../vela-frontend tree
@@ -74,6 +87,7 @@ services:
         NEXT_PUBLIC_API_URL: ${PUBLIC_BASE_URL:-https://167-233-199-102.sslip.io}
         NEXT_PUBLIC_DEMO_MODE: ${DEMO_MODE:-1}
     expose: ["3000"]
+    logging: *default-logging
     restart: unless-stopped
 
   caddy:
@@ -86,6 +100,7 @@ services:
       - caddy_data:/data       # persists the Let's Encrypt cert across restarts
       - caddy_config:/config
     depends_on: [app, frontend]
+    logging: *default-logging
     restart: unless-stopped
 
 volumes:
