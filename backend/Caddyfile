@@ -1,9 +1,13 @@
 # Vela backend staging reverse proxy.
-# Caddy auto-provisions + renews a real Let's Encrypt cert for this hostname via
-# HTTP-01 (needs ports 80 + 443 open, which ufw allows). sslip.io resolves the
-# hostname to the server IP. Swap the hostname for your own domain later.
+# Caddy auto-provisions + renews a real Let's Encrypt cert for each hostname via
+# HTTP-01 (needs ports 80 + 443 open, which ufw allows). The sslip.io hostname is
+# kept alongside the real domain during the cut-over so nothing breaks.
+#
+# NOTE: www.getvela.dev must resolve to this server's IP (Cloudflare A record, set
+# to "DNS only" / grey cloud so Caddy's HTTP-01 challenge isn't intercepted) BEFORE
+# Caddy can issue its certificate.
 
-167-233-199-102.sslip.io {
+www.getvela.dev, 167-233-199-102.sslip.io {
 	encode gzip zstd
 
 	# Backend (FastAPI): the API + health check. Everything else is the Next.js
