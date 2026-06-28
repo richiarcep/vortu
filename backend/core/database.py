@@ -539,6 +539,20 @@ def ensure_runtime_schema():
             "CREATE UNIQUE INDEX IF NOT EXISTS uq_refunds_company_sale_idem "
             "ON sale_refunds(company_id, sale_id, idempotency_key) WHERE idempotency_key IS NOT NULL"
         ))
+        # DTE El Salvador: idempotencia + correlativo ÚNICO. El número de control no
+        # puede repetirse por empresa (antes el read-then-update del contador lo
+        # duplicaba bajo concurrencia → violación fiscal).
+        dte_cols = existing_columns(conn, "dte_emitidos")
+        if dte_cols is not None and "idempotency_key" not in dte_cols:
+            conn.execute(text("ALTER TABLE dte_emitidos ADD COLUMN idempotency_key TEXT"))
+        conn.execute(text(
+            "CREATE UNIQUE INDEX IF NOT EXISTS uq_dte_company_numctrl "
+            "ON dte_emitidos(company_id, numero_control)"
+        ))
+        conn.execute(text(
+            "CREATE UNIQUE INDEX IF NOT EXISTS uq_dte_company_idem "
+            "ON dte_emitidos(company_id, idempotency_key) WHERE idempotency_key IS NOT NULL"
+        ))
         # Numeración de notas de crédito única por empresa.
         conn.execute(text(
             "CREATE UNIQUE INDEX IF NOT EXISTS uq_refunds_company_cn "

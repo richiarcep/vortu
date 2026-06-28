@@ -220,6 +220,7 @@ class DTERequest(BaseModel):
     receptor_direccion: Optional[str] = None
     items: list = []
     sale_id: Optional[int] = None
+    idempotency_key: Optional[str] = None
 
 @router.post("/dte/emitir")
 def emitir_dte(
@@ -244,21 +245,44 @@ def emitir_dte(
     iva = round(subtotal * iva_pct, 2)
     total = round(subtotal + iva, 2)
 
-    # Generar numero de control
-    siguiente = cfg.get("siguiente_numero", 1)
-    numero_control = f"DTE-{data.tipo_dte}-{serie}-{str(siguiente).zfill(15)}"
+    # ── Idempotencia: un reintento (misma clave) devuelve el DTE ya emitido en vez de
+    # registrar la misma venta dos veces. ──
+    if data.idempotency_key:
+        prev = db.execute(text(
+            "SELECT numero_control, codigo_generacion, ambiente, total, tipo_dte "
+            "FROM dte_emitidos WHERE company_id=:cid AND idempotency_key=:k"
+        ), {"cid": cid, "k": data.idempotency_key}).fetchone()
+        if prev:
+            return {"ok": True, "numero_control": prev[0], "codigo_generacion": prev[1],
+                    "sello": None, "ambiente": prev[2], "tipo_dte": prev[4],
+                    "total": float(prev[3] or 0), "idempotent": True,
+                    "mensaje": "DTE ya emitido (idempotente)"}
+
     codigo_generacion = str(uuid.uuid4()).upper()
 
-    # Guardar en BD
+    # ── Asignar el correlativo de forma ATÓMICA. El UPDATE ... RETURNING toma el lock de
+    # la fila config_fiscal, así dos emisiones concurrentes se SERIALIZAN y obtienen
+    # números distintos (antes era read-then-update → mismo número de control duplicado,
+    # violación fiscal en SV). El incremento y el INSERT van en la MISMA transacción: si
+    # el INSERT falla, el rollback revierte el contador (sin huecos). ──
+    row = db.execute(text(
+        "UPDATE config_fiscal SET siguiente_numero = COALESCE(siguiente_numero,1) + 1, "
+        "updated_at=:now WHERE company_id=:cid RETURNING siguiente_numero - 1 AS num"
+    ), {"now": NOW(), "cid": cid}).fetchone()
+    siguiente = int(row[0]) if row and row[0] is not None else 1
+    numero_control = f"DTE-{data.tipo_dte}-{serie}-{str(siguiente).zfill(15)}"
+
+    # Guardar en BD (con idempotency_key + el correlativo ya bloqueado)
     db.execute(text("""
         INSERT INTO dte_emitidos (company_id, tipo_dte, codigo_tipo, numero_control,
             codigo_generacion, emisor_nit, emisor_nrc, emisor_nombre,
             receptor_tipo, receptor_nombre, receptor_nit, receptor_nrc, receptor_email,
-            subtotal, iva, total, estado, ambiente, fecha_emision, sale_id, created_at)
+            subtotal, iva, total, estado, ambiente, fecha_emision, sale_id, created_at,
+            idempotency_key)
         VALUES (:cid, :tipo, :codigo, :num_ctrl, :cod_gen,
             :e_nit, :e_nrc, :e_nombre,
             :r_tipo, :r_nombre, :r_nit, :r_nrc, :r_email,
-            :subtotal, :iva, :total, :estado, :ambiente, :fecha, :sale_id, :now)
+            :subtotal, :iva, :total, :estado, :ambiente, :fecha, :sale_id, :now, :idem)
     """), {
         "cid": cid, "tipo": data.tipo_dte,
         "codigo": data.tipo_dte, "num_ctrl": numero_control,
@@ -272,12 +296,8 @@ def emitir_dte(
         "subtotal": subtotal, "iva": iva, "total": total,
         "estado": "pendiente", "ambiente": ambiente,
         "fecha": datetime.now().date().isoformat(),
-        "sale_id": data.sale_id, "now": NOW()
+        "sale_id": data.sale_id, "now": NOW(), "idem": data.idempotency_key
     })
-
-    # Actualizar siguiente numero
-    db.execute(text("UPDATE config_fiscal SET siguiente_numero=:n, updated_at=:now WHERE company_id=:cid"),
-        {"n": siguiente + 1, "now": NOW(), "cid": cid})
     db.commit()
 
     # En produccion aqui iria el POST a api.dtes.sv
