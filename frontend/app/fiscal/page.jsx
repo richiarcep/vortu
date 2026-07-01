@@ -27,7 +27,7 @@ const SvgParty = ({ size=48, sw=1.4 }) => (
 const PAISES = [
   { code:'ES', name:'España',       flag:'🇪🇸', desc:'VERI*FACTU — AEAT',               disponible:true },
   { code:'MX', name:'México',       flag:'🇲🇽', desc:'CFDI 4.0 — SAT (próximamente)',    disponible:true },
-  { code:'SV', name:'El Salvador',  flag:'🇸🇻', desc:'DTE — Ministerio de Hacienda',     disponible:true },
+  { code:'SV', name:'El Salvador',  flag:'🇸🇻', desc:'DTE — Ministerio de Hacienda (en integración)', disponible:true },
   { code:'CO', name:'Colombia',     flag:'🇨🇴', desc:'Factura Electrónica — DIAN (próx.)', disponible:true },
   { code:'AR', name:'Argentina',    flag:'🇦🇷', desc:'Comprobante — AFIP (próximamente)', disponible:true },
   { code:'CL', name:'Chile',        flag:'🇨🇱', desc:'DTE — SII (próximamente)',         disponible:true },
@@ -407,7 +407,7 @@ export default function FiscalConfig() {
               {/* Onboarding: forzar la elección consciente del modo antes de emitir. */}
               {einv && einv.mode_chosen === false && (
                 <div style={{marginBottom:12,padding:'11px 14px',background:'rgba(61,43,255,.06)',border:`.5px solid ${T.blue}`,borderRadius:10,fontSize:12.5,color:T.text,lineHeight:1.5}}>
-                  <strong>Elige cómo operar antes de emitir tu primera factura.</strong> Por defecto: <strong>VERI*FACTU</strong> (recomendado — se remite a la AEAT automáticamente). Una vez empiezas a remitir, permaneces en ese modo hasta el 31 de diciembre.
+                  <strong>Elige cómo operar antes de emitir tu primera factura.</strong> Por defecto: <strong>VERI*FACTU</strong> (recomendado — registros firmados y encadenados; la remisión automática a la AEAT está en certificación). Una vez la actives, permaneces en ese modo hasta el 31 de diciembre.
                 </div>
               )}
 
@@ -430,7 +430,7 @@ export default function FiscalConfig() {
                     )
                   })}
                   <span style={{fontSize:10.5,color:T.text4,marginLeft:'auto'}}>
-                    {vfMode.verifactu_mode==='VERIFACTU' ? 'Las facturas se remiten a la AEAT en tiempo real.' : 'Conservas registros firmados localmente (4 años).'}
+                    {vfMode.verifactu_mode==='VERIFACTU' ? 'Registros VERI*FACTU firmados y encadenados; remisión a la AEAT en certificación.' : 'Conservas registros firmados localmente (4 años).'}
                     {' · '}{vfMode.environment==='PRODUCTION'?'Producción':'Pruebas'}
                   </span>
                 </div>

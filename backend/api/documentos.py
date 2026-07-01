@@ -551,7 +551,7 @@ def execute_sql_action(action: dict, db: Session, current_user: User, doc_id: in
         if table == 'expenses':
             # Tabla cost_entries existe, lo registramos ahí como gasto general
             tables_check = db.execute(sql_text(
-                "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('cost_entries', 'expenses')"
+                "SELECT table_name AS name FROM information_schema.tables WHERE table_schema = current_schema() AND table_name IN ('cost_entries', 'expenses')"
             )).fetchall()
             tnames = [t[0] for t in tables_check]
 

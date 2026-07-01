@@ -24,17 +24,17 @@ EINVOICING = {
         "requires_cert": True,
         "modes": ["VERIFACTU", "NO_VERIFACTU"],   # ES has the dual-mode choice
         "legend": "VERI*FACTU",
-        "note": "Remite a la AEAT en tiempo real (VERI*FACTU) o conserva registros firmados localmente (NO VERI*FACTU).",
+        "note": "Genera y firma registros VERI*FACTU encadenados (huella + QR). La remisión automática a la AEAT está en certificación; en NO VERI*FACTU conservas los registros firmados localmente.",
     },
     "sv": {
         "system": "DTE",
         "authority": "Ministerio de Hacienda",
-        "status": "available",
-        "flow": "dte",                       # → api/fiscal.py /dte/emitir
+        "status": "coming_soon",             # numeración/registro OK; transmisión real al MH pendiente
+        "flow": "dte",                       # → api/fiscal.py /dte/emitir (solo pruebas)
         "requires_cert": True,
         "modes": [],
         "legend": None,
-        "note": "Documento Tributario Electrónico transmitido al Ministerio de Hacienda.",
+        "note": "DTE en integración: emite en pruebas; la transmisión al Ministerio de Hacienda aún no está disponible.",
     },
     "mx": {
         "system": "CFDI 4.0",

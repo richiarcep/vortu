@@ -245,6 +245,15 @@ def emitir_dte(
     iva = round(subtotal * iva_pct, 2)
     total = round(subtotal + iva, 2)
 
+    # SV — gate de honestidad: la transmisión real de DTE al Ministerio de Hacienda
+    # NO está integrada todavía. En 'produccion' fallamos LOUD (503) ANTES de consumir
+    # el correlativo y SIN inventar sello, para no emitir comprobantes inválidos ni
+    # dejar huecos en la numeración. El ambiente de pruebas sigue disponible para testing.
+    if ambiente == "produccion":
+        raise HTTPException(status_code=503, detail=(
+            "La emisión de DTE en producción aún no está disponible: la transmisión al "
+            "Ministerio de Hacienda de El Salvador está en integración. Usa el ambiente de pruebas."))
+
     # ── Idempotencia: un reintento (misma clave) devuelve el DTE ya emitido en vez de
     # registrar la misma venta dos veces. ──
     if data.idempotency_key:
@@ -300,19 +309,18 @@ def emitir_dte(
     })
     db.commit()
 
-    # En produccion aqui iria el POST a api.dtes.sv
-    # Por ahora simulamos respuesta exitosa
-    sello = f"SELLO-{codigo_generacion[:8]}" if ambiente == "produccion" else None
-
+    # Solo se llega aquí en ambiente de PRUEBAS (produccion se bloquea arriba con 503).
+    # Sin sello inventado y sin afirmar transmisión: el DTE de pruebas NO se envía al
+    # Ministerio de Hacienda (la integración real está pendiente).
     return {
         "ok": True,
         "numero_control": numero_control,
         "codigo_generacion": codigo_generacion,
-        "sello": sello,
+        "sello": None,
         "ambiente": ambiente,
         "tipo_dte": data.tipo_dte,
         "total": total,
-        "mensaje": "DTE generado correctamente" if ambiente == "pruebas" else "DTE enviado al Ministerio de Hacienda"
+        "mensaje": "DTE generado en ambiente de PRUEBAS (no se transmite al Ministerio de Hacienda)",
     }
 
 

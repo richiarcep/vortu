@@ -74,6 +74,7 @@ def _record_run(db, company_id, temp_id, fingerprint, slug, phase, cost, tokens,
              field_results_json, needs_review, created_at)
             VALUES (:cid, :temp, :fp, :slug, :phase, :cost, :tok, :models, :conf, :vpass,
                     :fields, :review, :now)
+            RETURNING id
         """), {
             "cid": company_id, "temp": temp_id, "fp": fingerprint, "slug": slug, "phase": phase,
             "cost": cost, "tok": tokens, "models": json.dumps(models_used),
@@ -81,8 +82,9 @@ def _record_run(db, company_id, temp_id, fingerprint, slug, phase, cost, tokens,
             "fields": json.dumps(field_results, ensure_ascii=False, default=str),
             "review": 1 if needs_review else 0, "now": datetime.now().isoformat(),
         })
+        new_id = res.scalar()
         db.commit()
-        return res.lastrowid
+        return new_id
     except Exception as e:
         db.rollback()
         logger.warning("could not record extraction_run: %s", e)

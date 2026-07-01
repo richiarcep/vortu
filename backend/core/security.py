@@ -101,6 +101,33 @@ def decode_token(token: str) -> dict:
         )
 
 
+def _twofa_remember_secret() -> str:
+    """Secreto DERIVADO (distinto de SECRET_KEY) para firmar el token de
+    'recordar 2FA por dispositivo'. Al firmarse con otro secreto, ese token NO
+    puede usarse como access token aunque se extraiga la cookie."""
+    import hashlib
+    return hashlib.sha256((settings.SECRET_KEY + "::2fa-remember-v1").encode()).hexdigest()
+
+
+def make_2fa_remember_token(user_id: int, days: int = 15) -> str:
+    """Token firmado que va en la cookie HttpOnly por-dispositivo tras verificar 2FA."""
+    now = datetime.now(timezone.utc)
+    payload = {"sub": str(user_id), "typ": "2fa_remember", "iat": now,
+               "exp": now + timedelta(days=days)}
+    return jwt.encode(payload, _twofa_remember_secret(), algorithm=settings.ALGORITHM)
+
+
+def verify_2fa_remember_token(token: str, user_id: int) -> bool:
+    """True solo si la cookie de dispositivo es válida, no expirada, y de ESTE usuario."""
+    if not token:
+        return False
+    try:
+        payload = jwt.decode(token, _twofa_remember_secret(), algorithms=[settings.ALGORITHM])
+    except JWTError:
+        return False
+    return payload.get("typ") == "2fa_remember" and str(payload.get("sub")) == str(user_id)
+
+
 def get_current_user(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db)
@@ -328,6 +355,7 @@ def get_admin_db():
 
 
 def get_admin_user(
+    request: Request,
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db)
 ):
@@ -360,6 +388,16 @@ def get_admin_user(
         user = db.query(User).filter(User.id == int(user_id)).first()
     else:
         user = db.query(User).filter(User.email == str(user_id)).first()
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate credentials")
+    # Revocación de sesión: el token debe llevar el token_version vigente del
+    # usuario. Logout / cambio de contraseña / enrolar 2FA lo incrementan, dejando
+    # revocado cualquier token anterior. get_admin_user hace su PROPIO decode (no
+    # pasa por get_current_user), y antes NO comprobaba esto → el back-office
+    # aceptaba tokens ya revocados. Mismo chequeo que get_current_user.
+    if payload.get("tv", 0) != (getattr(user, "token_version", 0) or 0):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has been revoked",
+                            headers={"WWW-Authenticate": "Bearer"})
     # Super-admin = columna is_superadmin O email en la allowlist por env
     # (SUPERADMIN_EMAILS, separados por coma): concede acceso de operador de
     # plataforma sin escribir en la DB. Esta es la ÚNICA puerta al back-office.
@@ -371,6 +409,32 @@ def get_admin_user(
     # so reject any token that carries impersonation claims outright.
     if payload.get("act_as") is not None or payload.get("imp") is not None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No disponible durante una sesión de impersonación")
+    # 2FA periódico del back-office: cada BACKOFFICE_2FA_DAYS días (0 = desactivado,
+    # kill-switch por env) se exige un step-up TOTP para ENTRAR. Solo aplica a admins
+    # con 2FA enrolada (no bloquea a quien no la tiene). Las rutas /2fa-status y
+    # /2fa-stepup se eximen para que el propio step-up sea alcanzable con el gate activo.
+    days = getattr(settings, "BACKOFFICE_2FA_DAYS", 15) or 0
+    path = request.url.path if request is not None else ""
+    if days > 0 and not (path.endswith("/2fa-stepup") or path.endswith("/2fa-status")):
+        try:
+            row = db.execute(text("SELECT totp_secret, last_backoffice_2fa FROM users WHERE id = :id"),
+                             {"id": user.id}).first()
+        except Exception:
+            # Si la columna aún no existe o la lectura falla, NO bloquees el back-office
+            # (fail-open evita un lock-out total). Limpia la txn envenenada.
+            db.rollback()
+            row = None
+        if row and row[0]:  # solo si tiene 2FA enrolada
+            last = row[1]
+            stale = True
+            if last:
+                try:
+                    stale = (datetime.utcnow() - datetime.fromisoformat(str(last))) > timedelta(days=days)
+                except Exception:
+                    stale = True
+            if stale:
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                                    detail={"reason": "backoffice_2fa_required"})
     return user
 
 

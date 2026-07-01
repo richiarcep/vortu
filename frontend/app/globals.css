@@ -57,6 +57,24 @@ html, body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  /* Ningún elemento debe desbordar horizontalmente: si algo mide >100% (p.ej.
+     un width:100vw que no descuenta la scrollbar), se asomaría el lienzo
+     (#0B0D22 en oscuro) como una franja "morada" a la derecha. Clipar el
+     desborde-x lo elimina sin tocar el scroll vertical de cada página. */
+  overflow-x: hidden;
+}
+
+/* App-shell: las páginas con Sidebar (.sb-aside) son un shell de altura fija
+   cuyo contenido scrollea en su scroller interno (.fade-in / flex:1 overflowY:
+   auto), NO el documento. Si el documento scrollea, su shell (minHeight:100dvh)
+   crece y asoma el lienzo navy (--app-bg:#0B0D22) como una franja morada a la
+   derecha (la barra de scroll del documento sobre el lienzo). Fijar el documento
+   al viewport SOLO en estas páginas elimina la franja; las páginas centradas
+   (login/pricing/register/onboarding/vera-plus) no tienen .sb-aside y siguen
+   scrolleando el body con normalidad. */
+html:has(.sb-aside), body:has(.sb-aside) {
+  height: 100dvh;
+  overflow: hidden;
 }
 
 .mono {

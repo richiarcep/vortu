@@ -9,7 +9,7 @@ from typing import Optional, List
 import json
 
 from core.database import get_db
-from core.security import get_current_user, get_admin_db, _is_platform_admin
+from core.security import get_current_user, get_admin_db, _is_platform_admin, get_admin_user
 from core.pagination import LimitQuery
 from core.rate_limit import rate_limit
 from models.user import User
@@ -20,16 +20,13 @@ from vera.network_engine import (
 router = APIRouter(prefix="/api/admin/vera-network", tags=["Vera Network Agent"])
 
 
-def require_superadmin(current_user: User = Depends(get_current_user)) -> User:
-    """Solo usuarios con is_superadmin = 1 acceden."""
-    is_super = False
-    try:
-        is_super = _is_platform_admin(current_user)
-    except Exception:
-        pass
-    if not is_super:
-        raise HTTPException(403, "Solo accesible para Vela superadmins")
-    return current_user
+def require_superadmin(admin: User = Depends(get_admin_user)) -> User:
+    """Solo superadmins de plataforma. Delega en get_admin_user para tener las
+    MISMAS garantías que el resto del back-office: validación de token_version
+    (revocación), rechazo de tokens de impersonación y step-up 2FA periódico
+    (BACKOFFICE_2FA_DAYS). El agente Vera Network ejecuta text-to-SQL cross-tenant
+    sobre un rol BYPASSRLS, así que NO puede tener un gate más débil que /api/admin/*."""
+    return admin
 
 
 # ──────────────────────────────────────────────────────────────────
@@ -103,11 +100,12 @@ def chat(
     else:
         # Nueva conversación: crear con título auto desde el primer mensaje
         title = (payload.mensaje[:60] + "…") if len(payload.mensaje) > 60 else payload.mensaje
-        cur = db.execute(text("""
+        conv_id = db.execute(text("""
             INSERT INTO vera_network_conversations (
                 user_id, title, context_company_id, messages_json,
                 model_used, total_tokens, total_cost_usd
             ) VALUES (:uid, :title, :cc, :msgs, :model, :tok, :cost)
+            RETURNING id
         """), {
             "uid": admin.id, "title": title,
             "cc": payload.context_company_id,
@@ -115,9 +113,9 @@ def chat(
             "model": result["metadata"]["model"],
             "tok": result["metadata"]["tokens_input"] + result["metadata"]["tokens_output"],
             "cost": result["metadata"]["cost_usd"],
-        })
+        }).scalar()
         db.commit()
-        result["conversation_id"] = cur.lastrowid
+        result["conversation_id"] = conv_id
 
     return result
 
@@ -191,7 +189,7 @@ def list_companies(
         SELECT
           c.id, c.name, c.country, c.plan, c.created_at,
           (SELECT COALESCE(SUM(s.total), 0) FROM sales s
-           WHERE s.company_id = c.id AND DATE(s.sale_date) >= date('now', 'start of year')) as ventas_ytd,
+           WHERE s.company_id = c.id AND s.sale_date >= date_trunc('year', CURRENT_DATE)::date) as ventas_ytd,
           (SELECT COUNT(*) FROM vera_routing_logs l
            WHERE l.company_id = c.id AND l.created_at >= datetime('now', '-7 days')) as vera_7d,
           (SELECT MAX(sale_date) FROM sales WHERE company_id = c.id) as last_sale,

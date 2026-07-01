@@ -16,7 +16,8 @@ from core.security import hash_password, verify_password, create_access_token, g
 from core.rate_limit import rate_limit, account_throttle
 from core.audit import audit_event
 from core import refresh as refresh_service
-from core.cookies import set_refresh_cookie, clear_refresh_cookie, REFRESH_COOKIE_NAME
+from core.cookies import (set_refresh_cookie, clear_refresh_cookie, REFRESH_COOKIE_NAME,
+                          set_2fa_remember_cookie, TWOFA_REMEMBER_COOKIE_NAME)
 from models.user import User, Company
 
 logger = logging.getLogger("vera.auth")
@@ -232,6 +233,11 @@ def register(data: RegisterRequest, db: Session = Depends(get_db)):
         wdb.close()
 
 
+# Hash dummy precomputado (mismo coste argon2 que uno real) para igualar el timing
+# del login cuando el email NO existe → cierra la enumeración de usuarios por tiempo.
+_DUMMY_PWHASH = hash_password("vela::timing-equalizer::not-a-real-credential")
+
+
 @router.post(
     "/login",
     response_model=TokenResponse,
@@ -252,7 +258,16 @@ def login(
 
     user = db.query(User).filter(User.email == form_data.username).first()
 
-    if not user or not verify_password(form_data.password, user.hashed_password):
+    # Timing-equalize: si el email NO existe, verifica igualmente contra un hash dummy
+    # con el MISMO coste argon2, para que no haya diferencia medible de tiempo entre
+    # email existente vs inexistente (cierra la enumeración de usuarios por timing).
+    if user is None:
+        verify_password(form_data.password, _DUMMY_PWHASH)
+        _creds_ok = False
+    else:
+        _creds_ok = verify_password(form_data.password, user.hashed_password)
+
+    if not _creds_ok:
         # Record failures even when the user doesn't exist (key credential-stuffing
         # signal), keyed to the submitted email.
         audit_event(db, "login_failure", actor_user_id=(user.id if user else None),
@@ -320,19 +335,16 @@ def login(
     user.last_login = datetime.utcnow().isoformat()
     db.commit()
 
-    # Check 2FA
+    # Check 2FA — los superadmins SIEMPRE pasan por TOTP; el resto puede saltarlo solo
+    # si ESTE dispositivo ya verificó 2FA hace <15 días (cookie HttpOnly firmada
+    # por-dispositivo, no un timestamp global por usuario: si te phishean la contraseña,
+    # el atacante desde su máquina NO trae la cookie y se le exige el segundo factor).
     if getattr(user, 'totp_enabled', False) and user.totp_enabled:
-        now = datetime.utcnow()
+        from core.security import _is_platform_admin, verify_2fa_remember_token
         skip_2fa = False
-        if getattr(user, 'last_2fa_verified', None):
-            try:
-                last_v = datetime.fromisoformat(user.last_2fa_verified)
-                if (now - last_v).days < 15:
-                    skip_2fa = True
-            except (ValueError, TypeError) as e:
-                # Malformed stored timestamp: log it but stay fail-secure
-                # (skip_2fa remains False, so 2FA is still required).
-                logger.warning("Could not parse last_2fa_verified for user %s: %s", user.id, e)
+        if not _is_platform_admin(user):
+            skip_2fa = verify_2fa_remember_token(
+                request.cookies.get(TWOFA_REMEMBER_COOKIE_NAME, ""), user.id)
         if not skip_2fa:
             temp_token = create_access_token(data={"sub": str(user.id), "is_admin": user.is_admin, "requires_2fa": True}, expires_delta=timedelta(minutes=5))
             audit_event(db, "login_2fa_challenge", actor_user_id=user.id,

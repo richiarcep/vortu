@@ -34,8 +34,13 @@ build/
 *.tsbuildinfo
 next-env.d.ts
 
-# ── TLS certs ────────────────────────────────────────────────────────────────
+# ── TLS / fiscal certs (NEVER commit) ────────────────────────────────────────
 *.pem
+*.p12
+*.pfx
+*.crt
+*.key
+*.keystore
 
 # ── OS / editor ──────────────────────────────────────────────────────────────
 .DS_Store
@@ -55,3 +60,4 @@ _backups/
 backend/data/
 backend/backups/
 .gstack/
+design-extract-output/

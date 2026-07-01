@@ -156,6 +156,13 @@ def verify_login_2fa(
                                                 "name": user.full_name, "tv": getattr(user, "token_version", 0) or 0})
         _rt = refresh_service.issue(db, user, request=request)
         set_refresh_cookie(response, _rt, request=request)
+        # Recuerda 2FA en ESTE dispositivo (cookie firmada por-dispositivo, 15 días),
+        # salvo superadmins (que siempre vuelven a verificar). Sustituye al antiguo
+        # last_2fa_verified global como criterio para saltar 2FA en el login.
+        from core.security import _is_platform_admin, make_2fa_remember_token
+        from core.cookies import set_2fa_remember_cookie
+        if not _is_platform_admin(user):
+            set_2fa_remember_cookie(response, make_2fa_remember_token(user.id), request=request)
         audit_event(db, "login_success", actor_user_id=user.id, actor_email=user.email,
                     company_id=user.company_id, request=request, detail={"twofa": True})
         return {"access_token": full_token, "token_type": "bearer", "verified": True}

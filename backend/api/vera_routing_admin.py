@@ -109,22 +109,22 @@ def create_rule(
     db: Session = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
-    db.execute(text("""
+    rid = db.execute(text("""
         INSERT INTO vera_routing_rules
         (name, description, module, trigger_keywords, trigger_question_type,
          strategy, models, consensus_mode, priority, flow_data, is_active)
         VALUES (:name, :desc, :mod, :kw, :qtype, :strat, :models, :consensus,
                 :priority, :flow, :active)
+        RETURNING id
     """), {
         "name": rule.name, "desc": rule.description, "mod": rule.module,
         "kw": rule.trigger_keywords, "qtype": rule.trigger_question_type,
         "strat": rule.strategy, "models": json.dumps(rule.models),
         "consensus": rule.consensus_mode, "priority": rule.priority,
         "flow": rule.flow_data, "active": 1 if rule.is_active else 0,
-    })
+    }).scalar()
     db.commit()
-    row = db.execute(text("SELECT last_insert_rowid()")).fetchone()
-    return {"id": row[0], "created": True}
+    return {"id": rid, "created": True}
 
 
 @router.put("/rules/{rule_id}")

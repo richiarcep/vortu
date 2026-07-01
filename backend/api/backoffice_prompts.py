@@ -100,7 +100,7 @@ def update_prompt(
         module = key.split("_")[2] if key.startswith("vera_insight_") else "general"
         db.execute(text("""
             INSERT INTO system_prompts (key, name, module, description, content, is_active, created_at, updated_at, updated_by)
-            VALUES (:key, :name, :module, :desc, :content, 1, :now, :now, :by)
+            VALUES (:key, :name, :module, :desc, :content, true, :now, :now, :by)
         """), {
             "key": key,
             "name": data.name or key,
@@ -121,7 +121,7 @@ def deactivate_prompt(
     admin: User = Depends(require_admin),
 ):
     db.execute(text(
-        "UPDATE system_prompts SET is_active=0 WHERE key=:key"
+        "UPDATE system_prompts SET is_active=false WHERE key=:key"
     ), {"key": key})
     db.commit()
     return {"ok": True, "key": key, "status": "deactivated"}

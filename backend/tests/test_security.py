@@ -26,9 +26,14 @@ from core.database import create_tables, ensure_runtime_schema, SessionLocal  # 
 create_tables()
 ensure_runtime_schema()
 # config_fiscal + the other raw fiscal tables are seeded by setup_db, not the
-# startup path — create them so the Veri*Factu test has its precondition.
-import setup_db  # noqa: E402
-setup_db.create_raw_tables()
+# startup path — create them so the Veri*Factu test has its precondition. setup_db
+# puede no estar presente (p.ej. excluido de la imagen desplegada); los tests que no
+# dependen de las tablas fiscales raw siguen corriendo.
+try:
+    import setup_db  # noqa: E402
+    setup_db.create_raw_tables()
+except Exception:
+    pass
 client = TestClient(main.app, raise_server_exceptions=False)
 
 _counter = {"n": 0}
@@ -289,6 +294,93 @@ class TestTenantIsolation(unittest.TestCase):
         exp_a = client.get("/api/me/export", headers=ha).json()
         self.assertEqual(exp_a["user"]["email"], ea)
         self.assertNotEqual(exp_a["user"]["email"], eb)
+
+
+class TestBackofficeAnd2FA(unittest.TestCase):
+    """B1 — Vera Network gateado por get_admin_user (step-up 2FA del back-office) +
+    helper de 'recordar 2FA por dispositivo'."""
+
+    def _superadmin_with_2fa(self):
+        import pyotp
+        email, pw = _register()
+        secret = pyotp.random_base32()
+        db = SessionLocal()
+        try:
+            db.execute(text(
+                "UPDATE users SET is_superadmin=TRUE, totp_secret=:s, totp_enabled=TRUE, "
+                "last_backoffice_2fa=NULL WHERE email=:e"), {"s": secret, "e": email})
+            db.commit()
+            uid = db.execute(text("SELECT id FROM users WHERE email=:e"), {"e": email}).scalar()
+        finally:
+            db.close()
+        return uid, secret
+
+    def test_vera_network_requires_backoffice_2fa(self):
+        """El agente Vera Network (text-to-SQL cross-tenant sobre BYPASSRLS) DEBE exigir
+        el step-up 2FA del back-office, igual que /api/admin/*."""
+        from core.security import create_access_token
+        uid, _ = self._superadmin_with_2fa()
+        h = {"Authorization": f"Bearer {create_access_token({'sub': str(uid), 'is_admin': True, 'plan_id': 'business', 'tv': 0})}"}
+        r = client.get("/api/admin/vera-network/audit", headers=h)
+        self.assertEqual(r.status_code, 403, r.text)
+        self.assertIn("backoffice_2fa_required", r.text)
+
+    def test_stepup_clears_the_gate(self):
+        import pyotp
+        from core.security import create_access_token
+        uid, secret = self._superadmin_with_2fa()
+        h = {"Authorization": f"Bearer {create_access_token({'sub': str(uid), 'is_admin': True, 'plan_id': 'business', 'tv': 0})}"}
+        self.assertTrue(client.get("/api/admin/2fa-status", headers=h).json()["required"])
+        r = client.post("/api/admin/2fa-stepup", json={"code": pyotp.TOTP(secret).now()}, headers=h)
+        self.assertEqual(r.status_code, 200, r.text)
+        self.assertFalse(client.get("/api/admin/2fa-status", headers=h).json()["required"])
+
+    def test_device_remember_token_roundtrip(self):
+        """El token de 'recordar 2FA por dispositivo' valida solo para su usuario,
+        rechaza basura, y NO es usable como access token (secreto derivado)."""
+        from core.security import make_2fa_remember_token, verify_2fa_remember_token, decode_token
+        t = make_2fa_remember_token(123)
+        self.assertTrue(verify_2fa_remember_token(t, 123))
+        self.assertFalse(verify_2fa_remember_token(t, 124))       # otro usuario
+        self.assertFalse(verify_2fa_remember_token("", 123))      # vacío
+        self.assertFalse(verify_2fa_remember_token("garbage.x.y", 123))
+        with self.assertRaises(Exception):                        # no es un access token válido
+            decode_token(t)
+
+
+class TestVatPerCountry(unittest.TestCase):
+    """B3 — la cuenta de IVA repercutido se resuelve country-agnostic (ES 477, MX 213,
+    SV 2103) y el asiento de ingreso desglosa el IVA y cuadra. Antes MX/SV daban None
+    (cuenta por nombre PGC-ES) → ingresos inflados 13-16% e IVA por pagar vacío."""
+    EXP = {"ES": ("477", 21.0), "MX": ("213", 16.0), "SV": ("2103", 13.0)}
+
+    def _check(self, country):
+        from datetime import date
+        from modules.accounting.revenue_register import registrar_ingreso, _vat_account_code
+        prefix, rate = self.EXP[country]
+        email, _ = _register(country=country)
+        db = SessionLocal()
+        try:
+            cid = db.execute(text("SELECT company_id FROM users WHERE email=:e"), {"e": email}).scalar()
+            code = _vat_account_code(db, cid, "repercutido")
+            self.assertIsNotNone(code, f"{country}: no resolvió cuenta IVA repercutido")
+            self.assertTrue(str(code).startswith(prefix), f"{country}: {code} no empieza por {prefix}")
+            res = registrar_ingreso(db, cid, date(2026, 1, 15), "Ventas", "test", 113.0, iva_rate=rate)
+            tid = str(res["asiento_contable"])
+            rows = db.execute(text(
+                "SELECT a.code, je.debit, je.credit FROM journal_entries je "
+                "JOIN accounts a ON a.id = je.account_id WHERE je.transaction_id = :t"
+            ), {"t": tid}).fetchall()
+            self.assertEqual(len(rows), 3, f"{country}: esperaba 3 líneas (caja+ingreso+IVA), hay {len(rows)}")
+            self.assertTrue(any(str(r[0]) == str(code) for r in rows), f"{country}: falta la línea de IVA {code}")
+            d = sum(float(r[1] or 0) for r in rows); c = sum(float(r[2] or 0) for r in rows)
+            self.assertAlmostEqual(d, c, places=2, msg=f"{country}: asiento descuadrado {d} vs {c}")
+        finally:
+            db.close()
+
+    def test_iva_es(self): self._check("ES")
+    def test_iva_mx(self): self._check("MX")
+    def test_iva_sv(self): self._check("SV")
 
 
 if __name__ == "__main__":

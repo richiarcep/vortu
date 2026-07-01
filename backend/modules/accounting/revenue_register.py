@@ -817,14 +817,25 @@ def _cash_account_code(db, company_id):
 
 
 def _vat_account_code(db, company_id, kind):
-    """Localiza la cuenta de IVA de la empresa por nombre (PGC ES: 477 repercutido,
-    472 soportado). kind = 'repercutido' | 'soportado'. None si no existe."""
+    """Localiza la cuenta de IVA de la empresa de forma COUNTRY-AGNOSTIC. Antes solo
+    cubría el PGC español por nombre ('repercutido'/'soportado'), devolviendo None
+    para MX ('trasladado'/'acreditable') y SV ('débito'/'crédito fiscal') → el IVA no
+    se contabilizaba: los ingresos salían inflados 13-16% y el IVA por pagar vacío.
+    kind = 'repercutido' (IVA de ventas → pasivo) | 'soportado' (IVA de compras →
+    activo). Empareja por account_type + ('iva'|'igv') + palabras clave de cada país."""
+    from sqlalchemy import or_
     from modules.accounting.journal import Account
-    word = "repercut" if kind == "repercutido" else "soport"
+    if kind == "repercutido":
+        acct_type = "liability"
+        kws = ("repercut", "traslad", "débito fiscal", "debito fiscal", "por pagar")
+    else:
+        acct_type = "asset"
+        kws = ("soport", "acredit", "crédito fiscal", "credito fiscal", "descontable")
     a = (db.query(Account)
            .filter(Account.company_id == company_id)
-           .filter(Account.name.ilike("%iva%"))
-           .filter(Account.name.ilike(f"%{word}%"))
+           .filter(Account.account_type == acct_type)
+           .filter(or_(Account.name.ilike("%iva%"), Account.name.ilike("%igv%")))
+           .filter(or_(*[Account.name.ilike(f"%{kw}%") for kw in kws]))
            .order_by(Account.code).first())
     return a.code if a else None
 

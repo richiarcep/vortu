@@ -274,11 +274,11 @@ def create_field(
     data["template_id"] = template_id
     cols = ", ".join(data.keys())
     placeholders = ", ".join([":" + k for k in data.keys()])
-    sql = f"INSERT INTO doc_template_fields ({cols}) VALUES ({placeholders})"
+    sql = f"INSERT INTO doc_template_fields ({cols}) VALUES ({placeholders}) RETURNING id"
     try:
-        result = db.execute(text(sql), data)
+        field_id = db.execute(text(sql), data).scalar()
         db.commit()
-        return {"created": True, "field_id": result.lastrowid}
+        return {"created": True, "field_id": field_id}
     except Exception as e:
         db.rollback()
         raise HTTPException(400, f"Error: {str(e)}")

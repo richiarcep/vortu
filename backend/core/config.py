@@ -27,6 +27,10 @@ class Settings(BaseSettings):
     # The HttpOnly rotating refresh cookie keeps the session alive past this (same-origin
     # prod). Was 1440 (24h) — too wide a window for a bearer credential.
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 120
+    # Cada cuántos días se exige un step-up TOTP para ENTRAR al back-office
+    # (gate periódico sobre operadores de plataforma con 2FA enrolada).
+    # 0 = desactivado (kill-switch por si el gate diera problemas).
+    BACKOFFICE_2FA_DAYS: int = 15
     ANTHROPIC_API_KEY: str = ""
     STRIPE_SECRET_KEY: str = ""
     STRIPE_PUBLISHABLE_KEY: str = ""

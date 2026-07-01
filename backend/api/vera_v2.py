@@ -200,7 +200,7 @@ def get_system_prompt(db: Session, company_id, user_message: str = "") -> str:
     """System prompt completo con datos del negocio."""
     base_row = db.execute(text("""
         SELECT content FROM system_prompts
-        WHERE key = 'vera_core' AND is_active = 1 LIMIT 1
+        WHERE key = 'vera_core' AND is_active = true LIMIT 1
     """)).fetchone()
 
     base = base_row[0] if base_row else (
@@ -407,7 +407,7 @@ def update_conversation(conv_id: int, payload: ConversationUpdate,
     if payload.is_archived is not None:
         updates.append("is_archived = :archived"); params["archived"] = 1 if payload.is_archived else 0
     if updates:
-        updates.append("updated_at = CURRENT_TIMESTAMP")
+        updates.append("updated_at = to_char(now() AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS')")
         db.execute(text(f"UPDATE vera_conversations SET {', '.join(updates)} WHERE id = :id"), params)
         db.commit()
     return {"updated": True}
@@ -522,7 +522,7 @@ def chat(payload: MessageCreate,
     db.execute(text("""
         UPDATE vera_conversations
         SET message_count = message_count + 2,
-            last_message_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+            last_message_at = to_char(now() AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS'), updated_at = to_char(now() AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS')
         WHERE id = :id
     """), {"id": payload.conversation_id})
 
@@ -653,7 +653,7 @@ def chat_stream(payload: MessageCreate,
             db.execute(text("""
                 UPDATE vera_conversations
                 SET message_count = message_count + 2,
-                    last_message_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+                    last_message_at = to_char(now() AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS'), updated_at = to_char(now() AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS')
                 WHERE id = :id
             """), {"id": conv_id})
             # Registrar en quota_manager (fuente única de verdad)

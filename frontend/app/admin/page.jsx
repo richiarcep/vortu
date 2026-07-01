@@ -445,6 +445,16 @@ function BillingTab({ token, API }) {
   const faseBg = f => ({ beta: '#f5f3ff', early_adopter: '#fffbeb', paid: '#f0fdf4' }[f] || '#f1f5f9')
   const faseLabel = f => ({ beta: 'Beta', early_adopter: 'Early Adopter', paid: 'Pago' }[f] || f)
 
+  // Gate 2FA del back-office: cada N días (BACKOFFICE_2FA_DAYS) el operador debe
+  // re-verificar su TOTP. Si el backend dice required, lo mandamos a /admin/verify
+  // antes de operar (el resto de llamadas devolverían 403 backoffice_2fa_required).
+  useEffect(() => {
+    apiFetch('/api/admin/2fa-status')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.required) router.replace('/admin/verify') })
+      .catch(() => {})
+  }, [])
+
   useEffect(() => { load() }, [])
 
   async function load() {

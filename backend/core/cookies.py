@@ -20,6 +20,10 @@ settings = get_settings()
 REFRESH_COOKIE_NAME = getattr(settings, "REFRESH_COOKIE_NAME", "vela_refresh")
 COOKIE_PATH = "/api/auth"
 
+# Cookie HttpOnly firmada que recuerda que ESTE dispositivo ya pasó 2FA (no un
+# timestamp global por usuario): así el "saltar 2FA 15 días" es por-dispositivo.
+TWOFA_REMEMBER_COOKIE_NAME = "vela_2fa_device"
+
 
 def _is_secure_context(request=None) -> bool:
     if (getattr(settings, "ENVIRONMENT", "") or "").lower() == "production":
@@ -45,3 +49,23 @@ def set_refresh_cookie(response, token: str, request=None, max_age_days: int = N
 
 def clear_refresh_cookie(response) -> None:
     response.delete_cookie(key=REFRESH_COOKIE_NAME, path=COOKIE_PATH)
+
+
+def set_2fa_remember_cookie(response, token: str, request=None, max_age_days: int = 15) -> None:
+    """Recuerda que ESTE navegador/dispositivo verificó 2FA (cookie HttpOnly firmada).
+    El valor va firmado con un secreto derivado (no es un access token), así que no
+    sirve como bearer aunque se extraiga."""
+    secure = _is_secure_context(request)
+    response.set_cookie(
+        key=TWOFA_REMEMBER_COOKIE_NAME,
+        value=token,
+        max_age=max_age_days * 86400,
+        httponly=True,
+        secure=secure,
+        samesite="strict" if secure else "lax",
+        path=COOKIE_PATH,
+    )
+
+
+def clear_2fa_remember_cookie(response) -> None:
+    response.delete_cookie(key=TWOFA_REMEMBER_COOKIE_NAME, path=COOKIE_PATH)

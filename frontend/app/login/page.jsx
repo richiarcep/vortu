@@ -96,15 +96,15 @@ export default function LoginPage() {
         body { font-family: 'Inter', system-ui, sans-serif; }
 
         .login-root {
-          min-height: 100dvh;
-          overflow: auto;
+          height: 100dvh;
+          overflow: hidden;
           display: flex;
           background: ${theme === 'dark' ? T.bg : '#f4f6fb'};
           font-family: 'Inter', system-ui, sans-serif;
         }
 
-        /* Escape hatch: on truly short viewports where the content can't fit,
-           allow scrolling instead of clipping. */
+        /* Escape hatch: en viewports realmente bajos (donde el contenido no cabe)
+           se permite scroll en vez de clipar y cortar el botón de entrar. */
         @media (max-height: 720px) {
           .login-root { height: auto; min-height: 100dvh; overflow: visible; }
         }
@@ -151,7 +151,7 @@ export default function LoginPage() {
           display: flex;
           align-items: center;
           gap: 14px;
-          margin-bottom: 64px;
+          margin-bottom: 40px;
         }
 
         .vela-icon {
@@ -217,7 +217,7 @@ export default function LoginPage() {
           color: rgba(255,255,255,0.5);
           line-height: 1.7;
           max-width: 340px;
-          margin-bottom: 48px;
+          margin-bottom: 32px;
         }
 
         /* Feature pills */
@@ -295,7 +295,7 @@ export default function LoginPage() {
           display: flex;
           align-items: center;
           justify-content: center;
-          padding: 48px;
+          padding: 24px 48px;
         }
 
         .form-container {
@@ -310,7 +310,7 @@ export default function LoginPage() {
         }
 
         .form-header {
-          margin-bottom: 36px;
+          margin-bottom: 24px;
         }
 
         .form-eyebrow {
@@ -474,8 +474,8 @@ export default function LoginPage() {
         .register-row a:hover { opacity: 0.6; }
 
         .form-footer {
-          margin-top: 40px;
-          padding-top: 24px;
+          margin-top: 24px;
+          padding-top: 18px;
           border-top: 1px solid ${theme === 'dark' ? T.hairline : '#f0f2f7'};
           text-align: center;
           font-size: 11px;

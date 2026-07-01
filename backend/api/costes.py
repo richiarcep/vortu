@@ -287,9 +287,9 @@ def list_gastos(
     if max_amount is not None:
         where.append("je.debit <= :maxa"); params["maxa"] = max_amount
     if search:
-        where.append("(je.description LIKE :s OR a.name LIKE :s)"); params["s"] = f"%{search}%"
+        where.append("(je.description ILIKE :s OR a.name ILIKE :s)"); params["s"] = f"%{search}%"
     if provider:
-        where.append("je.description LIKE :prov"); params["prov"] = f"%{provider}%"
+        where.append("je.description ILIKE :prov"); params["prov"] = f"%{provider}%"
 
     order = {
         "date_desc": "je.date DESC, je.id DESC", "date_asc": "je.date ASC, je.id ASC",

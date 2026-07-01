@@ -53,7 +53,7 @@ def _get_active_system_prompt(db: Session, key: str = "vera_core") -> str:
     """Lee el system prompt activo de la BD."""
     row = db.execute(text("""
         SELECT content FROM system_prompts
-        WHERE key = :key AND is_active = 1
+        WHERE key = :key AND is_active = true
     """), {"key": key}).fetchone()
     return row[0] if row else "Eres Vera, asistente de Vela."
 

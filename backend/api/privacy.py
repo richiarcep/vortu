@@ -182,7 +182,7 @@ def erase_employee(employee_id: int, request: Request, db: Session = Depends(get
 
     try:
         db.execute(text("""
-            UPDATE employees SET full_name = :n, email = :e, is_active = 0
+            UPDATE employees SET full_name = :n, email = :e, is_active = false
             WHERE id = :id AND company_id = :cid
         """), {"n": _ANON_NAME, "e": _anon_email(f"emp{employee_id}"),
                "id": employee_id, "cid": current_user.company_id})

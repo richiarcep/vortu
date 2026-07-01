@@ -66,7 +66,7 @@ const NAV_GROUPS = [
   },
 ]
 
-import { API_BASE as API } from '@/lib/api'
+import { getMe, apiFetch } from '@/lib/api'
 
 export default function Sidebar({ active }) {
   const T = useT()
@@ -74,7 +74,7 @@ export default function Sidebar({ active }) {
   const pathname = usePathname()
   const [user, setUser] = useState(null)
   const [company, setCompany] = useState(null)
-  const [isAdmin, setIsAdmin] = useState(false)
+  const [isSuperadmin, setIsSuperadmin] = useState(false)
   const [allowedModules, setAllowedModules] = useState(null)  // null = loading (show all unlocked)
   const [open, setOpen] = useState(false)   // drawer móvil
 
@@ -84,31 +84,34 @@ export default function Sidebar({ active }) {
     const t = localStorage.getItem('vela_token')
     if (!t) return
     try {
-      // Fast first paint from the token (only carries is_admin reliably; `sub` is
-      // the numeric user id, so don't show it as a name).
-      const p = JSON.parse(atob(t.split('.')[1]))
-      setIsAdmin(p.is_admin === true || p.is_admin === 'true')
+      // Validamos el token aquí; los flags de acceso reales (is_superadmin para
+      // el back-office) vienen de /api/auth/me, no de los claims del JWT.
+      JSON.parse(atob(t.split('.')[1]))
     } catch {
       localStorage.removeItem('vela_token')
       router.push('/login')
       return
     }
-    // Real identity (name + email) comes from /api/auth/me, not the JWT claims.
-    fetch(`${API}/api/auth/me`, { headers: { Authorization: `Bearer ${t}` } })
-      .then(r => r.ok ? r.json() : null)
-      .then(d => {
-        if (!d) return
-        const name = d.full_name || d.email || 'Usuario'
-        const initials = name.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase()
-        setUser({ name, initials, email: d.email || '' })
-      })
-      .catch(() => {})
-    fetch(`${API}/api/vera/v2/status`, { headers: { Authorization: `Bearer ${t}` } })
+    // Identidad real (nombre + email + is_superadmin) vía getMe(), que usa
+    // apiFetch: ante un token revocado (401, p.ej. tras enrolar 2FA o logout)
+    // intenta refrescar y, si no puede, redirige a /login en vez de fallar en
+    // silencio como "Error de red" dejando la UI vacía.
+    // El enlace al back-office se gobierna por is_superadmin (admin de PLATAFORMA),
+    // no por is_admin (admin de empresa): coincide con el gate _is_platform_admin
+    // del backend en /api/admin/*.
+    getMe().then(d => {
+      if (!d) return
+      const name = d.full_name || d.email || 'Usuario'
+      const initials = name.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase()
+      setUser({ name, initials, email: d.email || '' })
+      setIsSuperadmin(!!d.is_superadmin)
+    })
+    apiFetch('/api/vera/v2/status')
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (d?.empresa) setCompany(d.empresa) })
-      .catch(e => console.error('Error de red:', e))
+      .catch(() => {})
     // Allowed modules drive the nav locks (beta returns the full set → nothing locks).
-    fetch(`${API}/api/billing/status`, { headers: { Authorization: `Bearer ${t}` } })
+    apiFetch('/api/billing/status')
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (Array.isArray(d?.modules)) setAllowedModules(d.modules) })
       .catch(() => {})
@@ -252,7 +255,7 @@ export default function Sidebar({ active }) {
 
         {/* Bottom */}
         <div style={{padding:'12px',borderTop:`1px solid ${T.hairline}`}}>
-          {isAdmin && (
+          {isSuperadmin && (
             <Link href="/admin" onClick={() => setOpen(false)}
               aria-current={currentPath === '/admin' ? 'page' : undefined}
               style={navItemStyle(currentPath === '/admin')}>

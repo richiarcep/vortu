@@ -3,7 +3,7 @@ Backoffice API — solo accesible para usuarios con is_admin=True.
 Gestión de empresas, usuarios, planes, snapshots y prompts.
 """
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from typing import Optional, List
@@ -26,8 +26,54 @@ from modules.analytics.memory_updater import auto_update_memory, generate_memory
 from models.analytics import MemoryEntry
 from models.prompt import SystemPrompt
 from modules.core.prompt_loader import invalidate_cache
+import pyotp
+from core.config import get_settings
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
+
+
+# ── 2FA periódico del back-office (step-up cada BACKOFFICE_2FA_DAYS días) ────────
+# get_admin_user exime estas dos rutas del gate (terminan en /2fa-status y
+# /2fa-stepup) para que el step-up sea alcanzable cuando la verificación venció.
+
+class BackofficeStepUp(BaseModel):
+    code: str
+
+@router.get("/2fa-status")
+def backoffice_2fa_status(admin: User = Depends(get_admin_user), db: Session = Depends(get_db)):
+    """¿El operador debe re-verificar 2FA para entrar al back-office?"""
+    days = getattr(get_settings(), "BACKOFFICE_2FA_DAYS", 15) or 0
+    if days <= 0:
+        return {"required": False, "enrolled": None, "days": 0}
+    row = db.execute(text("SELECT totp_secret, last_backoffice_2fa FROM users WHERE id = :id"),
+                     {"id": admin.id}).first()
+    enrolled = bool(row and row[0])
+    if not enrolled:
+        return {"required": False, "enrolled": False, "days": days}
+    last = row[1]
+    stale = True
+    if last:
+        try:
+            stale = (datetime.utcnow() - datetime.fromisoformat(str(last))) > timedelta(days=days)
+        except Exception:
+            stale = True
+    return {"required": stale, "enrolled": True, "days": days}
+
+@router.post("/2fa-stepup")
+def backoffice_2fa_stepup(body: BackofficeStepUp, request: Request,
+                          admin: User = Depends(get_admin_user), db: Session = Depends(get_db)):
+    """Verifica un código TOTP y renueva la ventana de 2FA del back-office."""
+    row = db.execute(text("SELECT totp_secret FROM users WHERE id = :id"), {"id": admin.id}).first()
+    secret = row[0] if row else None
+    if not secret:
+        raise HTTPException(status_code=400, detail="No tienes 2FA activada. Actívala en Ajustes → Seguridad.")
+    if not body.code or not pyotp.TOTP(secret).verify(body.code.strip(), valid_window=1):
+        raise HTTPException(status_code=403, detail="Código 2FA inválido.")
+    db.execute(text("UPDATE users SET last_backoffice_2fa = :now WHERE id = :id"),
+               {"now": datetime.utcnow().isoformat(), "id": admin.id})
+    db.commit()
+    audit_event(db, "backoffice_2fa_stepup", actor_user_id=admin.id, actor_email=admin.email, request=request)
+    return {"ok": True}
 
 
 # ── Schemas ────────────────────────────────────────────────────────────────────

@@ -27,7 +27,7 @@ def _ctx_for_module(db, company_id, modulo):
               COALESCE(SUM(CASE WHEN a.account_type='income' THEN je.credit-je.debit ELSE 0 END), 0),
               COALESCE(SUM(CASE WHEN a.account_type='expense' THEN je.debit-je.credit ELSE 0 END), 0)
             FROM journal_entries je JOIN accounts a ON a.id = je.account_id
-            WHERE je.company_id = :cid AND je.date >= date('now', 'start of year')
+            WHERE je.company_id = :cid AND je.date >= date_trunc('year', CURRENT_DATE)
         """), {"cid": company_id}).fetchone()
         if r:
             ing = float(r[0] or 0)
@@ -67,7 +67,7 @@ def _ctx_for_module(db, company_id, modulo):
     if modulo == "hr":
         r = db.execute(text("""
             SELECT COUNT(*), COALESCE(SUM(gross_salary), 0)
-            FROM employees WHERE company_id = :cid AND is_active = 1
+            FROM employees WHERE company_id = :cid AND is_active = true
         """), {"cid": company_id}).fetchone()
         if r:
             ctx["empleados"] = r[0]
@@ -76,7 +76,7 @@ def _ctx_for_module(db, company_id, modulo):
     if modulo == "marketing":
         r = db.execute(text("""
             SELECT COALESCE(SUM(amount), 0) FROM expenses
-            WHERE company_id = :cid AND category LIKE '%marketing%'
+            WHERE company_id = :cid AND category ILIKE '%marketing%'
               AND date >= date('now', 'start of year')
         """), {"cid": company_id}).fetchone()
         if r:

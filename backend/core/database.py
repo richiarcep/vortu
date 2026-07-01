@@ -495,6 +495,11 @@ def ensure_runtime_schema():
         # only (not on the ORM model), read in get_me + written by the avatar upload.
         if user_cols is not None and "avatar_url" not in user_cols:
             conn.execute(text("ALTER TABLE users ADD COLUMN avatar_url TEXT"))
+        # users.last_backoffice_2fa — ISO del último step-up 2FA del back-office (gate
+        # periódico BACKOFFICE_2FA_DAYS en get_admin_user). En staging se añadió por DDL
+        # (MANAGE_SCHEMA=false); aquí para deploys/tests frescos.
+        if user_cols is not None and "last_backoffice_2fa" not in user_cols:
+            conn.execute(text("ALTER TABLE users ADD COLUMN last_backoffice_2fa TEXT"))
 
         company_cols = existing_columns(conn, "companies")
         if company_cols is not None and "plan" not in company_cols:

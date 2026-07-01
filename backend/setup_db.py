@@ -240,12 +240,12 @@ def seed_group3():
                 res = conn.execute(text(
                     "INSERT INTO tasks (project_id, company_id, title, description, status, priority, "
                     "assigned_to, due_date, estimated_hours, actual_hours, created_at, updated_at) "
-                    "VALUES (:pid,:cid,:title,:desc,:status,:prio,:assigned,:due,:est,:act,:now,:now)"),
+                    "VALUES (:pid,:cid,:title,:desc,:status,:prio,:assigned,:due,:est,:act,:now,:now) RETURNING id"),
                     {"pid": pid, "cid": cid, "title": f"{random.choice(TASK_TITLES)} — {pname[:30]}",
                      "desc": "Tarea generada para demo.", "status": status,
                      "prio": random.choice(PRIORITIES), "assigned": assigned,
                      "due": due.isoformat(), "est": est, "act": act, "now": now})
-                tid = res.lastrowid
+                tid = res.scalar()  # Postgres: lastrowid no existe; RETURNING id
                 n_tasks += 1
 
                 # time_entries para tareas con horas reales

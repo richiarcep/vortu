@@ -113,7 +113,7 @@ def emitir(db: Session, company_id: int, payload: dict,
     registro["xml"] = export_xml(registro)
 
     try:
-        cur = db.execute(text("""
+        new_id = db.execute(text("""
             INSERT INTO verifactu_registro
                 (company_id, tipo, serie, numero, fecha_expedicion, nif_emisor, tipo_factura,
                  cuota_total, importe_total, cliente_nombre, cliente_nif, lineas_json,
@@ -124,8 +124,8 @@ def emitir(db: Session, company_id: int, payload: dict,
                  :cuota_total, :importe_total, :cliente_nombre, :cliente_nif, :lineas_json,
                  :huella, :huella_anterior, :prev_registro_id, :estado, :ambiente, :qr_url, :xml, :firma,
                  :sale_id, :idempotency_key, :ts_generacion, :created_at, :modo, :aeat_csv, :incidencia)
-        """), registro)
-        new_id = cur.lastrowid
+            RETURNING id
+        """), registro).scalar()
         # Bump the company's counter and log the event in the SAME transaction.
         db.execute(text("UPDATE config_fiscal SET siguiente_numero=:n WHERE company_id=:cid"),
                    {"n": numero + 1, "cid": company_id})
@@ -202,7 +202,7 @@ def anular(db: Session, company_id: int, registro_id: int) -> dict:
     }
     registro["xml"] = export_xml(registro)
 
-    cur = db.execute(text("""
+    new_id = db.execute(text("""
         INSERT INTO verifactu_registro
             (company_id, tipo, serie, numero, fecha_expedicion, nif_emisor, tipo_factura,
              cuota_total, importe_total, cliente_nombre, cliente_nif, lineas_json,
@@ -213,8 +213,8 @@ def anular(db: Session, company_id: int, registro_id: int) -> dict:
              :cuota_total, :importe_total, :cliente_nombre, :cliente_nif, :lineas_json,
              :huella, :huella_anterior, :prev_registro_id, :registro_anulado_id, :estado, :ambiente,
              :qr_url, :xml, :sale_id, :idempotency_key, :ts_generacion, :created_at)
-    """), registro)
-    new_id = cur.lastrowid
+        RETURNING id
+    """), registro).scalar()
     log_evento(db, company_id, "registro_anulacion", registro_id=new_id,
                detalle=f"anula {target['serie']}{target['numero']}", commit=False)
     db.commit()

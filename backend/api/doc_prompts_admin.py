@@ -216,7 +216,8 @@ def create_prompt(
             "INSERT INTO doc_template_prompts "
             "(template_id, prompt_key, label, description, prompt_text, "
             " is_default, is_system, is_active) "
-            "VALUES (:tid, :key, :lbl, :desc, :txt, :def, 0, 1)"
+            "VALUES (:tid, :key, :lbl, :desc, :txt, :def, 0, 1) "
+            "RETURNING id"
         ), {
             "tid": payload.template_id,
             "key": payload.prompt_key,
@@ -225,8 +226,9 @@ def create_prompt(
             "txt": payload.prompt_text,
             "def": 1 if payload.is_default else 0,
         })
+        new_id = result.scalar()
         db.commit()
-        return {"created": True, "prompt_id": result.lastrowid}
+        return {"created": True, "prompt_id": new_id}
     except Exception as e:
         db.rollback()
         raise HTTPException(400, f"Error: {str(e)}")
