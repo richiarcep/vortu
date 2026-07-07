@@ -21,10 +21,29 @@ connect_args = {"check_same_thread": False, "timeout": 30} if _is_sqlite else {}
 
 # pool_pre_ping validates a pooled connection before use, avoiding "stale
 # connection" errors after the DB drops idle connections.
+#
+# Size the connection pool EXPLICITLY on Postgres. SQLAlchemy's default QueuePool
+# (5 + 10 overflow) can exhaust before the request threadpool does under the AI
+# chats (a single Vera turn holds a session across several slow LLM round-trips),
+# so we widen it modestly. Conservative on a 4GB box: pool_size=10 + max_overflow=10
+# caps at 20 connections; pool_timeout bounds the wait for a free one; pool_recycle
+# refreshes connections before the server/proxy drops them. SQLite has no server-side
+# pool to size (Single/StaticPool), so we pass NONE of these there.
+_engine_kwargs = {
+    "connect_args": connect_args,
+    "pool_pre_ping": True,
+}
+if not _is_sqlite:
+    _engine_kwargs.update(
+        pool_size=10,
+        max_overflow=10,
+        pool_timeout=30,
+        pool_recycle=1800,
+    )
+
 engine = create_engine(
     settings.DATABASE_URL,
-    connect_args=connect_args,
-    pool_pre_ping=True,
+    **_engine_kwargs,
 )
 
 
@@ -500,6 +519,15 @@ def ensure_runtime_schema():
         # (MANAGE_SCHEMA=false); aquí para deploys/tests frescos.
         if user_cols is not None and "last_backoffice_2fa" not in user_cols:
             conn.execute(text("ALTER TABLE users ADD COLUMN last_backoffice_2fa TEXT"))
+        # users.terms_version / terms_accepted_at / consent_ip — auditable record of
+        # the signup consent (ToS + Privacy Policy). Written by register() via raw SQL
+        # (not on the ORM model). Portable TEXT columns (ISO timestamp, IP string).
+        if user_cols is not None and "terms_version" not in user_cols:
+            conn.execute(text("ALTER TABLE users ADD COLUMN terms_version TEXT"))
+        if user_cols is not None and "terms_accepted_at" not in user_cols:
+            conn.execute(text("ALTER TABLE users ADD COLUMN terms_accepted_at TEXT"))
+        if user_cols is not None and "consent_ip" not in user_cols:
+            conn.execute(text("ALTER TABLE users ADD COLUMN consent_ip TEXT"))
 
         company_cols = existing_columns(conn, "companies")
         if company_cols is not None and "plan" not in company_cols:
@@ -725,6 +753,28 @@ def ensure_runtime_schema():
                 conn.execute(text("ALTER TABLE verifactu_registro ADD COLUMN aeat_csv TEXT"))
             if "incidencia" not in _vfr_cols:
                 conn.execute(text("ALTER TABLE verifactu_registro ADD COLUMN incidencia TEXT DEFAULT 'N'"))
+
+        # ── Seed vera_plans (base + plus) ───────────────────────────────────
+        # quota_manager LEFT JOINs vera_plans on companies.plan; an empty table
+        # → tokens_daily_limit NULL → everyone silently falls back to 80k and
+        # Vera Plus can't grant its unlimited quota. On staging the rows were
+        # inserted by hand; seed them here so fresh deploys/tests get them too.
+        # Idempotent: only when the table EXISTS and is EMPTY (never clobbers
+        # admin edits made through the routing editor).
+        if existing_columns(conn, "vera_plans") is not None:
+            _plans_count = conn.execute(text("SELECT count(*) FROM vera_plans")).scalar()
+            if _plans_count == 0:
+                conn.execute(text("""
+                    INSERT INTO vera_plans
+                        (plan_key, display_name, price_eur_monthly, tokens_daily_limit,
+                         primary_model, fallback_model, memory_days, features_json,
+                         is_active, display_order)
+                    VALUES
+                        ('base', 'Vera', 0, 80000,
+                         'claude', 'claude-haiku', 7, '{}', 1, 1),
+                        ('plus', 'Vera Plus', 19, -1,
+                         'claude', 'claude', 30, '{}', 1, 2)
+                """))
 
     # ── Veri*Factu append-only enforcement (Postgres only) ──────────────────
     # DB-level immutability for the fiscal registro/eventos: a BEFORE UPDATE/DELETE

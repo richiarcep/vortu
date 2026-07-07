@@ -230,14 +230,13 @@ def generate_cash_flow_statement(db: Session, company_id: int,
     Muestra cómo se movió el efectivo a través del negocio.
     """
     # ── Actividades operativas ────────────────────────────────────────────────
+    # Derivado del libro mayor real (journal_entries) por account_type — portable
+    # a todos los países. Modelo de caja: ventas = créditos netos a cuentas income,
+    # gastos = débitos netos a cuentas expense.
     from sqlalchemy import text
-    efectivo_ventas = float(db.execute(text(
-        "SELECT COALESCE(SUM(monto),0) FROM registro_diario WHERE company_id=:cid AND tipo='ingreso' AND fecha>=:ini AND fecha<=:fin"
-    ), {"cid": company_id, "ini": start_date, "fin": end_date}).scalar() or 0)
+    efectivo_ventas = float(db.execute(text("SELECT COALESCE(SUM(je.credit - je.debit),0) FROM journal_entries je JOIN accounts a ON a.id=je.account_id WHERE je.company_id=:cid AND a.account_type='income' AND je.date>=:ini AND je.date<=:fin"), {"cid": company_id, "ini": start_date, "fin": end_date}).scalar() or 0)
 
-    total_gastos_operativos = float(db.execute(text(
-        "SELECT COALESCE(SUM(monto),0) FROM registro_diario WHERE company_id=:cid AND tipo='gasto' AND fecha>=:ini AND fecha<=:fin"
-    ), {"cid": company_id, "ini": start_date, "fin": end_date}).scalar() or 0)
+    total_gastos_operativos = float(db.execute(text("SELECT COALESCE(SUM(je.debit - je.credit),0) FROM journal_entries je JOIN accounts a ON a.id=je.account_id WHERE je.company_id=:cid AND a.account_type='expense' AND je.date>=:ini AND je.date<=:fin"), {"cid": company_id, "ini": start_date, "fin": end_date}).scalar() or 0)
 
     flujo_operativo_neto = round(efectivo_ventas - total_gastos_operativos, 2)
 

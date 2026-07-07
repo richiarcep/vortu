@@ -18,6 +18,7 @@ export default function RegisterPage() {
   const [loading, setLoading]           = useState(false)
   const [error, setError]               = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [accepted, setAccepted]         = useState(false)
 
   async function handleRegister(e) {
     e.preventDefault()
@@ -30,17 +31,23 @@ export default function RegisterPage() {
       setError('La contraseña debe tener al menos 8 caracteres.')
       return
     }
+    if (!accepted) {
+      setError('Debes aceptar los Términos de servicio y la Política de privacidad.')
+      return
+    }
     setLoading(true)
     try {
       const res = await fetch(`${API}/api/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          full_name:    fullName,
-          email:        email,
-          password:     password,
-          company_name: companyName,
-          country:      null,
+          full_name:      fullName,
+          email:          email,
+          password:       password,
+          company_name:   companyName,
+          country:        null,
+          terms_accepted: true,
+          terms_version:  '2026-07-borrador',
         }),
       })
       const data = await res.json()
@@ -253,6 +260,18 @@ export default function RegisterPage() {
           text-align: center; font-size: 11px; color: ${T.text4};
         }
         .terms { font-size: 11px; color: ${T.text4}; text-align: center; margin-bottom: 16px; line-height: 1.6; }
+        .terms a { color: ${theme === 'dark' ? T.text : '#0B0D2B'}; font-weight: 600; }
+
+        .consent-row {
+          display: flex; align-items: flex-start; gap: 10px;
+          margin-bottom: 16px; font-size: 12px; color: ${T.text3}; line-height: 1.5;
+        }
+        .consent-row input[type="checkbox"] {
+          width: 16px; height: 16px; margin-top: 1px; flex-shrink: 0;
+          accent-color: ${theme === 'dark' ? T.blue : '#0B0D2B'}; cursor: pointer;
+        }
+        .consent-row label { cursor: pointer; }
+        .consent-row a { color: ${theme === 'dark' ? T.text : '#0B0D2B'}; font-weight: 600; }
 
         @media (max-width: 860px) {
           .left-panel { display: none; }
@@ -397,11 +416,16 @@ export default function RegisterPage() {
                 </div>
               )}
 
-              <p className="terms">
-                Al registrarte aceptas los <a href="#" style={{color:theme==='dark'?T.text:'#0B0D2B',fontWeight:600}}>Términos de servicio</a> y la <a href="#" style={{color:theme==='dark'?T.text:'#0B0D2B',fontWeight:600}}>Política de privacidad</a> de Vela.
-              </p>
+              <div className="consent-row">
+                <input id="reg-terms" type="checkbox" checked={accepted}
+                  onChange={e => setAccepted(e.target.checked)} required
+                  aria-describedby="reg-terms-label"/>
+                <label id="reg-terms-label" htmlFor="reg-terms">
+                  Acepto los <a href="/legal/terminos" target="_blank" rel="noopener">Términos de servicio</a> y la <a href="/legal/privacidad" target="_blank" rel="noopener">Política de privacidad</a> de Vela.
+                </label>
+              </div>
 
-              <button className="submit-btn" type="submit" disabled={loading}>
+              <button className="submit-btn" type="submit" disabled={loading || !accepted}>
                 {loading ? (
                   <><div className="spinner"/>Creando cuenta...</>
                 ) : (

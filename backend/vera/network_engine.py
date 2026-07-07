@@ -345,7 +345,7 @@ def network_chat(
     messages.append({"role": "user", "content": mensaje})
 
     started = time.time()
-    client = Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+    client = Anthropic(api_key=settings.ANTHROPIC_API_KEY, timeout=90.0)
 
     tokens_in = 0
     tokens_out = 0

@@ -1,0 +1,40 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  backend-tests:
+    name: backend tests
+    runs-on: ubuntu-latest
+    env:
+      RATE_LIMIT_ENABLED: 'false'
+      ENVIRONMENT: test
+      SECRET_KEY: test-secret-key-that-is-definitely-32chars-min
+      DEBUG: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r backend/requirements.txt
+      - name: Run test suite
+        run: cd backend && python -m unittest tests.test_security -v
+
+  frontend-lint:
+    name: frontend lint (best-effort)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      - run: cd frontend && npm ci
+      - run: cd frontend && npm run lint

@@ -12,7 +12,7 @@ class ClaudeClient(BaseLLMClient):
         if not api_key:
             raise ValueError("ANTHROPIC_API_KEY no está configurada")
         super().__init__(api_key=api_key, model=model, **kw)
-        self.client = Anthropic(api_key=api_key)
+        self.client = Anthropic(api_key=api_key, timeout=90.0)
         # Permitir override del provider_name (para distinguir claude-haiku de claude)
         if provider_name:
             self.provider_name = provider_name

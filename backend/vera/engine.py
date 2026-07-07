@@ -64,7 +64,7 @@ def vera_chat(
     messages = historial.copy()
     messages.append({"role": "user", "content": mensaje})
 
-    client = Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+    client = Anthropic(api_key=settings.ANTHROPIC_API_KEY, timeout=90.0)
     response = client.messages.create(
         model=MODELO_VERA,
         max_tokens=2048,

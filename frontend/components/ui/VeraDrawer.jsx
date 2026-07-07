@@ -55,14 +55,33 @@ export default function VeraDrawer({
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const scrollRef = useRef(null)
+  const sendRef = useRef(null)
+  const pendingSentRef = useRef(false)
 
   // Reset chat al cerrar
   useEffect(() => {
     if (!open) {
       setMsgs([])
       setInput('')
+      pendingSentRef.current = false
     }
   }, [open])
+
+  // Handoff: si alguien (p.ej. el input de VeraHybrid en el dashboard) dejó una
+  // pregunta pendiente en sessionStorage antes de abrir el drawer, la recogemos
+  // aquí y la auto-enviamos una sola vez. Esperamos a tener token para poder
+  // enviar. Si no, se rellena el input como fallback.
+  useEffect(() => {
+    if (!open || !token || pendingSentRef.current) return
+    if (typeof window === 'undefined') return
+    let pending = null
+    try { pending = sessionStorage.getItem('vera_pending_question') } catch {}
+    if (!pending || !pending.trim()) return
+    pendingSentRef.current = true
+    try { sessionStorage.removeItem('vera_pending_question') } catch {}
+    if (sendRef.current) sendRef.current(pending)
+    else setInput(pending)
+  }, [open, token])
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -173,6 +192,10 @@ export default function VeraDrawer({
       setLoading(false)
     }
   }
+
+  // Mantener sendRef apuntando a la última versión de send() para que el effect
+  // de handoff (definido arriba) pueda auto-enviar la pregunta pendiente.
+  sendRef.current = send
 
   return (
     <div

@@ -176,6 +176,8 @@ export default function VeraModule() {
   const [searchQuery, setSearchQuery] = useState('')
   const messagesEnd = useRef(null)
   const textareaRef = useRef(null)
+  const sendRef = useRef(null)
+  const pendingConsumedRef = useRef(false)
 
   const isPlus = status?.plan === 'plus'
 
@@ -202,6 +204,21 @@ export default function VeraModule() {
     if (activeChat?.id) loadMessages(activeChat.id)
     else setMessages([])
   }, [activeChat?.id])
+
+  // Handoff desde el dashboard (u otro módulo): una pregunta dejada en
+  // sessionStorage antes de navegar aquí se recoge y auto-envía una sola vez.
+  // Fallback: si aún no hay token, se rellena el input.
+  useEffect(() => {
+    if (!token || pendingConsumedRef.current) return
+    if (typeof window === 'undefined') return
+    let pending = null
+    try { pending = sessionStorage.getItem('vera_pending_question') } catch {}
+    if (!pending || !pending.trim()) return
+    pendingConsumedRef.current = true
+    try { sessionStorage.removeItem('vera_pending_question') } catch {}
+    if (sendRef.current) sendRef.current(pending)
+    else setInput(pending)
+  }, [token])
 
   useEffect(() => {
     messagesEnd.current?.scrollIntoView({ behavior: 'smooth' })
@@ -420,6 +437,10 @@ export default function VeraModule() {
     }
     setSending(false)
   }
+
+  // Mantener sendRef apuntando a la última versión de sendMessage() para el
+  // handoff (auto-envío de la pregunta pendiente al montar).
+  sendRef.current = sendMessage
 
 
   async function copyToClipboard(text) {

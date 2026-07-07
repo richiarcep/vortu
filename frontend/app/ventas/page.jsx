@@ -9,6 +9,7 @@ import VeraDrawer from '@/components/ui/VeraDrawer'
 
 import { API_BASE as API } from '@/lib/api'
 import { useMoney } from '@/lib/money'
+import { useCompany } from '@/components/CompanyProvider'
 
 // ───────────────────────────────────────────────────────────────
 // PRIMITIVOS LOCALES
@@ -110,6 +111,41 @@ function FlagES({ size = 14 }) {
       <rect y="0.5" width="3" height="1" fill="#F1BF00" />
     </svg>
   )
+}
+
+// Company-country flag + standard IVA rate, so the POS labels track the tenant
+// instead of hardcoding España/21%. Per-line amounts stay driven by each
+// product's iva_rate; this only affects the displayed flag/percentage.
+const FLAG_STYLE = { borderRadius: 2, boxShadow: '0 0 0 .5px rgba(0,0,0,0.1)', flexShrink: 0 }
+
+function FlagMX({ size = 14 }) {
+  return (
+    <svg width={size} height={size * 0.66} viewBox="0 0 3 2" style={FLAG_STYLE}>
+      <rect width="1" height="2" fill="#006847" />
+      <rect x="1" width="1" height="2" fill="#fff" />
+      <rect x="2" width="1" height="2" fill="#CE1126" />
+    </svg>
+  )
+}
+
+function FlagSV({ size = 14 }) {
+  return (
+    <svg width={size} height={size * 0.66} viewBox="0 0 3 2" style={FLAG_STYLE}>
+      <rect width="3" height="2" fill="#fff" />
+      <rect width="3" height="0.5" fill="#0F47AF" />
+      <rect y="1.5" width="3" height="0.5" fill="#0F47AF" />
+    </svg>
+  )
+}
+
+// Standard IVA/VAT rate by tenant country. ES 21 · MX 16 · SV 13.
+const STANDARD_IVA = { ES: 21, MX: 16, SV: 13 }
+
+function CountryFlag({ country, size = 12 }) {
+  const c = (country || 'ES').toUpperCase()
+  if (c === 'MX') return <FlagMX size={size} />
+  if (c === 'SV') return <FlagSV size={size} />
+  return <FlagES size={size} />
 }
 
 function PillGroup({ items, active, onChange }) {
@@ -218,6 +254,10 @@ export default function Ventas() {
   const T = useT()
   const { theme } = useTheme()
   const { fmt, short, symbol } = useMoney()
+  const { country } = useCompany()
+  // Standard IVA % shown in POS labels, derived from the tenant country (ES 21 /
+  // MX 16 / SV 13). Amounts are still computed per product's own iva_rate.
+  const ivaStd = STANDARD_IVA[(country || 'ES').toUpperCase()] ?? 21
   const router = useRouter()
   const [section, setSection] = useState('pos')
   const [token, setToken] = useState(null)
@@ -1007,7 +1047,7 @@ export default function Ventas() {
 
         <PageHeader
           title="Ventas"
-          subtitle={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><FlagES size={12} />{resumen?.today ? `${fmt(resumen.today.total_revenue || 0, { decimals: 0 })} hoy · ` : ''}Punto de venta · IVA 21%</span>}
+          subtitle={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><CountryFlag country={country} size={12} />{resumen?.today ? `${fmt(resumen.today.total_revenue || 0, { decimals: 0 })} hoy · ` : ''}Punto de venta · IVA {ivaStd}%</span>}
           tabs={sections}
           activeTab={section}
           onTab={setSection}
@@ -1225,7 +1265,7 @@ export default function Ventas() {
                           <span>Subtotal</span><span style={{ fontVariantNumeric: 'tabular-nums' }}>{fmt(cartSubtotal)}</span>
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: 12, color: T.text3 }}>
-                          <span>IVA 21%</span><span style={{ fontVariantNumeric: 'tabular-nums' }}>{fmt(cartIva)}</span>
+                          <span>IVA {ivaStd}%</span><span style={{ fontVariantNumeric: 'tabular-nums' }}>{fmt(cartIva)}</span>
                         </div>
                         <div style={{
                           display: 'flex', justifyContent: 'space-between',

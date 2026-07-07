@@ -46,7 +46,7 @@ Fecha actual: {today.strftime('%d/%m/%Y')}"""
     messages = conversation_history.copy()
     messages.append({"role": "user", "content": message})
 
-    client = vera_client(None, None, module="agente")
+    client = vera_client(db, company_id, module="agente")
     response = client.messages.create(
         model="claude-opus-4-6",
         max_tokens=1024,

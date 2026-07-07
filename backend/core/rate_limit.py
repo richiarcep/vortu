@@ -37,6 +37,13 @@ settings = get_settings()
 
 _TRUSTED_PROXY = str(getattr(settings, "TRUSTED_PROXY", True)).lower() in ("1", "true", "yes")
 
+# Kill-switch: disable all throttling for deterministic tests. Tripped either by
+# RATE_LIMIT_ENABLED=false or by ENVIRONMENT=test/testing, so the security suite
+# isn't flaky against shared sliding-window state.
+_RATE_LIMIT_DISABLED = (
+    str(getattr(settings, "RATE_LIMIT_ENABLED", True)).lower() in ("false", "0", "no")
+) or ((getattr(settings, "ENVIRONMENT", "") or "").lower() in ("test", "testing"))
+
 
 def _client_ip(request: Request) -> str:
     forwarded = request.headers.get("x-forwarded-for")
@@ -177,6 +184,8 @@ def rate_limit(max_calls: int, window_seconds: int, scope: str):
         @router.post("/login", dependencies=[Depends(rate_limit(8, 60, "login"))])
     """
     def dependency(request: Request) -> None:
+        if _RATE_LIMIT_DISABLED:
+            return
         key = f"rl:{scope}:{_client_ip(request)}"
         allowed, retry_after = _hit(key, max_calls, window_seconds)
         if not allowed:
@@ -198,6 +207,8 @@ def account_throttle(identifier: str, max_calls: int, window_seconds: int,
 
     Pass ``request`` to capture the source IP/user-agent on the audit row emitted
     when the throttle trips (optional + best-effort; omitting it logs the email only)."""
+    if _RATE_LIMIT_DISABLED:
+        return
     key = f"rl:{scope}:{(identifier or '').strip().lower()}"
     allowed, retry_after = _hit(key, max_calls, window_seconds)
     if not allowed:

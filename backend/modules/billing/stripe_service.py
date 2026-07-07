@@ -23,27 +23,52 @@ STRIPE_PRICES = {
 # prices (the .env STRIPE_PRICE_* ids were stale). A configured `price_…` id always
 # wins; otherwise we fall back to price_data.
 PLAN_AMOUNTS_EUR = {"starter": 29, "pro": 59, "business": 119, "extra_user": 8, "vera_plus": 19}
+
+# Moneda del checkout según el país del tenant: ES→EUR, MX→MXN, SV→USD.
+CURRENCY_BY_COUNTRY = {"ES": "eur", "MX": "mxn", "SV": "usd"}
+# Importes mensuales por moneda. EUR es la fuente (v3). MXN/USD son PLACEHOLDERS a
+# CALIBRAR con precio de mercado por país (no solo conversión FX) — el usuario ajusta
+# estos valores y/o crea price IDs de Stripe por país.
+PLAN_AMOUNTS = {
+    "eur": PLAN_AMOUNTS_EUR,
+    "usd": {"starter": 32, "pro": 65, "business": 129, "extra_user": 9, "vera_plus": 21},
+    "mxn": {"starter": 549, "pro": 1099, "business": 2199, "extra_user": 149, "vera_plus": 349},
+}
 PLAN_NAMES = {
     "starter": "Vela Starter", "pro": "Vela Pro", "business": "Vela Business",
     "extra_user": "Usuario extra", "vera_plus": "Vera Plus",
 }
 
 
-def _price_selector(plan_id: str) -> dict:
-    """Return a Stripe price selector usable in BOTH Checkout line_items and
-    Subscription items.
+def _user_country(db, user_id) -> str:
+    """País del tenant (para la moneda del checkout). 'ES' por defecto si no se resuelve."""
+    try:
+        from models.user import User, Company
+        u = db.query(User).filter(User.id == user_id).first()
+        if u and u.company_id:
+            c = db.query(Company).filter(Company.id == u.company_id).first()
+            if c and c.country:
+                return c.country.upper()
+    except Exception:
+        pass
+    return "ES"
 
-    Default: inline {'price_data': {...recurring monthly...}} from PLAN_AMOUNTS_EUR
-    — so checkout works in test mode with NO pre-created prices (the .env
-    STRIPE_PRICE_* ids were stale). Set STRIPE_USE_CONFIGURED_PRICES=true in prod,
-    with valid STRIPE_PRICE_* ids, to use Dashboard-managed prices instead
-    (recommended for live so prices/tax are managed in one place)."""
+
+def _price_selector(plan_id: str, country: str = "ES") -> dict:
+    """Return a Stripe price selector usable in BOTH Checkout line_items and
+    Subscription items, EN LA MONEDA DEL PAÍS del tenant (ES→EUR, MX→MXN, SV→USD).
+
+    Default: inline {'price_data': {...recurring monthly...}} desde PLAN_AMOUNTS
+    — así el checkout funciona sin price IDs pre-creados. Para EUR/ES, si
+    STRIPE_USE_CONFIGURED_PRICES=true y hay un price_… válido, se usa el price ID del
+    Dashboard. MXN/USD van por price_data inline hasta que se creen price IDs por país."""
+    currency = CURRENCY_BY_COUNTRY.get((country or "ES").upper(), "eur")
     pid = STRIPE_PRICES.get(plan_id)
-    if getattr(settings, "STRIPE_USE_CONFIGURED_PRICES", False) and isinstance(pid, str) and pid.startswith("price_"):
+    if currency == "eur" and getattr(settings, "STRIPE_USE_CONFIGURED_PRICES", False) and isinstance(pid, str) and pid.startswith("price_"):
         return {"price": pid}
-    amount = PLAN_AMOUNTS_EUR.get(plan_id, 0)
+    amount = PLAN_AMOUNTS.get(currency, PLAN_AMOUNTS_EUR).get(plan_id, 0)
     return {"price_data": {
-        "currency": "eur",
+        "currency": currency,
         "product_data": {"name": PLAN_NAMES.get(plan_id, plan_id)},
         "unit_amount": int(amount * 100),
         "recurring": {"interval": "month"},
@@ -82,7 +107,7 @@ def create_subscription_checkout(db, user_id, email, name, plan_id):
     session = stripe.checkout.Session.create(
         customer=customer_id,
         mode="subscription",
-        line_items=[{**_price_selector(plan_id), "quantity": 1}],
+        line_items=[{**_price_selector(plan_id, _user_country(db, user_id)), "quantity": 1}],
         subscription_data={
             "metadata": {"vela_user_id": str(user_id), "plan_id": plan_id}
         },
@@ -118,7 +143,7 @@ def create_upgrade_checkout(db, user_id, email, name, new_plan_id):
                 current_item = stripe_sub["items"]["data"][0]
                 stripe.Subscription.modify(
                     sub.stripe_subscription_id,
-                    items=[{"id": current_item["id"], **_price_selector(new_plan_id)}],
+                    items=[{"id": current_item["id"], **_price_selector(new_plan_id, _user_country(db, user_id))}],
                     proration_behavior="none",  # No prorratea, aplica al siguiente ciclo
                     billing_cycle_anchor="unchanged",
                 )
@@ -147,7 +172,7 @@ def create_upgrade_checkout(db, user_id, email, name, new_plan_id):
             # Cambiar sub con prorrateo inmediato
             stripe.Subscription.modify(
                 sub.stripe_subscription_id,
-                items=[{"id": current_item["id"], **_price_selector(new_plan_id)}],
+                items=[{"id": current_item["id"], **_price_selector(new_plan_id, _user_country(db, user_id))}],
                 proration_behavior="create_prorations",
             )
             sub.plan_id = new_plan_id
@@ -180,7 +205,7 @@ def add_extra_user(db, user_id, subscription_id, quantity=1):
     if extra_item:
         stripe.SubscriptionItem.modify(extra_item["id"], quantity=extra_item["quantity"] + quantity)
     else:
-        stripe.Subscription.modify(subscription_id, items=[{**_price_selector("extra_user"), "quantity": quantity}])
+        stripe.Subscription.modify(subscription_id, items=[{**_price_selector("extra_user", _user_country(db, user_id)), "quantity": quantity}])
     db_sub = db.query(Subscription).filter(Subscription.user_id == user_id).first()
     if db_sub:
         db_sub.extra_users = max(0, db_sub.extra_users + quantity)
@@ -732,7 +757,7 @@ def create_vera_plus_checkout(db, user_id, email, name, company_id):
     session = stripe.checkout.Session.create(
         customer=customer_id,
         mode="subscription",
-        line_items=[{**_price_selector("vera_plus"), "quantity": 1}],
+        line_items=[{**_price_selector("vera_plus", _user_country(db, user_id)), "quantity": 1}],
         subscription_data={
             "metadata": {
                 "vela_user_id": str(user_id),

@@ -37,6 +37,15 @@ def get_company_plan(db: Session, company_id: int) -> dict:
                 "fallback_model": "claude-haiku", "memory_days": 7, "features": {}}
 
     import json
+    # Fila de vera_plans ausente (seed no cargado): tokens_daily_limit viene NULL.
+    # No degradar un cliente 'plus' por debajo de ilimitado por falta de seed.
+    if row[1] is None:
+        if row[0] == 'plus':
+            return {"plan_key": "plus", "tokens_daily_limit": -1, "primary_model": "claude",
+                    "fallback_model": "claude", "memory_days": 30, "features": {}}
+        return {"plan_key": "base", "tokens_daily_limit": 80000, "primary_model": "claude",
+                "fallback_model": "claude-haiku", "memory_days": 7, "features": {}}
+
     return {
         "plan_key": row[0] or "base",
         "tokens_daily_limit": row[1] or 80000,

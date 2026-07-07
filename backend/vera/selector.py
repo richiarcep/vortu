@@ -80,7 +80,7 @@ def _preguntar_haiku(mensaje: str) -> bool:
     Pregunta rápida a Haiku 4.5: ¿esta consulta necesita datos externos?
     Coste mínimo (~$0.001 por llamada).
     """
-    client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+    client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY, timeout=90.0)
     try:
         resp = client.messages.create(
             model="claude-haiku-4-5-20251001",

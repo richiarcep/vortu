@@ -112,6 +112,8 @@ class RegisterRequest(BaseModel):
     password: str
     company_name: str
     country: Optional[str] = None
+    terms_accepted: bool = False
+    terms_version: Optional[str] = None
 
     @field_validator("password")
     @classmethod
@@ -147,8 +149,16 @@ class UserResponse(BaseModel):
 
 @router.post("/register", response_model=UserResponse, status_code=201,
              dependencies=[Depends(rate_limit(5, 300, "register"))])
-def register(data: RegisterRequest, db: Session = Depends(get_db)):
+def register(data: RegisterRequest, request: Request, db: Session = Depends(get_db)):
     """Register a new company and its first admin user."""
+
+    # Consent gate: registration is not allowed without accepting the Terms of
+    # Service and Privacy Policy. Fail fast before creating any tenant/user.
+    if not data.terms_accepted:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Debes aceptar los Términos y la Política de privacidad",
+        )
 
     # Check email not already taken (users is not RLS'd → fine on the request session).
     if db.query(User).filter(User.email == data.email).first():
@@ -198,6 +208,26 @@ def register(data: RegisterRequest, db: Session = Depends(get_db)):
         # roll back the just-committed account. The login gate is also guarded.
         try:
             wdb.execute(text("UPDATE users SET email_verified = FALSE WHERE id = :uid"), {"uid": user.id})
+            wdb.commit()
+        except Exception:
+            wdb.rollback()
+
+        # Persist the consent audit trail (terms version + timestamp + IP) on the
+        # just-created user. Raw columns (not on the ORM model) → plain SQL UPDATE,
+        # same pattern as email_verified above. Prefer the first hop of
+        # X-Forwarded-For (client behind the reverse proxy), else the socket peer.
+        # Own guarded txn: a missing column (pre-migration staging) must not roll
+        # back the already-committed account.
+        try:
+            _fwd = request.headers.get("x-forwarded-for", "")
+            consent_ip = _fwd.split(",")[0].strip() if _fwd else (
+                request.client.host if request.client else None)
+            wdb.execute(
+                text("UPDATE users SET terms_version = :tv, "
+                     "terms_accepted_at = :now, consent_ip = :ip WHERE id = :uid"),
+                {"tv": data.terms_version, "now": datetime.utcnow().isoformat(),
+                 "ip": consent_ip, "uid": user.id},
+            )
             wdb.commit()
         except Exception:
             wdb.rollback()

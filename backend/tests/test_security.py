@@ -15,8 +15,15 @@ import unittest
 # from the app (the engine + settings are built at import time).
 _TMP_DB = os.path.join(tempfile.mkdtemp(), "test_vela.db")
 os.environ["DATABASE_URL"] = f"sqlite:///{_TMP_DB}"
+# Aísla TOTALMENTE los tests: register() crea la empresa vía worker_session(), que usa
+# WORKER_DB_URL si está set — en el contenedor eso apunta al Postgres de staging, así que
+# los tests escribirían en PRODUCCIÓN. Vaciarlos fuerza el SessionLocal (SQLite aislado)
+# tanto en CI como al ejecutarlos dentro del contenedor.
+os.environ["WORKER_DB_URL"] = ""
+os.environ["NETWORK_DB_URL"] = ""
 os.environ.setdefault("SECRET_KEY", "test-secret-key-that-is-definitely-32+chars-long")
 os.environ.setdefault("DEBUG", "true")
+os.environ.setdefault("RATE_LIMIT_ENABLED", "false")
 
 import main  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
@@ -52,6 +59,7 @@ def _register(country="ES"):
     r = client.post("/api/auth/register", json={
         "full_name": "Test User", "email": email, "password": pw,
         "company_name": f"Co{_counter['n']}", "country": country,
+        "terms_accepted": True, "terms_version": "test",
     })
     assert r.status_code in (200, 201), r.text
     _db = SessionLocal()
